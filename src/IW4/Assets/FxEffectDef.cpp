@@ -3,49 +3,49 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
-		H1::FxElemType convert_elem_type(IW5::FxElemType type)
+		H1::FxElemType convert_elem_type(IW4::FxElemType type)
 		{
 			switch (type)
 			{
-			case IW5::FX_ELEM_TYPE_SPRITE_BILLBOARD:
+			case IW4::FX_ELEM_TYPE_SPRITE_BILLBOARD:
 				return H1::FX_ELEM_TYPE_SPRITE_BILLBOARD;
 				break;
-			case IW5::FX_ELEM_TYPE_SPRITE_ORIENTED:
+			case IW4::FX_ELEM_TYPE_SPRITE_ORIENTED:
 				return H1::FX_ELEM_TYPE_SPRITE_ORIENTED;
 				break;
-			case IW5::FX_ELEM_TYPE_TAIL:
+			case IW4::FX_ELEM_TYPE_TAIL:
 				return H1::FX_ELEM_TYPE_TAIL;
 				break;
-			case IW5::FX_ELEM_TYPE_TRAIL:
+			case IW4::FX_ELEM_TYPE_TRAIL:
 				return H1::FX_ELEM_TYPE_TRAIL;
 				break;
-			case IW5::FX_ELEM_TYPE_CLOUD:
+			case IW4::FX_ELEM_TYPE_CLOUD:
 				return H1::FX_ELEM_TYPE_CLOUD;
 				break;
-			case IW5::FX_ELEM_TYPE_SPARKCLOUD:
+			case IW4::FX_ELEM_TYPE_SPARKCLOUD:
 				return H1::FX_ELEM_TYPE_SPARK_CLOUD;
 				break;
-			case IW5::FX_ELEM_TYPE_SPARKFOUNTAIN:
+			case IW4::FX_ELEM_TYPE_SPARKFOUNTAIN:
 				return H1::FX_ELEM_TYPE_SPARK_FOUNTAIN;
 				break;
-			case IW5::FX_ELEM_TYPE_MODEL:
+			case IW4::FX_ELEM_TYPE_MODEL:
 				return H1::FX_ELEM_TYPE_MODEL;
 				break;
-			case IW5::FX_ELEM_TYPE_OMNI_LIGHT:
+			case IW4::FX_ELEM_TYPE_OMNI_LIGHT:
 				return H1::FX_ELEM_TYPE_OMNI_LIGHT;
 				break;
-			case IW5::FX_ELEM_TYPE_SPOT_LIGHT:
+			case IW4::FX_ELEM_TYPE_SPOT_LIGHT:
 				return H1::FX_ELEM_TYPE_SPOT_LIGHT;
 				break;
-			case IW5::FX_ELEM_TYPE_SOUND:
+			case IW4::FX_ELEM_TYPE_SOUND:
 				return H1::FX_ELEM_TYPE_SOUND;
 				break;
-			case IW5::FX_ELEM_TYPE_DECAL:
+			case IW4::FX_ELEM_TYPE_DECAL:
 				return H1::FX_ELEM_TYPE_DECAL;
 				break;
-			case IW5::FX_ELEM_TYPE_RUNNER:
+			case IW4::FX_ELEM_TYPE_RUNNER:
 				return H1::FX_ELEM_TYPE_RUNNER;
 				break;
 			}
@@ -53,47 +53,47 @@ namespace ZoneTool
 			return H1::FX_ELEM_TYPE_SPRITE_BILLBOARD;
 		}
 
-		H1::FxElemLitType generate_elem_lit_type(IW5::FxElemType type)
+		H1::FxElemLitType generate_elem_lit_type(IW4::FxElemType type)
 		{
 			switch (type)
 			{
-			case IW5::FX_ELEM_TYPE_SPRITE_BILLBOARD:
+			case IW4::FX_ELEM_TYPE_SPRITE_BILLBOARD:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_FRAME_SPRITE;
 				break;
-			case IW5::FX_ELEM_TYPE_SPRITE_ORIENTED:
+			case IW4::FX_ELEM_TYPE_SPRITE_ORIENTED:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_SPAWN_SINGLE;
 				break;
-			case IW5::FX_ELEM_TYPE_TAIL:
+			case IW4::FX_ELEM_TYPE_TAIL:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_FRAME_SPRITE;
 				break;
-			case IW5::FX_ELEM_TYPE_TRAIL:
+			case IW4::FX_ELEM_TYPE_TRAIL:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_FRAME_VERTEX;
 				break;
-			case IW5::FX_ELEM_TYPE_CLOUD:
+			case IW4::FX_ELEM_TYPE_CLOUD:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_SPAWN_SINGLE;
 				break;
-			case IW5::FX_ELEM_TYPE_SPARKCLOUD:
+			case IW4::FX_ELEM_TYPE_SPARKCLOUD:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_SPAWN_SINGLE;
 				break;
-			case IW5::FX_ELEM_TYPE_SPARKFOUNTAIN:
+			case IW4::FX_ELEM_TYPE_SPARKFOUNTAIN:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_FRAME_SPRITE;
 				break;
-			case IW5::FX_ELEM_TYPE_MODEL:
+			case IW4::FX_ELEM_TYPE_MODEL:
 				return H1::FX_ELEM_LIT_TYPE_NONE;
 				break;
-			case IW5::FX_ELEM_TYPE_OMNI_LIGHT:
+			case IW4::FX_ELEM_TYPE_OMNI_LIGHT:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_SPAWN_SINGLE;
 				break;
-			case IW5::FX_ELEM_TYPE_SPOT_LIGHT:
+			case IW4::FX_ELEM_TYPE_SPOT_LIGHT:
 				return H1::FX_ELEM_LIT_TYPE_NONE;
 				break;
-			case IW5::FX_ELEM_TYPE_SOUND:
+			case IW4::FX_ELEM_TYPE_SOUND:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_SPAWN_SINGLE;
 				break;
-			case IW5::FX_ELEM_TYPE_DECAL:
+			case IW4::FX_ELEM_TYPE_DECAL:
 				return H1::FX_ELEM_LIT_TYPE_NONE;
 				break;
-			case IW5::FX_ELEM_TYPE_RUNNER:
+			case IW4::FX_ELEM_TYPE_RUNNER:
 				return H1::FX_ELEM_LIT_TYPE_LIGHTGRID_SPAWN_SINGLE;
 				break;
 			}
@@ -109,43 +109,43 @@ namespace ZoneTool
 				h1_flags |= ((flags & (mask ? mask : a)) == a) ? b : 0;
 			};
 
-			convert(IW5::FxElemDefFlags::FX_ELEM_SPAWN_RELATIVE_TO_EFFECT, H1::FxElemDefFlags::FX_ELEM_SPAWN_RELATIVE_TO_EFFECT);
-			convert(IW5::FxElemDefFlags::FX_ELEM_SPAWN_FRUSTUM_CULL, H1::FxElemDefFlags::FX_ELEM_SPAWN_FRUSTUM_CULL);
-			convert(IW5::FxElemDefFlags::FX_ELEM_RUNNER_USES_RAND_ROT, H1::FxElemDefFlags::FX_ELEM_RUNNER_USES_RAND_ROT);
-			convert(IW5::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_NONE, H1::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_NONE, IW5::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_SPHERE, H1::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_SPHERE, IW5::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_CYLINDER, H1::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_CYLINDER, IW5::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_WORLD, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_WORLD, IW5::FxElemDefFlags::FX_ELEM_RUN_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_SPAWN, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_SPAWN, IW5::FxElemDefFlags::FX_ELEM_RUN_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_EFFECT, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_EFFECT, IW5::FxElemDefFlags::FX_ELEM_RUN_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_OFFSET, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_OFFSET, IW5::FxElemDefFlags::FX_ELEM_RUN_MASK);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_CAMERA, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_CAMERA);
-			convert(IW5::FxElemDefFlags::FX_ELEM_DIE_ON_TOUCH, H1::FxElemDefFlags::FX_ELEM_DIE_ON_TOUCH);
-			convert(IW5::FxElemDefFlags::FX_ELEM_DRAW_PAST_FOG, H1::FxElemDefFlags::FX_ELEM_DRAW_PAST_FOG);
-			convert(IW5::FxElemDefFlags::FX_ELEM_DRAW_WITH_VIEWMODEL, H1::FxElemDefFlags::FX_ELEM_DRAW_WITH_VIEWMODEL);
-			convert(IW5::FxElemDefFlags::FX_ELEM_BLOCK_SIGHT, H1::FxElemDefFlags::FX_ELEM_BLOCK_SIGHT);
-			convert(IW5::FxElemDefFlags::FX_ELEM_DRAW_IN_THERMAL_VIEW_ONLY, H1::FxElemDefFlags::FX_ELEM_DRAW_IN_THERMAL_VIEW_ONLY);
-			convert(IW5::FxElemDefFlags::FX_ELEM_TRAIL_ORIENT_BY_VELOCITY, H1::FxElemDefFlags::FX_ELEM_TRAIL_ORIENT_BY_VELOCITY);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_EMIT_BOLT, H1::FxElemDefFlags::FX_ELEM_EMIT_BOLT);
-			convert(IW5::FxElemDefFlags::FX_ELEM_EMIT_ORIENT_BY_ELEM, H1::FxElemDefFlags::FX_ELEM_EMIT_ORIENT_BY_ELEM);
-			convert(IW5::FxElemDefFlags::FX_ELEM_USE_OCCLUSION_QUERY, H1::FxElemDefFlags::FX_ELEM_USE_OCCLUSION_QUERY);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_NODRAW_IN_THERMAL_VIEW, H1::FxElemDefFlags::FX_ELEM_NODRAW_IN_THERMAL_VIEW, IW5::FxElemDefFlags::FX_ELEM_THERMAL_MASK);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_SPAWN_IMPACT_FX_WITH_SURFACE_NAME, H1::FxElemDefFlags::FX_ELEM_SPAWN_IMPACT_FX_WITH_SURFACE_NAME);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_RECEIVE_DYNAMIC_LIGHT, H1::FxElemDefFlags::FX_ELEM_RECEIVE_DYNAMIC_LIGHT);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_VOLUMETRIC_TRAIL, H1::FxElemDefFlags::FX_ELEM_VOLUMETRIC_TRAIL);
-			convert(IW5::FxElemDefFlags::FX_ELEM_USE_COLLISION, H1::FxElemDefFlags::FX_ELEM_USE_COLLISION);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_USE_VECTORFIELDS, H1::FxElemDefFlags::FX_ELEM_USE_VECTORFIELDS);
-			//convert(IW5::FxElemDefFlags::FX_ELEM_NO_SURFACE_HDR_SCALAR, H1::FxElemDefFlags::FX_ELEM_NO_SURFACE_HDR_SCALAR);
-			convert(IW5::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_LOCAL, H1::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_LOCAL);
-			convert(IW5::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_WORLD, H1::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_WORLD);
-			convert(IW5::FxElemDefFlags::FX_ELEM_HAS_GRAVITY, H1::FxElemDefFlags::FX_ELEM_HAS_GRAVITY);
-			convert(IW5::FxElemDefFlags::FX_ELEM_USE_MODEL_PHYSICS, H1::FxElemDefFlags::FX_ELEM_USE_MODEL_PHYSICS);
-			convert(IW5::FxElemDefFlags::FX_ELEM_NONUNIFORM_SCALE, H1::FxElemDefFlags::FX_ELEM_NONUNIFORM_SCALE);
-			convert(IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_CUBE, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_CUBE, IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_LARGE, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_LARGE, IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_MEDIUM, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_MEDIUM, IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_SMALL, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_SMALL, IW5::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
-			convert(IW5::FxElemDefFlags::FX_ELEM_FOUNTAIN_DISABLE_COLLISION, H1::FxElemDefFlags::FX_ELEM_FOUNTAIN_DISABLE_COLLISION);
+			convert(IW4::FxElemDefFlags::FX_ELEM_SPAWN_RELATIVE_TO_EFFECT, H1::FxElemDefFlags::FX_ELEM_SPAWN_RELATIVE_TO_EFFECT);
+			convert(IW4::FxElemDefFlags::FX_ELEM_SPAWN_FRUSTUM_CULL, H1::FxElemDefFlags::FX_ELEM_SPAWN_FRUSTUM_CULL);
+			convert(IW4::FxElemDefFlags::FX_ELEM_RUNNER_USES_RAND_ROT, H1::FxElemDefFlags::FX_ELEM_RUNNER_USES_RAND_ROT);
+			convert(IW4::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_NONE, H1::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_NONE, IW4::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_SPHERE, H1::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_SPHERE, IW4::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_CYLINDER, H1::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_CYLINDER, IW4::FxElemDefFlags::FX_ELEM_SPAWN_OFFSET_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_WORLD, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_WORLD, IW4::FxElemDefFlags::FX_ELEM_RUN_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_SPAWN, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_SPAWN, IW4::FxElemDefFlags::FX_ELEM_RUN_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_EFFECT, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_EFFECT, IW4::FxElemDefFlags::FX_ELEM_RUN_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_OFFSET, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_OFFSET, IW4::FxElemDefFlags::FX_ELEM_RUN_MASK);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_CAMERA, H1::FxElemDefFlags::FX_ELEM_RUN_RELATIVE_TO_CAMERA);
+			convert(IW4::FxElemDefFlags::FX_ELEM_DIE_ON_TOUCH, H1::FxElemDefFlags::FX_ELEM_DIE_ON_TOUCH);
+			convert(IW4::FxElemDefFlags::FX_ELEM_DRAW_PAST_FOG, H1::FxElemDefFlags::FX_ELEM_DRAW_PAST_FOG);
+			convert(IW4::FxElemDefFlags::FX_ELEM_DRAW_WITH_VIEWMODEL, H1::FxElemDefFlags::FX_ELEM_DRAW_WITH_VIEWMODEL);
+			convert(IW4::FxElemDefFlags::FX_ELEM_BLOCK_SIGHT, H1::FxElemDefFlags::FX_ELEM_BLOCK_SIGHT);
+			convert(IW4::FxElemDefFlags::FX_ELEM_DRAW_IN_THERMAL_VIEW_ONLY, H1::FxElemDefFlags::FX_ELEM_DRAW_IN_THERMAL_VIEW_ONLY);
+			convert(IW4::FxElemDefFlags::FX_ELEM_TRAIL_ORIENT_BY_VELOCITY, H1::FxElemDefFlags::FX_ELEM_TRAIL_ORIENT_BY_VELOCITY);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_EMIT_BOLT, H1::FxElemDefFlags::FX_ELEM_EMIT_BOLT);
+			convert(IW4::FxElemDefFlags::FX_ELEM_EMIT_ORIENT_BY_ELEM, H1::FxElemDefFlags::FX_ELEM_EMIT_ORIENT_BY_ELEM);
+			convert(IW4::FxElemDefFlags::FX_ELEM_USE_OCCLUSION_QUERY, H1::FxElemDefFlags::FX_ELEM_USE_OCCLUSION_QUERY);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_NODRAW_IN_THERMAL_VIEW, H1::FxElemDefFlags::FX_ELEM_NODRAW_IN_THERMAL_VIEW, IW4::FxElemDefFlags::FX_ELEM_THERMAL_MASK);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_SPAWN_IMPACT_FX_WITH_SURFACE_NAME, H1::FxElemDefFlags::FX_ELEM_SPAWN_IMPACT_FX_WITH_SURFACE_NAME);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_RECEIVE_DYNAMIC_LIGHT, H1::FxElemDefFlags::FX_ELEM_RECEIVE_DYNAMIC_LIGHT);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_VOLUMETRIC_TRAIL, H1::FxElemDefFlags::FX_ELEM_VOLUMETRIC_TRAIL);
+			convert(IW4::FxElemDefFlags::FX_ELEM_USE_COLLISION, H1::FxElemDefFlags::FX_ELEM_USE_COLLISION);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_USE_VECTORFIELDS, H1::FxElemDefFlags::FX_ELEM_USE_VECTORFIELDS);
+			//convert(IW4::FxElemDefFlags::FX_ELEM_NO_SURFACE_HDR_SCALAR, H1::FxElemDefFlags::FX_ELEM_NO_SURFACE_HDR_SCALAR);
+			convert(IW4::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_LOCAL, H1::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_LOCAL);
+			convert(IW4::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_WORLD, H1::FxElemDefFlags::FX_ELEM_HAS_VELOCITY_GRAPH_WORLD);
+			convert(IW4::FxElemDefFlags::FX_ELEM_HAS_GRAVITY, H1::FxElemDefFlags::FX_ELEM_HAS_GRAVITY);
+			convert(IW4::FxElemDefFlags::FX_ELEM_USE_MODEL_PHYSICS, H1::FxElemDefFlags::FX_ELEM_USE_MODEL_PHYSICS);
+			convert(IW4::FxElemDefFlags::FX_ELEM_NONUNIFORM_SCALE, H1::FxElemDefFlags::FX_ELEM_NONUNIFORM_SCALE);
+			convert(IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_CUBE, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_CUBE, IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_LARGE, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_LARGE, IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_MEDIUM, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_MEDIUM, IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_SMALL, H1::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_SPHERE_SMALL, IW4::FxElemDefFlags::FX_ELEM_CLOUD_SHAPE_MASK);
+			convert(IW4::FxElemDefFlags::FX_ELEM_FOUNTAIN_DISABLE_COLLISION, H1::FxElemDefFlags::FX_ELEM_FOUNTAIN_DISABLE_COLLISION);
 
 			return h1_flags;
 		}
@@ -244,7 +244,7 @@ namespace ZoneTool
 				h1_elem->visuals.instance.anonymous = elem->visuals.instance.anonymous;
 			}
 
-			memcpy(&h1_elem->collBounds, &elem->collMins, sizeof(float[3][2]));
+			memcpy(&h1_elem->collBounds, &elem->collBounds, sizeof(float[3][2]));
 
 			h1_elem->effectOnImpact.name = elem->effectOnImpact.name;
 			h1_elem->effectOnDeath.name = elem->effectOnDeath.name;
@@ -288,12 +288,12 @@ namespace ZoneTool
 				h1_elem->extended.spotLightDef = mem->Alloc<H1::FxSpotLightDef>();
 				if (elem->extended.spotLightDef)
 				{
-					h1_elem->extended.spotLightDef->fovInnerFraction = elem->extended.spotLightDef->fovInnerFraction;
-					h1_elem->extended.spotLightDef->startRadius = elem->extended.spotLightDef->startRadius;
-					h1_elem->extended.spotLightDef->endRadius = elem->extended.spotLightDef->endRadius;
-					h1_elem->extended.spotLightDef->brightness = elem->extended.spotLightDef->brightness;
-					h1_elem->extended.spotLightDef->maxLength = elem->extended.spotLightDef->maxLength;
-					h1_elem->extended.spotLightDef->exponent = elem->extended.spotLightDef->exponent;
+					h1_elem->extended.spotLightDef->fovInnerFraction = elem->extended.spotLightDef->fovInnerFraction; // 4
+					h1_elem->extended.spotLightDef->startRadius = elem->extended.spotLightDef->startRadius; // 8
+					h1_elem->extended.spotLightDef->endRadius = elem->extended.spotLightDef->endRadius; // 12
+					h1_elem->extended.spotLightDef->brightness = elem->extended.spotLightDef->brightness; // 16
+					h1_elem->extended.spotLightDef->maxLength = elem->extended.spotLightDef->maxLength; // 20
+					h1_elem->extended.spotLightDef->exponent = elem->extended.spotLightDef->exponent; // 24
 					// pad
 				}
 				break;
@@ -302,7 +302,8 @@ namespace ZoneTool
 				// todo?
 				break;
 			default:
-				h1_elem->extended.unknownDef = elem->extended.unknownDef;
+				// TODO: i'm not sure if there is a unknownDef to be found in IW4, come back to this after talking to Louv.
+				h1_elem->extended.unknownDef = *(mem->Alloc<char* __ptr64>());
 				break;
 			}
 
@@ -311,7 +312,7 @@ namespace ZoneTool
 			h1_elem->lightingFrac = elem->lightingFrac;
 			h1_elem->useItemClip = elem->useItemClip;
 			h1_elem->fadeInfo = elem->fadeInfo;
-			h1_elem->randomSeed = elem->pad; // check
+			h1_elem->randomSeed = 0; // pad value is IW5 only, so idk what to define this
 
 			h1_elem->__pad0[0] = 0.0f;
 			h1_elem->__pad0[1] = 1.0f;
@@ -333,11 +334,13 @@ namespace ZoneTool
 			h1_asset->elemDefCountOneShot = asset->elemDefCountOneShot;
 			h1_asset->elemDefCountEmission = asset->elemDefCountEmission;
 			h1_asset->elemMaxRadius = 0;
-			h1_asset->occlusionQueryDepthBias = asset->occlusionQueryDepthBias;
-			h1_asset->occlusionQueryFadeIn = asset->occlusionQueryFadeIn;
-			h1_asset->occlusionQueryFadeOut = asset->occlusionQueryFadeOut;
-			h1_asset->occlusionQueryScaleRange.base = asset->occlusionQueryScaleRange.base;
-			h1_asset->occlusionQueryScaleRange.amplitude = asset->occlusionQueryScaleRange.amplitude;
+
+			// TODO: 0 is hardcoded, make sure it doesn't break anything
+			h1_asset->occlusionQueryDepthBias = 0.0f; // doesn't exist on IW5
+			h1_asset->occlusionQueryFadeIn = 0; // doesn't exist on IW5
+			h1_asset->occlusionQueryFadeOut = 0; // doesn't exist on IW5
+			h1_asset->occlusionQueryScaleRange.base = 0.0f; // doesn't exist on IW5
+			h1_asset->occlusionQueryScaleRange.amplitude = 0.0f; // doesn't exist on IW5
 
 			h1_asset->elemDefs = mem->Alloc<H1::FxElemDef>(asset->elemDefCountLooping + asset->elemDefCountOneShot + asset->elemDefCountEmission);
 			for (auto i = 0; i < asset->elemDefCountLooping + asset->elemDefCountOneShot + asset->elemDefCountEmission; i++)

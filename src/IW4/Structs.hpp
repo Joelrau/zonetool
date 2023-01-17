@@ -493,20 +493,6 @@ namespace ZoneTool
 		{
 			vec3_t midPoint;
 			vec3_t halfSize;
-
-			void compute()
-			{
-				compute(midPoint, halfSize);
-			}
-
-			void compute(vec3_t mins, vec3_t maxs)
-			{
-				for (int i = 0; i < 3; ++i)
-				{
-					this->halfSize[i] = (maxs[i] - mins[i]) / 2;
-					this->midPoint[i] = this->halfSize[i] + mins[i];
-				}
-			}
 		};
 
 		struct XBoneInfo
@@ -2889,10 +2875,11 @@ namespace ZoneTool
 		// Fx
 		struct FxEffectDef;
 
-		/*	struct FxElemMarkVisuals
-			{
-				Material *materials[2];
-			};*/
+		struct FxElemMarkVisuals
+		{
+			Material* materials[2];
+		};
+
 		struct FxImpactEntry
 		{
 			FxEffectDef* nonflesh[31];
@@ -2913,8 +2900,6 @@ namespace ZoneTool
 			FxEffectDefRef* effectDef;
 			const char* soundName;
 		};
-
-		typedef Material* FxElemMarkVisuals[2];
 
 		union FxElemDefVisuals
 		{
@@ -2960,11 +2945,21 @@ namespace ZoneTool
 			float boostFactor;
 		};
 
+		struct FxSpotLightDef
+		{
+			float fovInnerFraction;
+			float startRadius;
+			float endRadius;
+			float brightness;
+			float maxLength;
+			int exponent;
+		};
+
 		union FxElemExtendedDefPtr
 		{
 			FxTrailDef* trailDef;
 			FxSparkFountainDef* sparkFountain;
-			char* unknownDef;
+			FxSpotLightDef* spotLightDef;
 		};
 
 		struct FxSpawnDefLooping
@@ -3040,6 +3035,42 @@ namespace ZoneTool
 			FxElemVisualState amplitude;
 		};
 
+		enum FxElemDefFlags : std::uint32_t
+		{
+			FX_ELEM_SPAWN_RELATIVE_TO_EFFECT = 0x2,
+			FX_ELEM_SPAWN_FRUSTUM_CULL = 0x4,
+			FX_ELEM_RUNNER_USES_RAND_ROT = 0x8,
+			FX_ELEM_SPAWN_OFFSET_NONE = 0x0,
+			FX_ELEM_SPAWN_OFFSET_SPHERE = 0x10,
+			FX_ELEM_SPAWN_OFFSET_CYLINDER = 0x20,
+			FX_ELEM_SPAWN_OFFSET_MASK = 0x30,
+			FX_ELEM_RUN_RELATIVE_TO_WORLD = 0x0,
+			FX_ELEM_RUN_RELATIVE_TO_SPAWN = 0x40,
+			FX_ELEM_RUN_RELATIVE_TO_EFFECT = 0x80,
+			FX_ELEM_RUN_RELATIVE_TO_OFFSET = 0xC0,
+			FX_ELEM_RUN_MASK = 0xC0,
+			FX_ELEM_USE_COLLISION = 0x100,
+			FX_ELEM_DIE_ON_TOUCH = 0x200,
+			FX_ELEM_DRAW_PAST_FOG = 0x400,
+			FX_ELEM_DRAW_WITH_VIEWMODEL = 0x800,
+			FX_ELEM_BLOCK_SIGHT = 0x1000,
+			FX_ELEM_DRAW_IN_THERMAL_VIEW_ONLY = 0x2000,
+			FX_ELEM_TRAIL_ORIENT_BY_VELOCITY = 0x4000,
+			FX_ELEM_EMIT_ORIENT_BY_ELEM = 0x8000,
+			FX_ELEM_USE_OCCLUSION_QUERY = 0x10000,
+			FX_ELEM_HAS_VELOCITY_GRAPH_LOCAL = 0x1000000,
+			FX_ELEM_HAS_VELOCITY_GRAPH_WORLD = 0x2000000,
+			FX_ELEM_HAS_GRAVITY = 0x4000000,
+			FX_ELEM_USE_MODEL_PHYSICS = 0x8000000,
+			FX_ELEM_NONUNIFORM_SCALE = 0x10000000,
+			FX_ELEM_CLOUD_SHAPE_CUBE = 0x0,
+			FX_ELEM_CLOUD_SHAPE_SPHERE_LARGE = 0x20000000,
+			FX_ELEM_CLOUD_SHAPE_SPHERE_MEDIUM = 0x40000000,
+			FX_ELEM_CLOUD_SHAPE_SPHERE_SMALL = 0x60000000,
+			FX_ELEM_CLOUD_SHAPE_MASK = 0x60000000,
+			FX_ELEM_FOUNTAIN_DISABLE_COLLISION = 0x80000000,
+		};
+
 		struct FxElemDef
 		{
 			int flags;
@@ -3059,7 +3090,7 @@ namespace ZoneTool
 			FxFloatRange gravity;
 			FxFloatRange reflectionFactor;
 			FxElemAtlas atlas;
-			char elemType;
+			FxElemType elemType;
 			char visualCount;
 			char velIntervalCount;
 			char visStateIntervalCount;
@@ -3067,9 +3098,9 @@ namespace ZoneTool
 			FxElemVisStateSample* visSamples;
 			FxElemDefVisuals visuals;
 			Bounds collBounds;
-			FxEffectDefRef* effectOnImpact;
-			FxEffectDefRef* effectOnDeath;
-			FxEffectDefRef* effectEmitted;
+			FxEffectDefRef effectOnImpact;
+			FxEffectDefRef effectOnDeath;
+			FxEffectDefRef effectEmitted;
 			FxFloatRange emitDist;
 			FxFloatRange emitDistVariance;
 			FxElemExtendedDefPtr extended;
@@ -3088,6 +3119,12 @@ namespace ZoneTool
 			int elemDefCountLooping;
 			int elemDefCountOneShot;
 			int elemDefCountEmission;
+			/* IW5
+			float occlusionQueryDepthBias;
+			int occlusionQueryFadeIn;
+			int occlusionQueryFadeOut;
+			FxFloatRange occlusionQueryScaleRange;
+			*/
 			FxElemDef* elemDefs;
 		};
 
