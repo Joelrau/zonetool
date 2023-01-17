@@ -3,7 +3,7 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		H1::XAnimParts* GenerateH1XAnimParts(XAnimParts* asset, ZoneMemory* mem)
 		{
@@ -19,9 +19,9 @@ namespace ZoneTool
 			h1_asset->numframes = asset->framecount;
 			h1_asset->flags = asset->flags;
 			memcpy(&h1_asset->boneCount, &asset->boneCount, sizeof(asset->boneCount));
-			h1_asset->notifyCount = asset->notetrackCount;
+			h1_asset->notifyCount = asset->notifyCount;
 			h1_asset->assetType = asset->assetType;
-			h1_asset->ikType = asset->ikType;
+			h1_asset->ikType = asset->isDefault;
 			h1_asset->randomDataShortCount = asset->randomDataShortCount;
 			h1_asset->indexCount = asset->indexcount;
 			h1_asset->framerate = asset->framerate;
@@ -41,10 +41,10 @@ namespace ZoneTool
 			h1_asset->indices.data = reinterpret_cast<void*>(asset->indices.data);
 
 			h1_asset->notify = mem->Alloc<H1::XAnimNotifyInfo>(h1_asset->notifyCount);
-			for (auto i = 0; i < asset->notetrackCount; i++)
+			for (auto i = 0; i < asset->notifyCount; i++)
 			{
-				h1_asset->notify[i].name = static_cast<H1::scr_string_t>(asset->notetracks[i].name);
-				h1_asset->notify[i].time = asset->notetracks[i].time;
+				h1_asset->notify[i].name = static_cast<H1::scr_string_t>(asset->notify[i].name);
+				h1_asset->notify[i].time = asset->notify[i].time;
 			}
 
 			if (asset->delta)
