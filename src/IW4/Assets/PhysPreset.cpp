@@ -3,7 +3,7 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		H1::PhysPreset* GenerateH1Asset(PhysPreset* asset, ZoneMemory* mem)
 		{
@@ -20,14 +20,14 @@ namespace ZoneTool
 			h1_asset->sndAliasPrefix = asset->sndAliasPrefix;
 			h1_asset->piecesSpreadFraction = asset->piecesSpreadFraction;
 			h1_asset->piecesUpwardVelocity = asset->piecesUpwardVelocity;
-			h1_asset->minMomentum = asset->minMomentum;
-			h1_asset->maxMomentum = asset->maxMomentum;
-			h1_asset->minPitch = asset->minPitch;
-			h1_asset->maxPitch = asset->maxPitch;
-			h1_asset->volumeType = static_cast<H1::PhysPresetScaling>(asset->volumeType);
-			h1_asset->pitchType = static_cast<H1::PhysPresetScaling>(asset->pitchType);
+			h1_asset->minMomentum = 0.0f; // does not exist on IW3/IW4
+			h1_asset->maxMomentum = 0.0f; // ^
+			h1_asset->minPitch = 0.0f; // ^
+			h1_asset->maxPitch = 0.0f; // ^
+			h1_asset->volumeType = static_cast<H1::PhysPresetScaling>(0); // ^
+			h1_asset->pitchType = static_cast<H1::PhysPresetScaling>(0); // ^
 			h1_asset->tempDefaultToCylinder = asset->tempDefaultToCylinder;
-			h1_asset->perSurfaceSndAlias = asset->perSurfaceSndAlias;
+			h1_asset->perSurfaceSndAlias = 0; // ^
 
 			return h1_asset;
 		}
