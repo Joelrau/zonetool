@@ -4328,6 +4328,8 @@ namespace ZoneTool
 			GfxWorld* gfx_map;
 			GameWorldMp* gameworldmp;
 			GameWorldSp* gameworldsp;
+			GameWorldMp* game_map_mp;
+			GameWorldSp* game_map_sp;
 			FxWorld* fxworld;
 			FxWorld* fx_map;
 			MapEnts* mapents;

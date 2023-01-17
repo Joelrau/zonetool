@@ -29,6 +29,8 @@ using ordered_json = nlohmann::ordered_json;
 #include "Assets/GfxImage.hpp"
 #include "Assets/GfxLightDef.hpp"
 #include "Assets/GfxWorld.hpp"
+#include "Assets/GameWorldMp.hpp"
+#include "Assets/GameWorldSp.hpp"
 #include "Assets/MapEnts.hpp"
 #include "Assets/Material.hpp"
 #include "Assets/PhysPreset.hpp"

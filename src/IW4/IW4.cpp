@@ -284,6 +284,7 @@ char**>(0x00799278)[type]);
 						DECLARE_ASSET(rawfile, IRawFile);
 						DECLARE_ASSET(image, IGfxImage);
 						DECLARE_ASSET(fx, IFxEffectDef);
+						DECLARE_ASSET(game_map_mp, IGameWorldMp);
 					}
 					catch (std::exception& ex)
 					{
