@@ -30,7 +30,7 @@ namespace ZoneTool
 
 			{"wc_l_sm_r0c0n0",							"wc_l_sm_r0c0n0_nfwpf"},
 			{"wc_l_sm_t0c0n0",							"wc_l_sm_t0c0n0_nfwpf"},
-			{"wc_l_sm_b0c0p0",							"wc_l_sm_ndw_ua_b0c0p0_nfwpf_nocast_frt_aat"}, // maybe?
+			{"wc_l_sm_b0c0p0",							"m_l_ndw_b0c0p0"}, // displacement (wc_l_sm_ndw_ua_b0c0p0_nfwpf_nocast_frt_aat)
 			{"wc_l_sm_r0c0_nocast",						"wc_l_sm_r0c0_nfwpf_nocast"},
 			{"wc_l_sm_t0c0",							"wc_l_sm_lmpb_t0c0_nfwpf"}, // wc_l_sm_t0c0_nfwpf
 			{"wc_l_sm_b0c0s0",							"wc_l_sm_lmpb_ndw_b0c0sd0_nfwpf_frt_aat"}, // maybe? (wc_l_sm_ndw_b0c0sd0_nfwpf_frt_aat)
@@ -45,8 +45,8 @@ namespace ZoneTool
 			{"wc_shadowcaster",							"wc_shadowcaster"},
 			{"wc_water",								"2d"}, // couldn't find
 
-			{"m_l_sm_b0c0q0n0s0p0",						"m_l_sm_ndw_b0c0q0n0sd0p0_cltrans"},
-			{"m_l_sm_b0c0q0n0s0",						"m_l_sm_ndw_b0c0q0n0sd0p0_cltrans"}, // couldn't find
+			{"m_l_sm_b0c0q0n0s0p0",						"m_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf_frt_aat"},
+			{"m_l_sm_b0c0q0n0s0",						"m_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf_frt_aat"}, // couldn't find
 			{"m_l_sm_b0c0n0s0p0",						"m_l_sm_ndw_b0c0n0sd0p0_cltrans"},
 
 			{"mc_l_sm_r0c0",							"mc_l_sm_r0c0_nfwpf"},
@@ -181,18 +181,11 @@ namespace ZoneTool
 			{"tools_b0c0",								"tools_b0c0ct0"}, // could be wrong
 		};
 
-		std::unordered_map<std::string, std::string> printed_errors = {};
-
 		std::string get_h1_techset(std::string name, std::string matname, bool* result)
 		{
 			if (mapped_techsets.find(name) == mapped_techsets.end())
 			{
-				if (!printed_errors.contains(name))
-				{
-					//ZONETOOL_ERROR("Could not find mapped H1 techset for IW4 techset \"%s\" (material: %s)", name.data(), matname.data());
-					ZONETOOL_ERROR("IW4 techset needs mapping: \"%s\"", name.data());
-					printed_errors.insert_or_assign(name, "");
-				}
+				ZONETOOL_ERROR("Could not find mapped H1 techset for IW4 techset \"%s\" (material: %s)", name.data(), matname.data());
 				*result = false;
 				return "2d";
 			}
