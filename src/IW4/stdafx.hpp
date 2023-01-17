@@ -27,6 +27,9 @@
 #include <memory>
 #include <vector>
 
+#pragma comment(lib, "Mfplat.lib")
+#include <mfapi.h>
+
 // Namespaces
 using namespace std::literals;
 using namespace string_literals;

@@ -144,12 +144,14 @@ namespace ZoneTool
 			FileSystem::SetFastFile(name);
 			AssetHandler::SetDump(true);
 			load_zone(name);
+
 			while (!is_dumping_complete)
 			{
-				if (!*reinterpret_cast<bool*>(0x1294A00))
-				{
-					AssetHandler::StopDump();
-				}
+				// TODO: find
+				//if (!*reinterpret_cast<bool*>(0x1294A00))
+				//{
+				//	AssetHandler::StopDump();
+				//}
 				Sleep(1);
 			}
 		}

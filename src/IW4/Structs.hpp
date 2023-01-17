@@ -248,17 +248,31 @@ namespace ZoneTool
 
 		struct GfxImageLoadDef // actually a IDirect3DTexture* but this is easier
 		{
-			unsigned char levelCount;
-			unsigned char pad[3];
-			int flags;
+			char mipLevels;
+			char flags;
+			short dimensions[3];
 			int format; // usually the compression Magic
 			int dataSize; // set to zero to load from IWD
 			char* texture; // texture
 		};
 
+		struct __declspec(align(4)) GfxImageLoadDef_2
+		{
+			unsigned char levelCount;
+			unsigned char pad[3];
+			int flags;
+			int format;
+			int resourceSize;
+			char data[1];
+		};
+
 		struct GfxImage
 		{
-			GfxImageLoadDef* texture;
+			union
+			{
+				GfxImageLoadDef* texture;
+				GfxImageLoadDef_2* texture_2;
+			};
 			char mapType; // 5 is cube, 4 is 3d, 3 is 2d
 			char semantic;
 			char category;
@@ -266,8 +280,8 @@ namespace ZoneTool
 			int cardMemory;
 			int dataLen1;
 			int dataLen2;
-			short width;
 			short height;
+			short width;
 			short depth;
 			bool loaded;
 			char pad;
@@ -1115,6 +1129,66 @@ namespace ZoneTool
 			float slavePercentage;
 			float masterPercentage;
 		};
+
+		enum SoundChannel : std::uint32_t
+		{
+			SND_CHANNEL_PHYSICS,
+			SND_CHANNEL_AMBDIST1,
+			SND_CHANNEL_AMBDIST2,
+			SND_CHANNEL_AUTO,
+			SND_CHANNEL_AUTO2,
+			SND_CHANNEL_AUTODOG,
+			SND_CHANNEL_BULLETIMPACT,
+			SND_CHANNEL_BULLETWHIZBY,
+			SND_CHANNEL_EXPLOSIVEIMPACT,
+			SND_CHANNEL_ELEMENT,
+			SND_CHANNEL_AUTO2D,
+			SND_CHANNEL_VEHICLE,
+			SND_CHANNEL_VEHICLELIMITED,
+			SND_CHANNEL_MENU,
+			SND_CHANNEL_BODY,
+			SND_CHANNEL_BODY2D,
+			SND_CHANNEL_RELOAD,
+			SND_CHANNEL_RELOAD2D,
+			SND_CHANNEL_ITEM,
+			SND_CHANNEL_EFFECTS1,
+			SND_CHANNEL_EFFECTS2,
+			SND_CHANNEL_WEAPON,
+			SND_CHANNEL_WEAPON2D,
+			SND_CHANNEL_NONSHOCK,
+			SND_CHANNEL_VOICE,
+			SND_CHANNEL_LOCAL,
+			SND_CHANNEL_LOCAL2,
+			SND_CHANNEL_LOCAL3,
+			SND_CHANNEL_AMBIENT,
+			SND_CHANNEL_HURT,
+			SND_CHANNEL_PLAYER1,
+			SND_CHANNEL_PLAYER2,
+			SND_CHANNEL_MUSIC,
+			SND_CHANNEL_MUSICNOPAUSE,
+			SND_CHANNEL_MISSION,
+			SND_CHANNEL_ANNOUNCER,
+			SND_CHANNEL_SHELLSHOCK,
+
+			SND_CHANNEL_COUNT
+		};
+
+		union SoundAliasFlags
+		{
+			struct
+			{
+				unsigned int looping : 1;
+				unsigned int isMaster : 1;
+				unsigned int isSlave : 1;
+				unsigned int fullDryLevel : 1;
+				unsigned int noWetLevel : 1;
+				unsigned int unknown1 : 1;
+				unsigned int unknown2 : 1;
+				unsigned int type : 2;
+				unsigned int channel : 7;
+			};
+			unsigned int intValue;
+		};
 		
 		struct snd_alias_t
 		{
@@ -1927,7 +2001,7 @@ namespace ZoneTool
 
 		struct FxWorld
 		{
-			char* name;
+			const char* name;
 			FxGlassSystem glassSys;
 		};
 #pragma pack(pop)
@@ -1967,8 +2041,8 @@ namespace ZoneTool
 #pragma pack(push, 1)
 		struct Stage
 		{
-			char* stageName;
-			float offset[3];
+			char* name;
+			float origin[3];
 			unsigned __int16 triggerIndex;
 			char sunPrimaryLightIndex;
 			char pad;
@@ -3704,6 +3778,76 @@ namespace ZoneTool
 			Bounds absBounds;
 		};
 
+		enum CSurfaceFlags : std::uint32_t
+		{
+			SURF_FLAG_DEFAULT = 0x00000000,
+			SURF_FLAG_BARK = 0x00100000,
+			SURF_FLAG_BRICK = 0x00200000,
+			SURF_FLAG_CARPET = 0x00300000,
+			SURF_FLAG_CLOTH = 0x00400000,
+			SURF_FLAG_CONCRETE = 0x00500000,
+			SURF_FLAG_DIRT = 0x00600000,
+			SURF_FLAG_FLESH = 0x00700000,
+			SURF_FLAG_FOLIAGE = 0x00800000,
+			SURF_FLAG_GLASS = 0x00900000,
+			SURF_FLAG_GRASS = 0x00A00000,
+			SURF_FLAG_GRAVEL = 0x00B00000,
+			SURF_FLAG_ICE = 0x00C00000,
+			SURF_FLAG_METAL = 0x00D00000,
+			SURF_FLAG_MUD = 0x00E00000,
+			SURF_FLAG_PAPER = 0x00F00000,
+			SURF_FLAG_PLASTER = 0x01000000,
+			SURF_FLAG_ROCK = 0x01100000,
+			SURF_FLAG_SAND = 0x01200000,
+			SURF_FLAG_SNOW = 0x01300000,
+			SURF_FLAG_WATER = 0x01400000,
+			SURF_FLAG_WOOD = 0x01500000,
+			SURF_FLAG_ASPHALT = 0x01600000,
+			SURF_FLAG_CERAMIC = 0x01700000,
+			SURF_FLAG_PLASTIC = 0x01800000,
+			SURF_FLAG_RUBBER = 0x01900000,
+			SURF_FLAG_CUSHION = 0x01A00000,
+			SURF_FLAG_FRUIT = 0x01B00000,
+			SURF_FLAG_PAINTEDMETAL = 0x01C00000,
+			SURF_FLAG_RIOTSHIELD = 0x01D00000,
+			SURF_FLAG_SLUSH = 0x01E00000,
+			SURF_FLAG_OPAQUEGLASS = 0x00900000,
+			SURF_FLAG_CLIPMISSILE = 0x00000000,
+			SURF_FLAG_AI_NOSIGHT = 0x00000000,
+			SURF_FLAG_CLIPSHOT = 0x00000000,
+			SURF_FLAG_PLAYERCLIP = 0x00000000,
+			SURF_FLAG_MONSTERCLIP = 0x00000000,
+			SURF_FLAG_AICLIPALLOWDEATH = 0x00000000,
+			SURF_FLAG_VEHICLECLIP = 0x00000000,
+			SURF_FLAG_ITEMCLIP = 0x00000000,
+			SURF_FLAG_NODROP = 0x00000000,
+			SURF_FLAG_NONSOLID = 0x00004000,
+			SURF_FLAG_DETAIL = 0x00000000,
+			SURF_FLAG_STRUCTURAL = 0x00000000,
+			SURF_FLAG_PORTAL = 0x80000000,
+			SURF_FLAG_CANSHOOTCLIP = 0x00000000,
+			SURF_FLAG_ORIGIN = 0x00000000,
+			SURF_FLAG_SKY = 0x00000004,
+			SURF_FLAG_NOCASTSHADOW = 0x00040000,
+			SURF_FLAG_PHYSICSGEOM = 0x00000000,
+			SURF_FLAG_LIGHTPORTAL = 0x00000000,
+			SURF_FLAG_OUTDOORBOUNDS = 0x00000000,
+			SURF_FLAG_SLICK = 0x00000002,
+			SURF_FLAG_NOIMPACT = 0x00000010,
+			SURF_FLAG_NOMARKS = 0x00000020,
+			SURF_FLAG_NOPENETRATE = 0x00000100,
+			SURF_FLAG_LADDER = 0x00000008,
+			SURF_FLAG_NODAMAGE = 0x00000001,
+			SURF_FLAG_MANTLEON = 0x02000000,
+			SURF_FLAG_MANTLEOVER = 0x04000000,
+			SURF_FLAG_STAIRS = 0x00000200,
+			SURF_FLAG_SOFT = 0x00001000,
+			SURF_FLAG_NOSTEPS = 0x00002000,
+			SURF_FLAG_NODRAW = 0x00000080,
+			SURF_FLAG_NOLIGHTMAP = 0x00000400,
+			SURF_FLAG_NODLIGHT = 0x00020000,
+		};
+
 		struct dmaterial_t
 		{
 			char* material;
@@ -3734,7 +3878,9 @@ namespace ZoneTool
 
 		struct cLeafBrushNodeChildren_t
 		{
-			unsigned __int16 childOffset[6];
+			float dist;
+			float range;
+			unsigned __int16 childOffset[2];
 		};
 
 		union cLeafBrushNodeData_t
@@ -3776,7 +3922,7 @@ namespace ZoneTool
 
 		struct CollisionAabbTree
 		{
-			float origin[3];
+			float midPoint[3];
 			unsigned __int16 materialIndex;
 			unsigned __int16 childCount;
 			float halfSize[3];
