@@ -2,7 +2,7 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		class IFxWorld
 		{

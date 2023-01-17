@@ -3,7 +3,7 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		H1::FxWorld* GenerateH1FxWorld(FxWorld* asset, ZoneMemory* mem)
 		{
@@ -70,7 +70,7 @@ namespace ZoneTool
 			h1_asset->glassSys.piecePlaces = mem->Alloc<H1::FxGlassPiecePlace>(h1_asset->glassSys.pieceLimit);
 			for (unsigned int i = 0; i < h1_asset->glassSys.pieceLimit; i++)
 			{
-				memcpy(&h1_asset->glassSys.piecePlaces[i], &asset->glassSys.piecePlaces[i], sizeof(IW5::FxGlassPiecePlace));
+				memcpy(&h1_asset->glassSys.piecePlaces[i], &asset->glassSys.piecePlaces[i], sizeof(IW4::FxGlassPiecePlace));
 			}
 
 			h1_asset->glassSys.pieceStates = mem->Alloc<H1::FxGlassPieceState>(h1_asset->glassSys.pieceLimit);
@@ -103,7 +103,7 @@ namespace ZoneTool
 			h1_asset->glassSys.geoData = mem->Alloc<H1::FxGlassGeometryData>(h1_asset->glassSys.geoDataLimit);
 			for (unsigned int i = 0; i < h1_asset->glassSys.geoDataLimit; i++)
 			{
-				memcpy(&h1_asset->glassSys.geoData[i], &asset->glassSys.geoData[i], sizeof(IW5::FxGlassGeometryData));
+				memcpy(&h1_asset->glassSys.geoData[i], &asset->glassSys.geoData[i], sizeof(IW4::FxGlassGeometryData));
 			}
 
 			h1_asset->glassSys.isInUse = mem->Alloc<unsigned int>(h1_asset->glassSys.pieceWordCount);
@@ -141,11 +141,11 @@ namespace ZoneTool
 			h1_asset->glassSys.initPieceStates = mem->Alloc<H1::FxGlassInitPieceState>(h1_asset->glassSys.initPieceCount);
 			for (unsigned int i = 0; i < h1_asset->glassSys.initPieceCount; i++)
 			{
-				memcpy(&h1_asset->glassSys.initPieceStates[i].frame, &asset->glassSys.initPieceStates[i].frame, sizeof(IW5::FxSpatialFrame));
+				memcpy(&h1_asset->glassSys.initPieceStates[i].frame, &asset->glassSys.initPieceStates[i].frame, sizeof(IW4::FxSpatialFrame));
 				h1_asset->glassSys.initPieceStates[i].radius = asset->glassSys.initPieceStates[i].radius;
 				memcpy(&h1_asset->glassSys.initPieceStates[i].texCoordOrigin, &asset->glassSys.initPieceStates[i].texCoordOrigin, sizeof(float[2]));
 				h1_asset->glassSys.initPieceStates[i].supportMask = asset->glassSys.initPieceStates[i].supportMask;
-				h1_asset->glassSys.initPieceStates[i].areaX2 = asset->glassSys.initPieceStates[i].areaX2;
+				h1_asset->glassSys.initPieceStates[i].areaX2 = 0; // on MW2, the same struct is missing 4 bytes. this was commented out to match size.
 				h1_asset->glassSys.initPieceStates[i].lightingIndex = 0;
 				h1_asset->glassSys.initPieceStates[i].defIndex = asset->glassSys.initPieceStates[i].defIndex;
 				h1_asset->glassSys.initPieceStates[i].vertCount = asset->glassSys.initPieceStates[i].vertCount;
@@ -155,7 +155,7 @@ namespace ZoneTool
 			h1_asset->glassSys.initGeoData = mem->Alloc<H1::FxGlassGeometryData>(h1_asset->glassSys.initGeoDataCount);
 			for (unsigned int i = 0; i < h1_asset->glassSys.initGeoDataCount; i++)
 			{
-				memcpy(&h1_asset->glassSys.initGeoData[i], &asset->glassSys.initGeoData[i], sizeof(IW5::FxGlassGeometryData));
+				memcpy(&h1_asset->glassSys.initGeoData[i], &asset->glassSys.initGeoData[i], sizeof(IW4::FxGlassGeometryData));
 			}
 
 			h1_asset->glassSys.needToCompactData = asset->glassSys.needToCompactData;
