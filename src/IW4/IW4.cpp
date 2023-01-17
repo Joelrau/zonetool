@@ -7,13 +7,16 @@
 // License: GNU GPL v3.0
 // ========================================================
 #include "stdafx.hpp"
+#include <ZoneTool/ZoneTool.hpp>
 
 namespace ZoneTool
 {
 	namespace IW4
 	{
-		bool is_dumping_complete = false;
-		bool is_dumping = false;
+		bool isDumpingComplete = false;
+		bool isDumping = false;
+		bool isVerifying = false;
+		auto currentDumpingZone = ""s;
 
 		const char* Linker::version()
 		{
@@ -25,26 +28,596 @@ namespace ZoneTool
 			return !strncmp(reinterpret_cast<char*>(0x71B85C), this->version(), 3);
 		}
 
+		void Linker::load_default_zones()
+		{
+			static std::vector<std::string> defaultzones =
+			{
+				"code_pre_gfx_mp",
+				"localized_code_pre_gfx_mp",
+				"code_post_gfx_mp",
+				"localized_code_post_gfx_mp",
+				"common_mp",
+			};
+
+			static XZoneInfo zones[16];
+			memset(zones, 0, sizeof XZoneInfo * 16);
+
+			// Load our custom zones
+			for (std::size_t i = 0; i < defaultzones.size(); i++)
+			{
+				zones[i].zone = defaultzones[i].c_str();
+				zones[i].loadFlags = 0;
+				zones[i].unloadFlags = 0;
+			}
+
+			return DB_LoadXAssets(zones, defaultzones.size(), 0);
+		}
+
+		void Linker::run()
+		{
+			// function definitions
+			typedef void (__cdecl * Win_InitLocalization_t)(int);
+			typedef void (__cdecl * SL_Init_t)();
+			typedef void (__cdecl * Swap_Init_t)();
+			typedef void (__cdecl * Com_InitHunkMemory_t)();
+			typedef void (__cdecl * Sys_InitializeCriticalSections_t)();
+			typedef void (__cdecl * DB_InitThread_t)();
+			typedef void (__cdecl * Com_InitDvars_t)();
+			typedef void (__cdecl * PMem_Init_t)();
+			typedef void (__cdecl * R_RegisterDvars_t)();
+			typedef void (__cdecl * FS_Init_t)(); // wrong name, but lazy
+			typedef void (__cdecl * LargeLocalInit_t)(); // guessed name
+			typedef void (__cdecl * Cmd_ExecuteSingleCommand_t)(int controller, int a2, const char* cmd);
+
+			SL_Init_t SL_Init = (SL_Init_t)0x4D2280;
+			Swap_Init_t Swap_Init = (Swap_Init_t)0x47F390;
+			Com_InitHunkMemory_t Com_InitHunkMemory = (Com_InitHunkMemory_t)0x420830;
+			Sys_InitializeCriticalSections_t Sys_InitializeCriticalSections = (Sys_InitializeCriticalSections_t)
+				0x42F0A0;
+			Sys_InitializeCriticalSections_t Sys_InitMainThread = (Sys_InitializeCriticalSections_t)0x4301B0;
+			DB_InitThread_t DB_InitThread = (DB_InitThread_t)0x4E0FB0;
+			Com_InitDvars_t Com_InitDvars = (Com_InitDvars_t)0x60AD10;
+			Win_InitLocalization_t Win_InitLocalization = (Win_InitLocalization_t)0x406D10;
+			PMem_Init_t PMem_Init = (PMem_Init_t)0x64A020;
+			R_RegisterDvars_t R_RegisterDvars = (R_RegisterDvars_t)0x5196C0;
+			FS_Init_t FS_Init = (FS_Init_t)0x429080;
+			LargeLocalInit_t LargeLocalInit = (LargeLocalInit_t)0x4A62A0;
+			Cmd_ExecuteSingleCommand_t Cmd_ExecuteSingleCommand = (Cmd_ExecuteSingleCommand_t)0x609540;
+			DWORD G_SetupWeaponDef = 0x4E1F30;
+			DWORD Scr_BeginLoadScripts = 0x4E1ED0;
+			DWORD Scr_BeginLoadScripts2 = 0x4541F0;
+			DWORD Scr_InitAllocNodes = 0x4B8740;
+
+			Sys_InitializeCriticalSections();
+			Sys_InitMainThread();
+			Win_InitLocalization(0);
+			SL_Init();
+			Swap_Init();
+			Com_InitHunkMemory();
+			PMem_Init();
+			DB_InitThread();
+			Com_InitDvars();
+			R_RegisterDvars();
+
+			// gsc stuff
+			__asm call Scr_BeginLoadScripts;
+			__asm
+			{
+				push 0x201A45C;
+				call Scr_BeginLoadScripts2;
+				add esp, 4;
+			}
+			__asm call Scr_InitAllocNodes;
+			
+			LargeLocalInit();
+			FS_Init();
+
+			load_default_zones();
+
+			// Cmd_RegisterCommands();
+			// ZoneTool_LoadZones(nullptr, 0, 0);
+
+			// menu stuff
+			//DWORD Menu_Setup1 = 0x4454C0;
+			//DWORD Menu_Setup2 = 0x501BC0;
+			//__asm call Menu_Setup1;
+			//__asm call Menu_Setup2;
+
+			// load weapons
+			__asm call G_SetupWeaponDef;
+
+			while (true)
+			{
+			}
+		}
+
+		const char* Linker::get_asset_name(XAssetType type, XAssetHeader header)
+		{
+			// todo
+			if (type == image)
+			{
+				return header.gfximage->name;
+			}
+			if (type == menu)
+			{
+				// 
+			}
+			else
+			{
+				return header.rawfile->name;
+			}
+
+			return "";
+		}
+
+		void* DB_FindXAssetHeader_Unsafe(const XAssetType type, const std::string& name)
+		{
+			const static auto DB_FindXAssetHeader_Internal = 0x5BB1B0;
+			const auto name_ptr = name.data();
+			const auto type_int = static_cast<std::int32_t>(type);
+
+			const XAsset* asset_header = nullptr;
+
+			__asm
+			{
+				mov edi, type_int;
+				push name_ptr;
+				call DB_FindXAssetHeader_Internal;
+				add esp, 4;
+				mov asset_header, eax;
+			}
+
+			return (asset_header) ? asset_header->ptr.data : nullptr;
+		}
+		
+		void Linker::DB_AddXAsset(XAssetType type, XAssetHeader header)
+		{
+			static std::shared_ptr<ZoneMemory> memory;
+			static std::vector<std::pair<XAssetType, std::string>> referencedAssets;
+			
+			if (!memory)
+			{
+				memory = std::make_shared<ZoneMemory>(1024 * 1024 * 512);		// 512mb
+			}
+
+			// nice meme
+			if (isVerifying)
+			{
+				// print asset name to console
+				ZONETOOL_INFO("Loading asset \"%s\" of type %s.", Linker::get_asset_name(type, header), reinterpret_cast<
+char**>(0x00799278)[type]);
+			}
+
+#define DECLARE_ASSET(__TYPE__, __ASSET__) \
+	if (type == __TYPE__) \
+	{ \
+		__ASSET__::dump(header.__TYPE__, memory.get()); \
+	}
+
+			// fastfile name
+			auto fastfile = static_cast<std::string>((char*)(*(DWORD*)0x112A680 + 4));
+
+			// generate CSV for fastfile
+			static FILE* csvFile = nullptr;
+
+			if (isVerifying || isDumping)
+			{
+				FileSystem::SetFastFile(fastfile);
+
+
+				// open csv file for dumping 
+				if (!csvFile)
+				{
+					csvFile = FileSystem::FileOpen(fastfile + ".csv", "wb");
+				}
+
+				// dump assets to disk
+				if (csvFile)
+				{
+					auto xassettypes = reinterpret_cast<char**>(0x00799278);
+					fprintf(csvFile, "%s,%s\n", xassettypes[type], get_asset_name(type, header));
+				}
+			}
+
+			if (isDumping)
+			{
+				// check if we're done loading the fastfile
+				if (type == rawfile && get_asset_name(type, header) == fastfile)
+				{
+					for (auto& ref : referencedAssets)
+					{
+						if (ref.second.length() <= 1 || ref.first == XAssetType::loaded_sound)
+						{
+							continue;
+						}
+
+						const auto asset_name = &ref.second[1];
+						const auto ref_asset = DB_FindXAssetHeader_Unsafe(ref.first, asset_name);
+
+						if (ref_asset == nullptr)
+						{
+							ZONETOOL_ERROR("Could not find referenced asset \"%s\"!", asset_name);
+							continue;
+						}
+
+						ZONETOOL_INFO("Dumping additional asset \"%s\" because it is referenced by %s.", asset_name, currentDumpingZone.data());
+
+						XAssetHeader header;
+						header.data = ref_asset;
+						
+						DB_AddXAsset(ref.first, header);
+					}
+
+					ZONETOOL_INFO("Zone \"%s\" dumped.", &fastfile[0]);
+
+					// clear referenced assets array because we are done dumping
+					referencedAssets.clear();
+
+					// clear csv file static variable for next dumps
+					FileSystem::FileClose(csvFile);
+					csvFile = nullptr;
+
+					// mark dumping as complete to exit the process if it has been started using the command line
+					if (currentDumpingZone == fastfile)
+					{
+						isDumpingComplete = true;
+					}
+				}
+
+				if (get_asset_name(type, header)[0] == ',')
+				{
+					referencedAssets.push_back({ type, get_asset_name(type, header) });
+				}
+				else
+				{
+					try
+					{
+						DECLARE_ASSET(xmodelsurfs, IXSurface);
+						DECLARE_ASSET(xmodel, IXModel);
+						DECLARE_ASSET(material, IMaterial);
+						DECLARE_ASSET(xanim, IXAnimParts);
+						DECLARE_ASSET(gfx_map, IGfxWorld);
+						DECLARE_ASSET(col_map_mp, IClipMap);
+						DECLARE_ASSET(map_ents, IMapEnts);
+						DECLARE_ASSET(fx_map, IFxWorld);
+						DECLARE_ASSET(com_map, IComWorld);
+						DECLARE_ASSET(rawfile, IRawFile);
+						DECLARE_ASSET(image, IGfxImage);
+						DECLARE_ASSET(fx, IFxEffectDef);
+					}
+					catch (std::exception& ex)
+					{
+						ZONETOOL_FATAL("A fatal exception occured while dumping asset \"%s\", exception was: %s\n", get_asset_name(type, header), ex.what());
+					}
+				}
+			}
+			else
+			{
+				/*std::string fastfile = static_cast<std::string>((char*)(*(DWORD*)0x112A680 + 4));
+				if (fastfile.find("mp_") != std::string::npos || fastfile == "common_mp"s)
+				{
+					FileSystem::SetFastFile("");
+
+					// dump everything techset related!
+					DECLARE_ASSET(material, IMaterial);
+					DECLARE_ASSET(techset, ITechset);
+					DECLARE_ASSET(pixelshader, IPixelShader);
+					DECLARE_ASSET(vertexshader, IVertexShader);
+					DECLARE_ASSET(vertexdecl, IVertexDecl);
+				}*/
+			}
+		}
+
+		void __declspec(naked) Linker::DB_AddXAssetStub()
+		{
+			// return to original function
+			__asm
+			{
+				// original code
+				sub esp, 0x14;
+				mov eax, [esp + 1Ch];
+				mov ecx, [eax];
+				push ebx;
+				push ebp;
+				mov ebp, [esp + 20h];
+
+				// call our DB_AddXAsset function
+				pushad;
+				push ecx;
+				push ebp;
+				call DB_AddXAsset;
+				add esp, 8;
+				popad;
+
+				// jump back
+				push 0x005BB65F;
+				retn;
+			}
+		}
+
+		void** DB_XAssetPool = (void**)0x7998A8;
+		unsigned int* g_poolSize = (unsigned int*)0x7995E8;
+
+		void* ReallocateAssetPool(uint32_t type, unsigned int newSize)
+		{
+			int elSize = DB_GetXAssetSizeHandlers[type]();
+
+			void* poolEntry = malloc(newSize * elSize);
+			DB_XAssetPool[type] = poolEntry;
+			g_poolSize[type] = newSize;
+
+			return poolEntry;
+		}
+
+		void* ReallocateAssetPoolM(uint32_t type, int multiplier)
+		{
+			int elSize = DB_GetXAssetSizeHandlers[type]();
+			int newSize = multiplier * g_poolSize[type];
+
+			void* poolEntry = malloc(newSize * elSize);
+			DB_XAssetPool[type] = poolEntry;
+			g_poolSize[type] = newSize;
+
+			return poolEntry;
+		}
+
+		int readPosition = 0;
+
+		void logStreamPosition(int bytesRead)
+		{
+			if (isVerifying)
+			{
+				// ZONETOOL_INFO("Read %u bytes. (Currently at position 0x%08X in file)", bytesRead, readPosition - bytesRead);
+			}
+		}
+
+		__declspec(naked) void Linker::IncreaseReadPointer()
+		{
+			__asm
+			{
+				// store read position
+				add readPosition, ecx;
+				mov DWORD PTR ds : 0x112a6c4, ecx;
+
+				// log data
+				pushad;
+				push ecx;
+				call logStreamPosition;
+				add esp, 4;
+				popad;
+
+				// go back
+				push 0x00445473;
+				retn;
+			}
+		}
+
+		__declspec(naked) void Linker::IncreaseReadPointer2()
+		{
+			__asm
+			{
+				// store read position
+				add readPosition, esi;
+
+				// original code
+				mov eax, 0x006B4B80;
+				call eax;
+
+				// log data
+				pushad;
+				push esi;
+				call logStreamPosition;
+				add esp, 4;
+				popad;
+
+				// go back
+				push 0x00470E56;
+				retn;
+			}
+		}
+
+		void Linker::ReadHeader(void* ptr, int size)
+		{
+			// reset readPosition
+			readPosition = 0;
+
+			// read header
+			return Memory::func<void(void*, int)>(0x00445460)(ptr, size);
+		}
+
+		void Linker::Load_XSurfaceArray(int shouldLoad, int count)
+		{
+			// read the actual count from the varXModelSurfs ptr
+			auto surface = *reinterpret_cast<XModelSurfs**>(0x0112A95C);
+
+			// call original read function with the correct count
+			return Memory::func<void(int, int)>(0x004925B0)(shouldLoad, surface->numsurfs);
+		}
+
+        const char* Linker::GetZonePath(const char* zoneName)
+        {
+            static std::string lastZonePath;
+            static std::vector<std::string> zonePaths =
+            {
+                "zone\\dlc\\",
+                "zone\\patch\\"
+            };
+
+            const std::string zoneFileName = zoneName;
+            const char* languageName = Memory::func<const char* ()>(0x45CBA0)();
+
+            // Priority 1: localized zone folder
+            const std::string localizedZonePath = va("zone\\%s\\", languageName, zoneName);
+            if(std::filesystem::exists(localizedZonePath + zoneFileName))
+            {
+                lastZonePath = localizedZonePath;
+                return lastZonePath.c_str();
+            }
+
+            // Priority 2: custom zone paths
+            for(auto customZonePath : zonePaths)
+            {
+                if (std::filesystem::exists(customZonePath + zoneFileName))
+                {
+                    lastZonePath = customZonePath;
+                    return lastZonePath.c_str();
+                }
+            }
+
+            // If no file could be found return the default location. The game will notice itself that there is no fastfile.
+            lastZonePath = localizedZonePath;
+            return lastZonePath.c_str();
+        }
+
+		void ExitZoneTool()
+		{
+			std::exit(0);
+		}
+
+		auto should_log = false;
+		void LogFile(const std::string& log)
+		{
+			if (!should_log)
+			{
+				return;
+			}
+
+			static auto did_delete = false;
+			if (!did_delete && std::filesystem::exists("Z:\\loading-zt.txt"))
+			{
+				did_delete = true;
+				std::filesystem::remove("Z:\\loading-zt.txt");
+			}
+
+			static auto fp = fopen("Z:\\loading-zt.txt", "a");
+			fprintf(fp, log.data());
+			fflush(fp);
+		}
+		
+		void __declspec(naked) Load_Stream(bool atStreamStart, char* data, int count)
+		{
+			static auto load_stream = 0x470E35;
+			__asm
+			{
+				cmp byte ptr[esp + 4], 0;
+				jmp load_stream;
+			}
+		}
+
+		void Load_StreamHook(bool atStreamStart, char* data, int count)
+		{
+			if (atStreamStart)
+			{
+				LogFile(va("Load_Stream: Reading %u bytes.\n", count));
+			}
+
+			Load_Stream(atStreamStart, data, count);
+		}
+
+		void __declspec(naked) DB_PushStreamPos(int stream)
+		{
+			static auto db_pushstreampos = 0x458A25;
+			__asm
+			{
+				mov eax, ds:0x16e5578
+				jmp db_pushstreampos;
+			}
+		}
+
+		void DB_PushStreamPosHook(int stream)
+		{
+			LogFile(va("DB_PushStreamPos: Setting stream to %u\n", stream));
+			DB_PushStreamPos(stream);
+		}
+
+		void __declspec(naked) DB_PopStreamPos()
+		{
+			static auto db_popstreampos = 0x4D1D65;
+			__asm
+			{
+				mov eax, ds:0x16E5548;
+				jmp db_popstreampos;
+			}
+		}
+
+		void DB_PopStreamPosHook()
+		{
+			LogFile(va("DB_PopStreamPos: Popped stream\n"));
+			DB_PopStreamPos();
+		}
+
+		void log_align(int align)
+		{
+			LogFile(va("DB_AllocStreamPos: Aligning buffer by %i\n", align));
+		}
+
+#undef not
+
+		void __declspec(naked) DB_AllocStreamPosHook()
+		{
+			__asm
+			{
+				mov ecx, [esp + 4];
+				pushad;
+				push ecx;
+				call log_align;
+				add esp, 4;
+				popad;
+				mov eax, ds:0x16e5554;
+				add eax, ecx;
+				not ecx;
+				and eax, ecx;
+				mov ds:0x16e5554, eax;
+				retn;
+			}
+		}
+
 		void Linker::startup()
 		{
-			// AssetHandler::SetDump(true);
-
 			if (this->is_used())
 			{
-				// force compiling gsc
-				Memory(0x427DB4).set<std::uint8_t>(0xEB);
-				Memory(0x427D22).set<std::uint8_t>(0xEB);
-				
 				// 
-				Memory(0x427DED).nop(6);
+				Memory(0x470E30).jump(Load_StreamHook);
+				Memory(0x458A20).jump(DB_PushStreamPosHook);
+				Memory(0x4D1D60).jump(DB_PopStreamPosHook);
+				Memory(0x418380).jump(DB_AllocStreamPosHook);
 				
 				// do nothing with online sessions
 				Memory(0x441650).set<std::uint8_t>(0xC3);
 
+				// Realloc asset pools
+				ReallocateAssetPoolM(localize, 2);
+				ReallocateAssetPoolM(material, 2);
+				ReallocateAssetPoolM(font, 2);
+				ReallocateAssetPoolM(image, 2);
+				ReallocateAssetPoolM(techset, 2);
+				ReallocateAssetPoolM(fx, 2);
+				ReallocateAssetPoolM(xanim, 2);
+				ReallocateAssetPoolM(xmodel, 2);
+				ReallocateAssetPoolM(physpreset, 2);
+				ReallocateAssetPoolM(weapon, 2);
+				ReallocateAssetPoolM(game_map_sp, 2);
+				ReallocateAssetPoolM(game_map_mp, 2);
+				ReallocateAssetPoolM(map_ents, 5);
+				ReallocateAssetPoolM(com_map, 5);
+				ReallocateAssetPoolM(col_map_mp, 5);
+				ReallocateAssetPoolM(gfx_map, 5);
+				ReallocateAssetPoolM(fx_map, 5);
+				ReallocateAssetPoolM(xmodelsurfs, 2);
+				ReallocateAssetPoolM(vertexshader, 2);
+				ReallocateAssetPoolM(vertexdecl, 16);
+				ReallocateAssetPoolM(pixelshader, 2);
+				ReallocateAssetPoolM(rawfile, 2);
+				ReallocateAssetPoolM(lightdef, 2);
+
 				// Kill "missing asset" errors from the game to prevent confusion
 				Memory(0x5BB380).set<std::uint8_t>(0xC3);
+				
+				// Kill Com_Error
+				Memory(0x004B22D0).jump(ExitZoneTool);
 
 				// Tool init func
+				Memory(0x6BABA1).call(run);
 				Memory(0x4AA88B).call(printf);
 
 				// r_loadForRenderer
@@ -133,9 +706,23 @@ namespace ZoneTool
 
 				// Dont load ASSET_TYPE_MENU anymore, we dont need it.
 				Memory(0x453406).nop(5);
+
+				// DB_AddXAsset hook
+				Memory(0x005BB650).jump(DB_AddXAssetStub);
+
+				// Fix fucking XSurface assets
+				Memory(0x0048E8A5).call(Load_XSurfaceArray);
+
+				// Fastfile debugging
+				Memory(0x0044546D).jump(IncreaseReadPointer);
+				Memory(0x00470E51).jump(IncreaseReadPointer2);
+				Memory(0x004159E2).call(ReadHeader);
+
+                // Load fastfiles from custom zone folders
+                Memory(0x44DA90).jump(GetZonePath);
 			}
 		}
-
+		
 		std::shared_ptr<IZone> Linker::alloc_zone(const std::string& zone)
 		{
 			ZONETOOL_ERROR("AllocZone called but IW4 is not intended to compile zones!");
@@ -160,10 +747,6 @@ namespace ZoneTool
 
 		void Linker::unload_zones()
 		{
-			ZONETOOL_INFO("Unloading zones...");
-
-			static XZoneInfo zone = {0, 0, 70};
-			DB_LoadXAssets(&zone, 1, 1);
 		}
 
 		bool Linker::is_valid_asset_type(const std::string& type)
@@ -173,7 +756,7 @@ namespace ZoneTool
 
 		std::int32_t Linker::type_to_int(std::string type)
 		{
-			auto xassettypes = reinterpret_cast<char**>(0x799278);
+			auto xassettypes = reinterpret_cast<char**>(0x00799278);
 
 			for (std::int32_t i = 0; i < max; i++)
 			{
@@ -186,27 +769,26 @@ namespace ZoneTool
 
 		std::string Linker::type_to_string(std::int32_t type)
 		{
-			auto xassettypes = reinterpret_cast<char**>(0x799278);
+			auto xassettypes = reinterpret_cast<char**>(0x00799278);
 			return xassettypes[type];
 		}
 
-        bool Linker::supports_building()
-        {
-            return false;
-        }
-
-		bool Linker::supports_version(const zone_target_version version)
+		bool Linker::supports_building()
 		{
 			return false;
 		}
 
+		bool Linker::supports_version(const zone_target_version version)
+		{
+			return version == zone_target_version::iw4_release || version == zone_target_version::iw4_release_console || 
+				version == zone_target_version::iw4_alpha_482 || version == zone_target_version::iw4_alpha_491;
+		}
+
         void Linker::dump_zone(const std::string& name)
 		{
-			is_dumping_complete = false;
-			is_dumping = true;
-
-			FileSystem::SetFastFile(name);
-			AssetHandler::SetDump(true);
+			isDumpingComplete = false;
+			isDumping = true;
+			currentDumpingZone = name;
 			load_zone(name);
 
 			while (!isDumpingComplete)
@@ -217,17 +799,10 @@ namespace ZoneTool
 
 		void Linker::verify_zone(const std::string& name)
 		{
-			AssetHandler::SetVerify(true);
+			//should_log = true;
+			isVerifying = true;
+			currentDumpingZone = name;
 			load_zone(name);
-			AssetHandler::SetVerify(false);
-		}
-
-		Linker::Linker()
-		{
-		}
-
-		Linker::~Linker()
-		{
 		}
 	}
 }

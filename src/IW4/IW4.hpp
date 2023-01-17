@@ -11,8 +11,6 @@
 #include <ZoneUtils.hpp>
 #include "Functions.hpp"
 #include "Structs.hpp"
-#include "Patches/FFCompression.hpp"
-#include "Patches/AssetHandler.hpp"
 
 #include "H1/Utils/IO/filesystem.hpp"
 #include "H1/Utils/IO/assetmanager.hpp"
@@ -34,7 +32,7 @@ using ordered_json = nlohmann::ordered_json;
 #include "Assets/MapEnts.hpp"
 #include "Assets/Material.hpp"
 #include "Assets/PhysPreset.hpp"
-#include "Assets/RawFile.hpp"
+#include "Assets/Rawfile.hpp"
 #include "Assets/XAnimParts.hpp"
 #include "Assets/XModel.hpp"
 #include "Assets/XSurface.hpp"
@@ -43,26 +41,9 @@ namespace ZoneTool
 {
 	namespace IW4
 	{
-		namespace bounds
-		{
-			static auto compute(float* mins, float* maxs)
-			{
-				float bounds[2][3]{ 0 };
-				for (int i = 0; i < 3; ++i)
-				{
-					bounds[1][i] = (maxs[i] - mins[i]) / 2;
-					bounds[0][i] = bounds[1][i] + mins[i];
-				}
-				return bounds;
-			}
-		}
-
 		class Linker : public ILinker
 		{
 		public:
-			Linker();
-			~Linker();
-
 			const char* version() override;
 			bool is_used() override;
 			void startup() override;
@@ -78,6 +59,18 @@ namespace ZoneTool
 			
 			void dump_zone(const std::string& name) override;
 			void verify_zone(const std::string& name) override;
+			
+			static void run();
+			static void load_default_zones();
+			static const char* get_asset_name(XAssetType type, XAssetHeader header);
+			
+			static void DB_AddXAsset(XAssetType type, XAssetHeader header);
+			static void DB_AddXAssetStub();
+			static void IncreaseReadPointer();
+			static void IncreaseReadPointer2();
+			static void ReadHeader(void* ptr, int size);
+			static void Load_XSurfaceArray(int shouldLoad, int count);
+            static const char* GetZonePath(const char* zoneName);
 
 		private:
 			

@@ -155,7 +155,7 @@ namespace ZoneTool
 			h1_asset->collSurfs = mem->Alloc<H1::XModelCollSurf_s>(asset->numColSurfs);
 			for (auto i = 0; i < asset->numColSurfs; i++)
 			{
-				memcpy(&h1_asset->collSurfs[i].bounds, bounds::compute(asset->collSurfs[i].mins, asset->collSurfs[i].maxs), sizeof(float[2][3]));
+				memcpy(&h1_asset->collSurfs[i].bounds, &asset->collSurfs[i].bounds, sizeof(float[2][3]));
 
 				h1_asset->collSurfs[i].boneIdx = asset->collSurfs[i].boneIdx;
 				h1_asset->collSurfs[i].contents = asset->collSurfs[i].contents;

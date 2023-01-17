@@ -244,7 +244,7 @@ namespace ZoneTool
 				h1_elem->visuals.instance.anonymous = elem->visuals.instance.anonymous;
 			}
 
-			memcpy(&h1_elem->collBounds, bounds::compute(elem->collBounds.midPoint, elem->collBounds.halfSize), sizeof(float[3][2]));
+			memcpy(&h1_elem->collBounds, &elem->collBounds, sizeof(float[3][2]));
 
 			h1_elem->effectOnImpact.name = elem->effectOnImpact.name;
 			h1_elem->effectOnDeath.name = elem->effectOnDeath.name;

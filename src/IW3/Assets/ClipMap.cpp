@@ -136,7 +136,6 @@ namespace ZoneTool
 			}
 
 			info->sCollisionTree.numStaticModels = asset->numStaticModels;
-
 			info->sCollisionTree.smodelNodeCount = 1;
 			info->sCollisionTree.smodelNodes = mem->Alloc<H1::SModelAabbNode>(info->sCollisionTree.smodelNodeCount);
 			if (asset->numStaticModels == 0)

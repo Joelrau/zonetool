@@ -638,6 +638,13 @@ namespace ZoneTool
 			int partBits[6];
 		};
 
+		struct XModelCollTri_s
+		{
+			float plane[4];
+			float svec[4];
+			float tvec[4];
+		};
+
 		namespace alpha
 		{
 			struct D3DResource
@@ -736,19 +743,11 @@ namespace ZoneTool
 			char smcBucket;
 		};
 
-		struct XModelCollTri_s
-		{
-			float plane[4];
-			float svec[4];
-			float tvec[4];
-		};
-
 		struct XModelCollSurf_s
 		{
 			XModelCollTri_s* collTris;
 			int numCollTris;
-			float mins[3];
-			float maxs[3];
+			Bounds bounds;
 			int boneIdx;
 			int contents;
 			int surfFlags;
@@ -4293,6 +4292,17 @@ namespace ZoneTool
 			char* entityString;
 			int numEntityChars;
 			MapTriggers trigger;
+		};
+
+		struct GfxImageFileHeader
+		{
+			char tag[3];
+			char version;
+			unsigned int flags;
+			char format;
+			char unused;
+			__int16 dimensions[3];
+			int fileSizeForPicmip[4];
 		};
 
 		union XAssetHeader
