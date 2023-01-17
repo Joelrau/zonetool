@@ -10,8 +10,10 @@ namespace ZoneTool
 		std::unordered_map<std::string, std::string> mapped_techsets =
 		{
 			//	IW5,									H1
+			{"wc_l_sm_b0c0",							"wc_l_sm_lmpb_ndw_b0c0_nfwpf_frt_im_aat"},
 			{"wc_l_sm_b0c0n0",							"wc_l_sm_lmpb_ndw_b0c0n0_nfwpf_frt_im_aat"},
 			{"wc_l_sm_b0c0n0s0",						"wc_l_sm_lmpb_ndw_b0c0n0sd0_nfwpf_frt_im_aat"}, // maybe?
+			{"wc_l_sm_b0c0n0s0_custom_growing_ice_cracks", "wc_l_sm_lmpb_ndw_b0c0n0sd0_ice_z1_z2_z3_z4_z5_z6_z7_z8_zdecal0_frt_dsl_im_aat"},
 			{"wc_l_sm_b0c0n0s0p0",						"wc_l_sm_lmpb_ndw_b0c0n0sd0p0_nfwpf_nocast_frt_aat"}, // maybe????? (wc_l_sm_lmpb_ndw_b0c0n0sd0_nfwpf_frt_im_aat)
 			{"wc_l_sm_b0c0n0p0",						"wc_l_sm_ndw_b0c0n0p0_nfwpf_frt_im_aat"}, // maybe? (wc_l_sm_lmpb_ndw_b0c0n0_nfwpf_frt_im_aat)
 
@@ -159,7 +161,8 @@ namespace ZoneTool
 			{"effect_zfeather_falloff_blend",			"effect_zf_falloff_blend_ndw"},
 			{"effect_zfeather_falloff_screen",			"effect_zf_falloff_screen_nofog_ndw"}, // closest i could find
 			{"effect_zfeather_outdoor_blend",			"effect_zf_outdoor_blend_ndw"},
-			{"effect_zfeather_screen",					"effect_zf_screen_ndw"}, // no eye offset found
+			{"effect_zfeather_screen",					"effect_zf_screen_ndw"},
+			{"effect_zfeather_screen_eyeoffset",		"effect_zf_screen_ndw"}, // no eye offset found
 			{"effect_zfeather_falloff_screen_nofog",	"effect_zf_falloff_screen_nofog_ndw"},
 
 			{"particle_cloud",							"particle_cloud_replace_ga"}, // could be wrong
