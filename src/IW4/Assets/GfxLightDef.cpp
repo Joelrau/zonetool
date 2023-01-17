@@ -3,7 +3,7 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		H1::GfxLightDef* GenerateH1GfxLightDef(GfxLightDef* asset, ZoneMemory* mem)
 		{
@@ -15,12 +15,17 @@ namespace ZoneTool
 				h1_asset->attenuation.image->name = asset->attenuation.image->name;
 			}
 			h1_asset->attenuation.samplerState = asset->attenuation.samplerState;
+
+			// doesn't exist on IW3/IW4 from what i can tell
+			/*
 			if (asset->cucoloris.image)
 			{
 				h1_asset->cucoloris.image = mem->Alloc<H1::GfxImage>();
 				h1_asset->cucoloris.image->name = asset->cucoloris.image->name;
 			}
 			h1_asset->cucoloris.samplerState = asset->cucoloris.samplerState;
+			*/
+
 			h1_asset->lmapLookupStart = asset->lmapLookupStart;
 			return h1_asset;
 		}
