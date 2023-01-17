@@ -8,8 +8,8 @@
 // ========================================================
 #pragma once
 
-//#include <zstd.h>
-//#include <zlib.h>
+#include <zstd.h>
+#include <zlib.h>
 
 namespace ZoneTool
 {

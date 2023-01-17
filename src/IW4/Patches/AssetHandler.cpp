@@ -8,9 +8,15 @@
 // ========================================================
 #include "stdafx.hpp"
 
+/*
+
+			TODO: ADDRESS REVIEW
+
+*/
+
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		extern bool is_dumping_complete;
 		extern bool is_dumping;
@@ -24,10 +30,10 @@ namespace ZoneTool
 		std::string AssetHandler::fastfile;
 		FILE* AssetHandler::csvFile;
 
-		void** AssetHandler::DB_XAssetPool = (void**)0x7C5E38;
-		unsigned int* AssetHandler::g_poolSize = (unsigned int*)0x7C5B58;
+		void** AssetHandler::DB_XAssetPool = (void**)0x7998A8;
+		unsigned int* AssetHandler::g_poolSize = (unsigned int*)0x7995E8;
 		AssetHandler::DB_GetXAssetSizeHandler_t* AssetHandler::DB_GetXAssetSizeHandlers = (DB_GetXAssetSizeHandler_t*)
-			0x7C6430;
+			0x799488;
 
 		std::unordered_map<std::string, XAsset> AssetHandler::StoredAssets;
 		std::vector<std::pair<XAssetType, std::string>> AssetHandler::referencedAssets;
@@ -89,7 +95,7 @@ namespace ZoneTool
 
 		void* DB_FindXAssetHeader_Unsafe(const XAssetType type, const std::string& name)
 		{
-			const static auto DB_FindXAssetHeader_Internal = 0x44E540;
+			const static auto DB_FindXAssetHeader_Internal = 0x407930;
 			const auto name_ptr = name.data();
 			const auto type_int = static_cast<std::int32_t>(type);
 
@@ -113,7 +119,7 @@ namespace ZoneTool
 			if (createDefault || retval.data == nullptr)
 			{
 				ZONETOOL_INFO("MISSING ASSET '%s' of type '%s'", name, reinterpret_cast<char**>(
-					0x7C6208)[type]);
+					0x4CFCF0)[type]);
 			}
 
 			return retval;
@@ -133,7 +139,7 @@ namespace ZoneTool
 		void AssetHandler::DB_LogLoadedAsset(void* ptr, std::int32_t type)
 		{
 #ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::DB_LogLoadedAsset");
+			VMProtectBeginUltra("IW4::DB_LogLoadedAsset");
 #endif
 
 			static std::shared_ptr<ZoneMemory> memory;
@@ -144,8 +150,9 @@ namespace ZoneTool
 				memory = std::make_shared<ZoneMemory>(1024 * 1024 * 512);		// 512mb
 			}
 
-			fastfile = static_cast<std::string>(reinterpret_cast<const char*>(*reinterpret_cast<DWORD*>(0x1294A00)
-				+ 4));
+			// TODO: check address
+			fastfile = static_cast<std::string>(reinterpret_cast<const char*>(*reinterpret_cast<DWORD*>(0x11D42D8)
+				+ 4)); // g_zoneInfo
 
 			// store all common assets
 			if (fastfile == "common_mp")
@@ -167,7 +174,7 @@ namespace ZoneTool
 				// dump assets to disk
 				if (csvFile)
 				{
-					auto xassettypes = reinterpret_cast<char**>(0x7C6208);
+					auto xassettypes = reinterpret_cast<char**>(0x799278);
 					fprintf(csvFile, "%s,%s\n", xassettypes[type], GetAssetName(type, ptr));
 				}
 
@@ -219,13 +226,13 @@ namespace ZoneTool
 						DUMPCASE(image, IGfxImage, GfxImage);
 						DUMPCASE(lightdef, IGfxLightDef, GfxLightDef);
 						DUMPCASE(gfx_map, IGfxWorld, GfxWorld);
-						DUMPCASE(glass_map, IGlassWorld, GlassWorld);
+						//DUMPCASE(glass_map, IGlassWorld, GlassWorld);
 						DUMPCASE(map_ents, IMapEnts, MapEnts);
 						DUMPCASE(material, IMaterial, Material);
 						DUMPCASE(physpreset, IPhysPreset, PhysPreset);
 						DUMPCASE(rawfile, IRawFile, RawFile);
 						DUMPCASE(xmodel, IXModel, XModel);
-						DUMPCASE(xmodelsurfs, IXSurface, ModelSurface);
+						//DUMPCASE(xmodelsurfs, IXSurface, ModelSurface);
 						DUMPCASE(xanim, IXAnimParts, XAnimParts);
 					}
 					catch (std::exception& ex)
@@ -476,7 +483,7 @@ namespace ZoneTool
 
 			ClearTextures();
 
-			if (!loadDef->resourceSize)
+			if (!loadDef->dataSize)
 				return;
 
 			auto* buffer = GetTextureBuffer();
@@ -489,13 +496,13 @@ namespace ZoneTool
 			}
 			textureMap[image->name] = textureBufferIndex;
 
-			size_t size = 16 + loadDef->resourceSize;
+			size_t size = 16 + loadDef->dataSize;
 			void* data = &buffer[textureBufferIndex];
 			textureBufferIndex += size;
 
 			if (textureBufferIndex >= textureBufferSize)
 			{
-				ZONETOOL_FATAL("IW5 Texture Buffer exceeded %imb/%imb",
+				ZONETOOL_FATAL("IW4 Texture Buffer exceeded %imb/%imb",
 					(textureBufferIndex / 1024 / 1024), (textureBufferSize / 1024 / 1024));
 			}
 
@@ -538,7 +545,7 @@ namespace ZoneTool
 		AssetHandler::AssetHandler()
 		{
 #ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::AssetHandler");
+			VMProtectBeginUltra("IW4::AssetHandler");
 #endif
 
 			// Alloc zonememory
@@ -602,7 +609,7 @@ namespace ZoneTool
 			ReallocateAssetPoolM(col_map_mp, 5);
 			ReallocateAssetPoolM(gfx_map, 5);
 			ReallocateAssetPoolM(fx_map, 5);
-			ReallocateAssetPoolM(glass_map, 5);
+			//ReallocateAssetPoolM(glass_map, 5);
 			ReallocateAssetPoolM(localize, 2);
 			ReallocateAssetPoolM(material, 2);
 			ReallocateAssetPoolM(font, 2);
@@ -615,7 +622,7 @@ namespace ZoneTool
 			ReallocateAssetPoolM(loaded_sound, 2);
 			ReallocateAssetPoolM(sound, 2);
 			ReallocateAssetPoolM(weapon, 2);
-			ReallocateAssetPoolM(attachment, 2);
+			//ReallocateAssetPoolM(attachment, 2);
 
 			ReallocateAssetPoolM(vertexshader, 2);
 
@@ -631,9 +638,6 @@ namespace ZoneTool
 
 			// Prevent sound data from getting lost
 			Memory(0x00438551).jump(MssSound_ReadXFile_stub);
-
-			// Remove check for me_pictureframes (messes up dumping)
-			Memory(0x004CC493).set<std::uint8_t>(0xEB);
 
 #ifdef USE_VMPROTECT
 			VMProtectEnd();

@@ -10,7 +10,7 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		struct XAsset
 		{

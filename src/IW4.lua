@@ -32,4 +32,7 @@ function IW4:project()
         self:include()
         H1:include()
         ZoneUtils:include()
+
+        zstd:include()
+        zlib:include()
 end

@@ -8,16 +8,22 @@
 // ========================================================
 #include "stdafx.hpp"
 
+/*
+
+			TODO: ADDRESS REVIEW
+
+*/
+
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		std::int32_t FFCompression::ff_version = 1;
 
 		std::int32_t FFCompression::z_inflateInit(const char* version, db_z_stream_s* strm, int stream_size)
 		{
 #ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression::z_inflateInit");
+			VMProtectBeginUltra("IW4::FFCompression::z_inflateInit");
 #endif
 			// Allocate zstd context
 			strm->state = reinterpret_cast<db_zstd_context_s*>(malloc(sizeof(db_zstd_context_s)));
@@ -127,7 +133,7 @@ namespace ZoneTool
 		std::int32_t FFCompression::z_inflateEnd(db_z_stream_s* strm)
 		{
 #ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression::z_inflateEnd");
+			VMProtectBeginUltra("IW4::FFCompression::z_inflateEnd");
 #endif
 
 			// free decompression stream
@@ -356,7 +362,7 @@ namespace ZoneTool
 		void FFCompression::DecryptStream(char* data, std::size_t size)
 		{
 #ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression::DecryptStream");
+			VMProtectBeginUltra("IW4::FFCompression::DecryptStream");
 #endif
 
 			if (ff_version >= 2000)
@@ -391,7 +397,7 @@ namespace ZoneTool
 		FFCompression::FFCompression()
 		{
 #ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression");
+			VMProtectBeginUltra("IW4::FFCompression");
 #endif
 
 			// Allow loading of unsigned fastfiles
