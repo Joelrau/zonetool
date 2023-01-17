@@ -256,23 +256,9 @@ namespace ZoneTool
 			char* texture; // texture
 		};
 
-		struct __declspec(align(4)) GfxImageLoadDef_2
-		{
-			unsigned char levelCount;
-			unsigned char pad[3];
-			int flags;
-			int format;
-			int resourceSize;
-			char data[1];
-		};
-
 		struct GfxImage
 		{
-			union
-			{
-				GfxImageLoadDef* texture;
-				GfxImageLoadDef_2* texture_2;
-			};
+			GfxImageLoadDef* texture;
 			char mapType; // 5 is cube, 4 is 3d, 3 is 2d
 			char semantic;
 			char category;
