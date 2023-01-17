@@ -3,7 +3,7 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		H1::RawFile* GenerateH1RawFile(RawFile* asset, ZoneMemory* mem)
 		{
