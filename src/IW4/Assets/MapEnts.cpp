@@ -302,11 +302,127 @@ namespace
 			}
 		}
 	}
+
+	namespace entitystrings
+	{
+		class ents
+		{
+		public:
+
+			ents() {};
+			ents(const char* string, size_t lenPlusOne) : ents(std::string(string, lenPlusOne - 1)) {}
+			ents(std::string buffer) : ents() { this->parse(buffer); };
+			ents(const ents& obj) : entities(obj.entities) {};
+
+			std::string build()
+			{
+				std::string entityString;
+
+				for (auto& entity : this->entities)
+				{
+					entityString.append("{\n");
+
+					for (auto& property : entity)
+					{
+						entityString.push_back('"');
+						entityString.append(property.first);
+						entityString.append("\" \"");
+						entityString.append(property.second);
+						entityString.append("\"\n");
+					}
+
+					entityString.append("}\n");
+				}
+
+				return entityString;
+			}
+
+		private:
+			enum
+			{
+				PARSE_AWAIT_KEY,
+				PARSE_READ_KEY,
+				PARSE_AWAIT_VALUE,
+				PARSE_READ_VALUE,
+			};
+
+			std::vector<std::unordered_map<std::string, std::string>> entities;
+
+			void parse(std::string buffer)
+			{
+				int parseState = 0;
+				std::string key;
+				std::string value;
+				std::unordered_map<std::string, std::string> entity;
+
+				for (unsigned int i = 0; i < buffer.size(); ++i)
+				{
+					char character = buffer[i];
+					if (character == '{')
+					{
+						entity.clear();
+					}
+
+					switch (character)
+					{
+					case '{':
+					{
+						entity.clear();
+						break;
+					}
+
+					case '}':
+					{
+						this->entities.push_back(entity);
+						entity.clear();
+						break;
+					}
+
+					case '"':
+					{
+						if (parseState == PARSE_AWAIT_KEY)
+						{
+							key.clear();
+							parseState = PARSE_READ_KEY;
+						}
+						else if (parseState == PARSE_READ_KEY)
+						{
+							parseState = PARSE_AWAIT_VALUE;
+						}
+						else if (parseState == PARSE_AWAIT_VALUE)
+						{
+							value.clear();
+							parseState = PARSE_READ_VALUE;
+						}
+						else if (parseState == PARSE_READ_VALUE)
+						{
+							entity[to_lower_copy(key)] = value;
+							parseState = PARSE_AWAIT_KEY;
+						}
+						else
+						{
+							throw std::runtime_error("Parsing error!");
+						}
+						break;
+					}
+
+					default:
+					{
+						if (parseState == PARSE_READ_KEY) key.push_back(character);
+						else if (parseState == PARSE_READ_VALUE) value.push_back(character);
+
+						break;
+					}
+					}
+				}
+			}
+		};
+	}
 }
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		H1::MapEnts* GenerateH1MapEnts(MapEnts* asset, ZoneMemory* mem)
 		{
@@ -318,39 +434,44 @@ namespace ZoneTool
 			h1_asset->entityString = asset->entityString;
 			h1_asset->numEntityChars = asset->numEntityChars;
 
-			h1_asset->trigger.count = asset->trigger.modelCount;
+			// ents
+			std::string ents_string = std::string(asset->entityString, asset->numEntityChars - 1);
+			auto ents = entitystrings::ents(ents_string);
+
+			ents_string = ents.build();
+
+			h1_asset->entityString = mem->StrDup(ents_string);
+			h1_asset->numEntityChars = ents_string.length() + 1;
+
+			h1_asset->trigger.count = asset->trigger.count;
 			h1_asset->trigger.models = reinterpret_cast<H1::TriggerModel*>(asset->trigger.models);
 			h1_asset->trigger.hullCount = asset->trigger.hullCount;
 			h1_asset->trigger.hulls = reinterpret_cast<H1::TriggerHull*>(asset->trigger.hulls);
 			h1_asset->trigger.slabCount = asset->trigger.slabCount;
 			h1_asset->trigger.slabs = reinterpret_cast<H1::TriggerSlab*>(asset->trigger.slabs);
 
-			h1_asset->clientTrigger.trigger.count = asset->clientTrigger.trigger.modelCount;
-			h1_asset->clientTrigger.trigger.models = reinterpret_cast<H1::TriggerModel*>(asset->clientTrigger.trigger.models);
-			h1_asset->clientTrigger.trigger.hullCount = asset->clientTrigger.trigger.hullCount;
-			h1_asset->clientTrigger.trigger.hulls = reinterpret_cast<H1::TriggerHull*>(asset->clientTrigger.trigger.hulls);
-			h1_asset->clientTrigger.trigger.slabCount = asset->clientTrigger.trigger.slabCount;
-			h1_asset->clientTrigger.trigger.slabs = reinterpret_cast<H1::TriggerSlab*>(asset->clientTrigger.trigger.slabs);
-			h1_asset->clientTrigger.numClientTriggerNodes = asset->clientTrigger.numClientTriggerNodes;
-			h1_asset->clientTrigger.clientTriggerAabbTree = reinterpret_cast<H1::ClientTriggerAabbNode*>(asset->clientTrigger.clientTriggerAabbTree);
-			h1_asset->clientTrigger.triggerStringLength = asset->clientTrigger.triggerStringLength;
-			h1_asset->clientTrigger.triggerString = asset->clientTrigger.triggerString;
-			h1_asset->clientTrigger.visionSetTriggers = asset->clientTrigger.visionSetTriggers;
-			h1_asset->clientTrigger.blendLookup = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount); // todo?
-			h1_asset->clientTrigger.unk1 = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount); // todo?
-			h1_asset->clientTrigger.triggerType = mem->Alloc<short>(asset->clientTrigger.numClientTriggerNodes);
-			for (auto i = 0; i < asset->clientTrigger.numClientTriggerNodes; i++)
-			{
-				h1_asset->clientTrigger.triggerType[i] = asset->clientTrigger.triggerType[i]; // convert?
-			}
-			h1_asset->clientTrigger.origins = reinterpret_cast<float(*__ptr64)[3]>(asset->clientTrigger.origins);
-			h1_asset->clientTrigger.scriptDelay = asset->clientTrigger.scriptDelay;
-			h1_asset->clientTrigger.audioTriggers = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount);
-			h1_asset->clientTrigger.unk2 = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount); // todo?
-			h1_asset->clientTrigger.unk3 = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount); // todo?
-			h1_asset->clientTrigger.unk4 = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount); // todo?
-			h1_asset->clientTrigger.unk5 = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount); // todo?
-			h1_asset->clientTrigger.unk6 = mem->Alloc<short>(asset->clientTrigger.trigger.modelCount); // todo?
+			h1_asset->clientTrigger.trigger.count = 0;
+			h1_asset->clientTrigger.trigger.models = nullptr;
+			h1_asset->clientTrigger.trigger.hullCount = 0;
+			h1_asset->clientTrigger.trigger.hulls = nullptr;
+			h1_asset->clientTrigger.trigger.slabCount = 0;
+			h1_asset->clientTrigger.trigger.slabs = nullptr;
+			h1_asset->clientTrigger.numClientTriggerNodes = 0;
+			h1_asset->clientTrigger.clientTriggerAabbTree = nullptr;
+			h1_asset->clientTrigger.triggerStringLength = 0;
+			h1_asset->clientTrigger.triggerString = nullptr;
+			h1_asset->clientTrigger.visionSetTriggers = nullptr;
+			h1_asset->clientTrigger.blendLookup = nullptr;
+			h1_asset->clientTrigger.unk1 = nullptr;
+			h1_asset->clientTrigger.triggerType = nullptr;
+			h1_asset->clientTrigger.origins = nullptr;
+			h1_asset->clientTrigger.scriptDelay = nullptr;
+			h1_asset->clientTrigger.audioTriggers = nullptr;
+			h1_asset->clientTrigger.unk2 = nullptr;
+			h1_asset->clientTrigger.unk3 = nullptr;
+			h1_asset->clientTrigger.unk4 = nullptr;
+			h1_asset->clientTrigger.unk5 = nullptr;
+			h1_asset->clientTrigger.unk6 = nullptr;
 
 			h1_asset->clientTriggerBlend.numClientTriggerBlendNodes = 0;
 			h1_asset->clientTriggerBlend.blendNodes = nullptr;

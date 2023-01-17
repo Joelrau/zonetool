@@ -2004,7 +2004,7 @@ namespace ZoneTool
 
 		struct MapTriggers
 		{
-			int modelCount;
+			int count;
 			TriggerModel* models; // sizeof 8
 			int hullCount;
 			TriggerHull* hulls; // sizeof 32
@@ -2024,7 +2024,7 @@ namespace ZoneTool
 		struct MapEnts
 		{
 			const char* name; // 0
-			const char* entityString; // 4
+			char* entityString; // 4
 			int numEntityChars; // 8
 			MapTriggers trigger; // 12
 			Stage* stageNames; // 36
@@ -4273,8 +4273,6 @@ namespace ZoneTool
 			GfxWorld* gfx_map;
 			GameWorldMp* gameworldmp;
 			GameWorldSp* gameworldsp;
-			GameWorldMp* game_map_mp;
-			GameWorldSp* game_map_sp;
 			FxWorld* fxworld;
 			FxWorld* fx_map;
 			MapEnts* mapents;
