@@ -274,6 +274,29 @@ namespace ZoneTool
 			char* name;
 		};
 
+		struct WaterWritable
+		{
+			float floatTime;
+		};
+
+		struct water_t
+		{
+			WaterWritable writable;
+			float* H0X;
+			float* H0Y;
+			float* wTerm;
+			int M;
+			int N;
+			float Lx;
+			float Lz;
+			float gravity;
+			float windvel;
+			float winddir[2];
+			float amplitude;
+			float codeConstant[4];
+			GfxImage* image;
+		};
+
 		struct MaterialImage
 		{
 			unsigned int typeHash; // asset hash of type
@@ -447,6 +470,17 @@ namespace ZoneTool
 				const char** subMaterials;
 			};
 		}
+
+		enum GfxCameraRegionType : std::uint16_t
+		{
+			CAMERA_REGION_LIT_OPAQUE = 0x0,
+			CAMERA_REGION_LIT_TRANS = 0x1,
+			CAMERA_REGION_EMISSIVE = 0x2,
+			CAMERA_REGION_DEPTH_HACK = 0x3,
+			CAMERA_REGION_LIGHT_MAP_OPAQUE = 0x4,
+			CAMERA_REGION_COUNT = 0x5,
+			CAMERA_REGION_NONE = 0x5,
+		};
 
 		struct Material
 		{
