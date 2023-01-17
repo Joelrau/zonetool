@@ -244,7 +244,7 @@ namespace ZoneTool
 				h1_elem->visuals.instance.anonymous = elem->visuals.instance.anonymous;
 			}
 
-			memcpy(&h1_elem->collBounds, &elem->collBounds, sizeof(float[3][2]));
+			memcpy(&h1_elem->collBounds, bounds::compute(elem->collBounds.midPoint, elem->collBounds.halfSize), sizeof(float[3][2]));
 
 			h1_elem->effectOnImpact.name = elem->effectOnImpact.name;
 			h1_elem->effectOnDeath.name = elem->effectOnDeath.name;
@@ -302,8 +302,7 @@ namespace ZoneTool
 				// todo?
 				break;
 			default:
-				// TODO: i'm not sure if there is a unknownDef to be found in IW4, come back to this after talking to Louv.
-				h1_elem->extended.unknownDef = *(mem->Alloc<char* __ptr64>());
+				h1_elem->extended.unknownDef = nullptr;
 				break;
 			}
 
@@ -336,11 +335,11 @@ namespace ZoneTool
 			h1_asset->elemMaxRadius = 0;
 
 			// TODO: 0 is hardcoded, make sure it doesn't break anything
-			h1_asset->occlusionQueryDepthBias = 0.0f; // doesn't exist on IW5
-			h1_asset->occlusionQueryFadeIn = 0; // doesn't exist on IW5
-			h1_asset->occlusionQueryFadeOut = 0; // doesn't exist on IW5
-			h1_asset->occlusionQueryScaleRange.base = 0.0f; // doesn't exist on IW5
-			h1_asset->occlusionQueryScaleRange.amplitude = 0.0f; // doesn't exist on IW5
+			h1_asset->occlusionQueryDepthBias = 0; // doesn't exist on IW3/IW4
+			h1_asset->occlusionQueryFadeIn = 0; // ^
+			h1_asset->occlusionQueryFadeOut = 0; // ^
+			h1_asset->occlusionQueryScaleRange.base = 0; // ^
+			h1_asset->occlusionQueryScaleRange.amplitude = 0; // ^
 
 			h1_asset->elemDefs = mem->Alloc<H1::FxElemDef>(asset->elemDefCountLooping + asset->elemDefCountOneShot + asset->elemDefCountEmission);
 			for (auto i = 0; i < asset->elemDefCountLooping + asset->elemDefCountOneShot + asset->elemDefCountEmission; i++)

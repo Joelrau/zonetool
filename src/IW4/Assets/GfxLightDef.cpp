@@ -23,9 +23,8 @@ namespace ZoneTool
 				h1_asset->cucoloris.image = mem->Alloc<H1::GfxImage>();
 				h1_asset->cucoloris.image->name = asset->cucoloris.image->name;
 			}
-			h1_asset->cucoloris.samplerState = asset->cucoloris.samplerState;
 			*/
-
+			h1_asset->cucoloris.samplerState = 10; // quaK hardcodes to 10 for IW3
 			h1_asset->lmapLookupStart = asset->lmapLookupStart;
 			return h1_asset;
 		}

@@ -528,6 +528,7 @@ namespace ZoneTool
 		union PackedUnitVec
 		{
 			unsigned int packed;
+			unsigned char array[4];
 		};
 
 		struct GfxPackedVertex
@@ -3644,7 +3645,7 @@ namespace ZoneTool
 			GfxCellTreeCount* aabbTreeCounts; // Size: 4 * dpvsPlanes.cellCount // 4
 			GfxCellTree* aabbTree; // 4
 			GfxCell* cells; // 4  // = 80
-			GfxWorldDraw draw; // 72
+			GfxWorldDraw worldDraw; // 72
 			GfxLightGrid lightGrid; // 56 // = 208
 			int modelCount; // 4
 			GfxBrushModel* models; // 4 // = 216
