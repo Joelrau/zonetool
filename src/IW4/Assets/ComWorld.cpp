@@ -22,13 +22,7 @@ namespace ZoneTool
 				// unk1
 				memcpy(&h1_asset->primaryLights[i].color, &asset->primaryLights[i].color, sizeof(float[3]));
 				memcpy(&h1_asset->primaryLights[i].dir, &asset->primaryLights[i].dir, sizeof(float[3]));
-				
-				// up doesn't exist on IW4, only IW5
-				for (auto j = 0; i < 3; i++)
-				{
-					h1_asset->primaryLights[i].up[j] = 0.0f;
-				}
-
+				memset(&h1_asset->primaryLights[i].up, 0, sizeof(float[3]));
 				memcpy(&h1_asset->primaryLights[i].origin, &asset->primaryLights[i].origin, sizeof(float[3]));
 				// pad
 				h1_asset->primaryLights[i].radius = asset->primaryLights[i].radius;

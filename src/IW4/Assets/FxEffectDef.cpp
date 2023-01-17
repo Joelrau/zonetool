@@ -310,8 +310,8 @@ namespace ZoneTool
 			h1_elem->sortOrder = elem->sortOrder;
 			h1_elem->lightingFrac = elem->lightingFrac;
 			h1_elem->useItemClip = elem->useItemClip;
-			h1_elem->fadeInfo = elem->fadeInfo;
-			h1_elem->randomSeed = 0; // pad value is IW5 only, so idk what to define this
+			h1_elem->fadeInfo = elem->fadeInfo; // IW3 uses 0 hardcoded
+			h1_elem->randomSeed = 0;
 
 			h1_elem->__pad0[0] = 0.0f;
 			h1_elem->__pad0[1] = 1.0f;
@@ -333,13 +333,11 @@ namespace ZoneTool
 			h1_asset->elemDefCountOneShot = asset->elemDefCountOneShot;
 			h1_asset->elemDefCountEmission = asset->elemDefCountEmission;
 			h1_asset->elemMaxRadius = 0;
-
-			// TODO: 0 is hardcoded, make sure it doesn't break anything
-			h1_asset->occlusionQueryDepthBias = 0; // doesn't exist on IW3/IW4
-			h1_asset->occlusionQueryFadeIn = 0; // ^
-			h1_asset->occlusionQueryFadeOut = 0; // ^
-			h1_asset->occlusionQueryScaleRange.base = 0; // ^
-			h1_asset->occlusionQueryScaleRange.amplitude = 0; // ^
+			h1_asset->occlusionQueryDepthBias = 0;
+			h1_asset->occlusionQueryFadeIn = 0;
+			h1_asset->occlusionQueryFadeOut = 0;
+			h1_asset->occlusionQueryScaleRange.base = 0;
+			h1_asset->occlusionQueryScaleRange.amplitude = 0;
 
 			h1_asset->elemDefs = mem->Alloc<H1::FxElemDef>(asset->elemDefCountLooping + asset->elemDefCountOneShot + asset->elemDefCountEmission);
 			for (auto i = 0; i < asset->elemDefCountLooping + asset->elemDefCountOneShot + asset->elemDefCountEmission; i++)

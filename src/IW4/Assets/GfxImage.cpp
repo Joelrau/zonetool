@@ -128,8 +128,8 @@ namespace ZoneTool
 			h1_asset->semantic = asset->semantic;
 			h1_asset->category = asset->category;
 			h1_asset->flags = asset->flags;
-			h1_asset->dataLen1 = asset->texture->dataSize; // why not use dataLen1??
-			h1_asset->dataLen2 = asset->texture->dataSize; // ^
+			h1_asset->dataLen1 = asset->texture->dataSize;
+			h1_asset->dataLen2 = asset->texture->dataSize;
 			h1_asset->width = asset->width;
 			h1_asset->height = asset->height;
 			h1_asset->depth = asset->depth;

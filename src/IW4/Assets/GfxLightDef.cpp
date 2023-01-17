@@ -15,16 +15,12 @@ namespace ZoneTool
 				h1_asset->attenuation.image->name = asset->attenuation.image->name;
 			}
 			h1_asset->attenuation.samplerState = asset->attenuation.samplerState;
-
-			// doesn't exist on IW3/IW4 from what i can tell
-			/*
-			if (asset->cucoloris.image)
-			{
-				h1_asset->cucoloris.image = mem->Alloc<H1::GfxImage>();
-				h1_asset->cucoloris.image->name = asset->cucoloris.image->name;
-			}
-			*/
-			h1_asset->cucoloris.samplerState = 10; // quaK hardcodes to 10 for IW3
+			//if (asset->cucoloris.image)
+			//{
+			//	h1_asset->cucoloris.image = mem->Alloc<H1::GfxImage>();
+			//	h1_asset->cucoloris.image->name = "";
+			//}
+			h1_asset->cucoloris.samplerState = 10;
 			h1_asset->lmapLookupStart = asset->lmapLookupStart;
 			return h1_asset;
 		}
