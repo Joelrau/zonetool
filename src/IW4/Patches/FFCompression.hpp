@@ -8,12 +8,12 @@
 // ========================================================
 #pragma once
 
-#include <zstd.h>
-#include <zlib.h>
+//#include <zstd.h>
+//#include <zlib.h>
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		struct db_zstd_context_s
 		{

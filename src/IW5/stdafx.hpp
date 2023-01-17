@@ -15,6 +15,7 @@
 
 #undef min
 #undef max
+#undef add
 
 #include <iostream>
 #include <sstream>

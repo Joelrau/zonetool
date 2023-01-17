@@ -3969,6 +3969,7 @@ namespace ZoneTool
 			unsigned __int16 flags;
 			unsigned __int16 lightingHandle;
 			int health;
+			int contents;
 		};
 
 		struct DynEntityColl

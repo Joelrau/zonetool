@@ -213,7 +213,7 @@ namespace ZoneTool
 
 				memcpy(&info->sCollisionData.staticModelList[i].origin, &asset->staticModelList[i].origin, sizeof(float[3]));
 				memcpy(&info->sCollisionData.staticModelList[i].invScaledAxis, &asset->staticModelList[i].invScaledAxis, sizeof(float[3][3]));
-				memcpy(&info->sCollisionData.staticModelList[i].absBounds, &asset->staticModelList[i].absmin, sizeof(float[2][3]));
+				memcpy(&info->sCollisionData.staticModelList[i].absBounds, &asset->staticModelList[i].absBounds.midPoint, sizeof(float[2][3]));
 				info->sCollisionData.staticModelList[i].lightingHandle = 0;
 			}
 		}
@@ -305,7 +305,7 @@ namespace ZoneTool
 					h1_asset->dynEntDefList[i][j].destroyFx = reinterpret_cast<H1::FxEffectDef * __ptr64>(asset->dynEntDefList[i][j].destroyFx);
 					h1_asset->dynEntDefList[i][j].sound = nullptr;
 					h1_asset->dynEntDefList[i][j].physPreset = reinterpret_cast<H1::PhysPreset * __ptr64>(asset->dynEntDefList[i][j].physPreset);
-					h1_asset->dynEntDefList[i][j].hinge = reinterpret_cast<H1::DynEntityHingeDef * __ptr64>(asset->dynEntDefList[i][j].hinge);
+					h1_asset->dynEntDefList[i][j].hinge = nullptr; // doesn't exist on IW4
 					h1_asset->dynEntDefList[i][j].linkTo = nullptr;
 					memcpy(&h1_asset->dynEntDefList[i][j].mass, &asset->dynEntDefList[i][j].mass, sizeof(IW4::PhysMass));
 					h1_asset->dynEntDefList[i][j].contents = asset->dynEntDefList[i][j].contents;
@@ -332,7 +332,7 @@ namespace ZoneTool
 
 			h1_asset->grappleData;
 
-			h1_asset->checksum = asset->isPlutoniumMap;
+			h1_asset->checksum = asset->checksum;
 
 			return h1_asset;
 		}
