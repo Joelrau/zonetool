@@ -612,10 +612,18 @@ namespace ZoneTool
 			XSurfaceCollisionTree* collisionTree;
 		};
 
+		enum XSurfaceFlags : std::uint8_t
+		{
+			SURF_FLAG_VERTCOL_GREY = 0x8,
+			SURF_FLAG_VERTCOL_NONE = 0x10,
+			SURF_FLAG_QUANTIZED = 0x20,
+			SURF_FLAG_SKINNED = 0x40,
+		};
+
 		struct XSurface
 		{
 			char tileMode;
-			bool deformed;
+			char flags;
 			unsigned short vertCount;
 			unsigned short triCount;
 			unsigned char streamHandle;
@@ -679,7 +687,7 @@ namespace ZoneTool
 			{
 				const char* name;
 				XSurface* surfs;
-				unsigned __int16 numsurfs;
+				short numsurfs;
 				int partBits[5];
 			};
 #pragma pack(pop)
@@ -696,6 +704,8 @@ namespace ZoneTool
 
 			struct XModelCollSurf_s
 			{
+				XModelCollTri_s* tris;
+				int numCollTris;
 				Bounds bounds;
 				int boneIdx;
 				int contents;
@@ -735,9 +745,10 @@ namespace ZoneTool
 
 		struct XModelCollSurf_s
 		{
-			XModelCollTri_s* tris;
+			XModelCollTri_s* collTris;
 			int numCollTris;
-			Bounds bounds;
+			float mins[3];
+			float maxs[3];
 			int boneIdx;
 			int contents;
 			int surfFlags;
@@ -766,7 +777,7 @@ namespace ZoneTool
 			char numLods;
 			char collLod;
 			char flags;
-			XModelCollSurf_s* colSurf;
+			XModelCollSurf_s* collSurfs;
 			int numColSurfs;
 			int contents;
 			XBoneInfo* boneInfo;

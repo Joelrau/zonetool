@@ -7,7 +7,7 @@ namespace ZoneTool
 	{
 		namespace PackedShit
 		{
-			using namespace IW5;
+			using namespace IW4;
 
 #define _BYTE  uint8_t
 #define _WORD  uint16_t
@@ -25,7 +25,7 @@ namespace ZoneTool
 #define BYTE1(x)   BYTEn(x,  1)         // byte 1 (counting from 0)
 #define BYTE2(x)   BYTEn(x,  2)
 
-			PackedTexCoords Vec2PackTexCoords(float* in) // iw5 func
+			PackedTexCoords Vec2PackTexCoords(float* in) // IW4 func
 			{
 				int v2; // eax
 				int v3; // esi
@@ -63,7 +63,7 @@ namespace ZoneTool
 				return result;
 			}
 
-			void Vec2UnpackTexCoords(const PackedTexCoords in, float* out) // iw5 func
+			void Vec2UnpackTexCoords(const PackedTexCoords in, float* out) // IW4 func
 			{
 				unsigned int val;
 
@@ -104,7 +104,7 @@ namespace ZoneTool
 		}
 	}
 
-	namespace IW5
+	namespace IW4
 	{
 		void GenerateH1BlendVertsShit(H1::XSurface* surf)
 		{
@@ -219,10 +219,10 @@ namespace ZoneTool
 		void GenerateH1XSurface(H1::XSurface* h1_asset, XSurface* asset, ZoneMemory* mem)
 		{
 			h1_asset->flags = 0;
-			h1_asset->flags |= ((asset->flags & IW5::SURF_FLAG_VERTCOL_GREY) != 0) ? H1::SURF_FLAG_VERTCOL_GREY : 0;
-			h1_asset->flags |= ((asset->flags & IW5::SURF_FLAG_VERTCOL_NONE) != 0) ? H1::SURF_FLAG_VERTCOL_NONE : 0;
-			//h1_asset->flags |= ((asset->flags & IW5::SURF_FLAG_QUANTIZED) != 0) ? H1::SURF_FLAG_QUANTIZED : 0;
-			h1_asset->flags |= ((asset->flags & IW5::SURF_FLAG_SKINNED) != 0) ? H1::SURF_FLAG_SKINNED : 0;
+			h1_asset->flags |= ((asset->flags & IW4::SURF_FLAG_VERTCOL_GREY) != 0) ? H1::SURF_FLAG_VERTCOL_GREY : 0;
+			h1_asset->flags |= ((asset->flags & IW4::SURF_FLAG_VERTCOL_NONE) != 0) ? H1::SURF_FLAG_VERTCOL_NONE : 0;
+			//h1_asset->flags |= ((asset->flags & IW4::SURF_FLAG_QUANTIZED) != 0) ? H1::SURF_FLAG_QUANTIZED : 0;
+			h1_asset->flags |= ((asset->flags & IW4::SURF_FLAG_SKINNED) != 0) ? H1::SURF_FLAG_SKINNED : 0;
 
 			h1_asset->vertCount = asset->vertCount;
 			h1_asset->triCount = asset->triCount;
@@ -248,7 +248,7 @@ namespace ZoneTool
 			h1_asset->verts0.packedVerts0 = mem->Alloc<H1::GfxPackedVertex>(asset->vertCount);
 			for (unsigned short i = 0; i < asset->vertCount; i++)
 			{
-				memcpy(&h1_asset->verts0.packedVerts0[i], &asset->verticies[i], sizeof(IW5::GfxPackedVertex));
+				memcpy(&h1_asset->verts0.packedVerts0[i], &asset->verticies[i], sizeof(IW4::GfxPackedVertex));
 
 				float texCoord_unpacked[2]{ 0 };
 				PackedShit::Vec2UnpackTexCoords(asset->verticies[i].texCoord, texCoord_unpacked);
@@ -332,25 +332,25 @@ namespace ZoneTool
 			memcpy(&h1_asset->partBits, &asset->partBits, sizeof(asset->partBits));
 		}
 
-		H1::XModelSurfs* GenerateH1XModelSurfs(ModelSurface* asset, ZoneMemory* mem)
+		H1::XModelSurfs* GenerateH1XModelSurfs(XModelSurfs* asset, ZoneMemory* mem)
 		{
 			// allocate H1 XModelSurfs structure
 			const auto h1_asset = mem->Alloc<H1::XModelSurfs>();
 
 			h1_asset->name = mem->StrDup(asset->name);
-			h1_asset->numsurfs = asset->xSurficiesCount;
+			h1_asset->numsurfs = asset->numsurfs;
 			memcpy(&h1_asset->partBits, &asset->partBits, sizeof(asset->partBits));
 
-			h1_asset->surfs = mem->Alloc<H1::XSurface>(asset->xSurficiesCount);
-			for (int i = 0; i < asset->xSurficiesCount; i++)
+			h1_asset->surfs = mem->Alloc<H1::XSurface>(asset->numsurfs);
+			for (int i = 0; i < asset->numsurfs; i++)
 			{
-				GenerateH1XSurface(&h1_asset->surfs[i], &asset->xSurficies[i], mem);
+				GenerateH1XSurface(&h1_asset->surfs[i], &asset->surfs[i], mem);
 			}
 
 			return h1_asset;
 		}
 
-		void IXSurface::dump(ModelSurface* asset, ZoneMemory* mem)
+		void IXSurface::dump(XModelSurfs* asset, ZoneMemory* mem)
 		{
 			// generate h1 surfaces
 			auto h1_asset = GenerateH1XModelSurfs(asset, mem);

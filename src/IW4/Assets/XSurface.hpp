@@ -2,12 +2,12 @@
 
 namespace ZoneTool
 {
-	namespace IW5
+	namespace IW4
 	{
 		class IXSurface
 		{
 		public:
-			static void dump(ModelSurface* asset, ZoneMemory* mem);
+			static void dump(XModelSurfs* asset, ZoneMemory* mem);
 		};
 	}
 }
