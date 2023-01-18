@@ -17,7 +17,7 @@ namespace ZoneTool
 			memcpy(&iw5_asset->name, &asset->name, Difference(&iw5_asset->cells, &iw5_asset->name));
 
 			// allocate cells
-			iw5_asset->cells = new IW5::GfxCell[iw5_asset->dpvsPlanes.cellCount];
+			iw5_asset->cells = mem->Alloc<IW5::GfxCell>(iw5_asset->dpvsPlanes.cellCount);
 			memset(iw5_asset->cells, 0, sizeof(IW5::GfxCell) * iw5_asset->dpvsPlanes.cellCount);
 
 			// copy cell data
@@ -35,7 +35,7 @@ namespace ZoneTool
 				Difference(&iw5_asset->fogTypesAllowed + 1, &iw5_asset->lightGrid));
 
 			// fix GfxDrawSurfs
-			iw5_asset->dpvs.surfaceMaterials = new IW5::GfxDrawSurf[iw5_asset->surfaceCount];
+			iw5_asset->dpvs.surfaceMaterials = mem->Alloc<IW5::GfxDrawSurf>(iw5_asset->surfaceCount);
 			memset(iw5_asset->dpvs.surfaceMaterials, 0, sizeof IW5::GfxDrawSurf * iw5_asset->surfaceCount);
 			for (auto i = 0u; i < iw5_asset->surfaceCount; i++)
 			{

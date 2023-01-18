@@ -3243,17 +3243,7 @@ namespace ZoneTool
 #pragma pack(push, 4)
 		struct GfxCell
 		{
-			union
-			{
-				Bounds bounds;
-
-				struct
-				{
-					float mins[3];
-					float maxs[3];
-				};
-			};
-
+			Bounds bounds;
 			int portalCount;
 			GfxPortal* portals;
 			char reflectionProbeCount;
