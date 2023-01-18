@@ -2122,7 +2122,6 @@ namespace ZoneTool
 			ComPrimaryLight* primaryLights;
 		};
 
-
 		union XAnimIndices
 		{
 			char* _1;
@@ -2230,8 +2229,10 @@ namespace ZoneTool
 			unsigned short randomDataIntCount; // 12 - 0xC
 			unsigned short framecount; // 14 - 0xE
 			char flags; // 16
-			unsigned char boneCount[10]; // 17
+			char boneCount[10]; // 17
 			char notifyCount; // 27
+			char pad1; // 28
+			char bDelta; // 29
 			char assetType; // 30
 			bool isDefault; // 31
 			unsigned int randomDataShortCount; // 32 - 0x20
@@ -2248,6 +2249,7 @@ namespace ZoneTool
 			XAnimIndices indices; // 76 - 0x4C
 			XAnimNotifyInfo* notify; // 80 - 0x50
 			XAnimDeltaPart* delta; // 84 - 0x54
+			// 88 - 0x58
 		};
 #pragma pack(pop)
 
@@ -3194,17 +3196,7 @@ namespace ZoneTool
 
 		struct GfxAabbTree
 		{
-			union
-			{
-				Bounds bounds;
-
-				struct
-				{
-					float mins[3]; // 12
-					float maxs[3]; // 12
-				};
-			};
-
+			Bounds bounds;
 			int unkn;
 			unsigned __int16 childCount; // 2
 			unsigned __int16 surfaceCount; // 2
@@ -3676,15 +3668,15 @@ namespace ZoneTool
 			const char* baseName; // 4
 			int planeCount; // 4
 			int nodeCount; // 4 // = 16
-			int surfaceCount; // 4
-			unsigned int skyCount; // 4
+			std::uint32_t surfaceCount; // 4
+			int skyCount; // 4
 			GfxSky* skies; // 4
-			int sunPrimaryLightIndex; // 4 // = 32
-			int primaryLightCount; // 4
-			unsigned int sortKeyLitDecal;
-			unsigned int sortKeyEffectDecal;
-			unsigned int sortKeyEffectAuto;
-			unsigned int sortKeyDistortion;
+			std::uint32_t lastSunPrimaryLightIndex;
+			std::uint32_t primaryLightCount;
+			std::uint32_t sortKeyLitDecal;
+			std::uint32_t sortKeyEffectDecal;
+			std::uint32_t sortKeyEffectAuto;
+			std::uint32_t sortKeyDistortion;
 			GfxWorldDpvsPlanes dpvsPlanes; // 16
 			GfxCellTreeCount* aabbTreeCounts; // Size: 4 * dpvsPlanes.cellCount // 4
 			GfxCellTree* aabbTree; // 4
@@ -3693,38 +3685,27 @@ namespace ZoneTool
 			GfxLightGrid lightGrid; // 56 // = 208
 			int modelCount; // 4
 			GfxBrushModel* models; // 4 // = 216
-			union
-			{
-				Bounds bounds;
-
-				struct
-				{
-					float mins[3]; // 12
-					float maxs[3]; // 12
-				};
-			};
-
-			unsigned int checksum; // 4
+			Bounds bounds;
+			std::uint32_t checksum; // 4
 			int materialMemoryCount; // 4 // = 248
 			MaterialMemory* materialMemory; // 4
 			sunflare_t sun; // 96 // = 348
 			float outdoorLookupMatrix[4][4]; // 64
 			GfxImage* outdoorImage; // 4 // = 416
-			unsigned int* cellCasterBits[2]; // 8
+			std::uint32_t* cellCasterBits[2]; // 8
 			GfxSceneDynModel* sceneDynModel; // 4
 			GfxSceneDynBrush* sceneDynBrush; // 4 // = 432
-			unsigned char* primaryLightEntityShadowVis;
-			unsigned int* primaryLightDynEntShadowVis[2];
-			char* primaryLightForModelDynEnt;
+			std::uint32_t* primaryLightEntityShadowVis;
+			std::uint32_t* primaryLightDynEntShadowVis[2];
+			unsigned char* primaryLightForModelDynEnt;
 			GfxShadowGeometry* shadowGeom;
 			GfxLightRegion* lightRegion;
 			GfxWorldDpvsStatic dpvs;
 			GfxWorldDpvsDynamic dpvsDyn;
-			unsigned int mapVtxChecksum;
-			unsigned int heroLightCount;
+			std::uint32_t mapVtxChecksum;
+			std::uint32_t heroLightCount;
 			GfxHeroLight* heroLights;
-			char fogTypesAllowed;
-			char pad2[3];
+			unsigned char fogTypesAllowed;
 		};
 #pragma pack(pop)
 

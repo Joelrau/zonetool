@@ -1755,7 +1755,7 @@ namespace ZoneTool
 			unsigned short randomDataIntCount; // 12 - 0xC
 			unsigned short framecount; // 14 - 0xE
 			char flags; // 16
-			unsigned char boneCount[10]; // 17
+			char boneCount[10]; // 17
 			char notetrackCount; // 27
 			bool bLoop; // 28
 			bool bDelta; // 29
@@ -3349,10 +3349,10 @@ namespace ZoneTool
 		{
 			const char* name; // 4
 			const char* baseName; // 4
-			std::uint32_t planeCount; // 4
-			std::uint32_t nodeCount; // 4 // = 16
+			int planeCount; // 4
+			int nodeCount; // 4 // = 16
 			std::uint32_t surfaceCount; // 4
-			std::uint32_t skyCount; // 4
+			int skyCount; // 4
 			GfxSky* skies; // 4
 			std::uint32_t lastSunPrimaryLightIndex;
 			std::uint32_t primaryLightCount;
@@ -3366,12 +3366,11 @@ namespace ZoneTool
 			GfxCell* cells; // 4  // = 80
 			GfxWorldDraw worldDraw; // 72
 			GfxLightGrid lightGrid; // 56 // = 208
-			std::uint32_t modelCount; // 4
+			int modelCount; // 4
 			GfxBrushModel* models; // 4 // = 216
-			float mins[3]; // 12
-			float maxs[3]; // 12
+			Bounds bounds;
 			std::uint32_t checksum; // 4
-			std::uint32_t materialMemoryCount; // 4 // = 248
+			int materialMemoryCount; // 4 // = 248
 			MaterialMemory* materialMemory; // 4
 			sunflare_t sun; // 96 // = 348
 			float outdoorLookupMatrix[4][4]; // 64
@@ -3379,9 +3378,9 @@ namespace ZoneTool
 			std::uint32_t* cellCasterBits[2]; // 8
 			GfxSceneDynModel* sceneDynModel; // 4
 			GfxSceneDynBrush* sceneDynBrush; // 4 // = 432
-			unsigned char* primaryLightEntityShadowVis;
+			std::uint32_t* primaryLightEntityShadowVis;
 			std::uint32_t* primaryLightDynEntShadowVis[2];
-			char* primaryLightForModelDynEnt;
+			unsigned char* primaryLightForModelDynEnt;
 			GfxShadowGeometry* shadowGeom;
 			GfxLightRegion* lightRegion;
 			GfxWorldDpvsStatic dpvs;
@@ -3389,7 +3388,7 @@ namespace ZoneTool
 			std::uint32_t mapVtxChecksum;
 			std::uint32_t heroLightCount;
 			GfxHeroLight* heroLights;
-			char fogTypesAllowed;
+			unsigned char fogTypesAllowed;
 		};
 #pragma pack(pop)
 

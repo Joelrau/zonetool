@@ -8,7 +8,6 @@ namespace ZoneTool
 {
 	namespace IW4
 	{
-		// IW4 GameWorldMp and IW5 GlassWorld are 1:1 (GameWorldSp has data between that's padded)
 		void IGameWorldMp::dump(GameWorldMp* asset, ZoneMemory* mem)
 		{
 			IW5::IGlassWorld::dump(reinterpret_cast<IW5::GlassWorld*>(asset), mem);

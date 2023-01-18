@@ -435,8 +435,8 @@ namespace ZoneTool
 			h1_asset->maxs1[2] = 2048.f;
 			//memcpy(h1_asset->mins1, asset->mins, sizeof(float[3])); // then what is this?
 			//memcpy(h1_asset->maxs1, asset->maxs, sizeof(float[3])); // ^^
-			memcpy(h1_asset->mins2, asset->mins, sizeof(float[3])); //h1_asset->mins2; // ? (i think this is the correct one)
-			memcpy(h1_asset->maxs2, asset->maxs, sizeof(float[3])); //h1_asset->maxs2; // ?
+			memcpy(h1_asset->mins2, asset->bounds.midPoint, sizeof(float[3])); //h1_asset->mins2; // ? (i think this is the correct one)
+			memcpy(h1_asset->maxs2, asset->bounds.halfSize, sizeof(float[3])); //h1_asset->maxs2; // ?
 
 			// bounds1 = ?
 			// bounds2 = shadowBounds;
