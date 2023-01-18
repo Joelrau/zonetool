@@ -256,22 +256,46 @@ namespace ZoneTool
 			char* texture; // texture
 		};
 
+		enum GfxImageCategory : unsigned char
+		{
+			IMG_CATEGORY_UNKNOWN = 0x0,
+			IMG_CATEGORY_AUTO_GENERATED = 0x1,
+			IMG_CATEGORY_LIGHTMAP = 0x2,
+			IMG_CATEGORY_LOAD_FROM_FILE = 0x3,
+			IMG_CATEGORY_RAW = 0x4,
+			IMG_CATEGORY_FIRST_UNMANAGED = 0x5,
+			IMG_CATEGORY_WATER = 0x5,
+			IMG_CATEGORY_RENDERTARGET = 0x6,
+			IMG_CATEGORY_TEMP = 0x7,
+		};
+
+		struct Picmip
+		{
+			char platform[2];
+		};
+
+		struct CardMemory
+		{
+			int platform[2];
+		};
+
+		// from iw5xport
 		struct GfxImage
 		{
 			GfxImageLoadDef* texture;
-			char mapType; // 5 is cube, 4 is 3d, 3 is 2d
-			char semantic;
-			char category;
-			char flags;
-			int cardMemory;
-			int dataLen1;
-			int dataLen2;
-			short height;
-			short width;
-			short depth;
-			bool loaded;
-			char pad;
-			char* name;
+			unsigned char mapType; // 5 is cube, 4 is 3d, 3 is 2d
+			GfxImageCategory semantic;
+			unsigned char category;
+			bool useSrgbReads; // is this flags? lmfao
+			Picmip picmip;
+			bool noPicmip;
+			char track;
+			CardMemory cardMemory;
+			unsigned short width;
+			unsigned short height;
+			unsigned short depth;
+			bool delayLoadPixels;
+			const char* name;
 		};
 
 		struct WaterWritable

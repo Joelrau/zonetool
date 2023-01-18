@@ -903,22 +903,32 @@ namespace ZoneTool
 			char data[1];
 		};
 
+		struct Picmip
+		{
+			char platform[2];
+		};
+
+		struct CardMemory
+		{
+			int platform[2];
+		};
+
 		struct GfxImage
 		{
 			GfxImageLoadDef* texture;
-			char mapType; // 5 is cube, 4 is 3d, 3 is 2d
-			char semantic;
-			char category;
-			char flags;
-			int cardMemory;
-			int dataLen1;
-			int dataLen2;
-			short width;
-			short height;
-			short depth;
-			bool loaded;
-			char pad;
-			char* name;
+			unsigned char mapType; // 5 is cube, 4 is 3d, 3 is 2d
+			unsigned char semantic;
+			unsigned char category;
+			unsigned char flags;
+			Picmip picmip;
+			bool noPicmip;
+			char track;
+			CardMemory cardMemory;
+			unsigned short width;
+			unsigned short height;
+			unsigned short depth;
+			unsigned char levelCount;
+			const char* name;
 		};
 
 		struct WaterWritable

@@ -17,7 +17,7 @@ namespace ZoneTool
 
 			// alloc elemdefs
 			const auto elem_def_count = iw5_fx->elemDefCountEmission + iw5_fx->elemDefCountLooping + iw5_fx->elemDefCountOneShot;
-			iw5_fx->elemDefs = new IW5::FxElemDef[elem_def_count];
+			iw5_fx->elemDefs = mem->Alloc<IW5::FxElemDef>(elem_def_count);
 
 			// transform elemdefs to iw5 format
 			for (auto i = 0; i < elem_def_count; i++)
