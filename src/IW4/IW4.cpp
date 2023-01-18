@@ -203,7 +203,7 @@ char**>(0x00799278)[type]);
 			if (isVerifying || isDumping)
 			{
 				FileSystem::SetFastFile(fastfile);
-
+				zonetool::filesystem::set_fastfile(fastfile);
 
 				// open csv file for dumping 
 				if (!csvFile)
