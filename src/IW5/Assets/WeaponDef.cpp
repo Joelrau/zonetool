@@ -1033,7 +1033,7 @@ namespace ZoneTool
 
 			if (data->fxOverrides)
 			{
-				for (int i = 0; i < data->numSoundOverrides; i++)
+				for (int i = 0; i < data->numFXOverrides; i++)
 				{
 					 if (data->fxOverrides[i].overrideFX)
 					 {
