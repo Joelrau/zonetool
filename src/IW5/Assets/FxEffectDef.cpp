@@ -653,11 +653,6 @@ fprintf(fp, "}\n");
 		{
 			AssetDumper dump;
 
-			if (std::string(asset->name).find("misc/fireworks/fireworks_00_launch_emit") != std::string::npos)
-			{
-				//__debugbreak();
-			}
-
 			if (!dump.open("fx\\"s + asset->name + ".fxe"))
 			{
 				return;
