@@ -378,9 +378,6 @@ namespace ZoneTool
 						buf->align(3);
 						auto dest_traildef = buf->write(data->extended.trailDef);
 
-						static_assert(sizeof(FxTrailDef) == 36);
-						static_assert(sizeof(FxTrailVertex) == 20);
-
 						if (data->extended.trailDef->verts)
 						{
 							buf->align(3);

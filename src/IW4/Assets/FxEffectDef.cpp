@@ -301,18 +301,20 @@ namespace ZoneTool
 					if (data->extended.trailDef)
 					{
 						buf->align(3);
-						buf->write(data->extended.trailDef, sizeof(FxTrailDef));
+						auto dest_traildef = buf->write(data->extended.trailDef);
 
 						if (data->extended.trailDef->verts)
 						{
 							buf->align(3);
 							buf->write(data->extended.trailDef->verts, data->extended.trailDef->vertCount);
+							ZoneBuffer::clear_pointer(&dest_traildef->verts);
 						}
 
 						if (data->extended.trailDef->inds)
 						{
 							buf->align(1);
 							buf->write(data->extended.trailDef->inds, data->extended.trailDef->indCount);
+							ZoneBuffer::clear_pointer(&dest_traildef->inds);
 						}
 
 						ZoneBuffer::clear_pointer(&dest->extended.trailDef);

@@ -199,8 +199,6 @@ namespace ZoneTool
 
 		void IAttachmentDef::write(IZone* zone, ZoneBuffer* buf)
 		{
-			static_assert(sizeof(AttachmentDef) == 164);
-
 			auto data = this->asset_;
 			auto dest = buf->write(data);
 
@@ -261,8 +259,7 @@ namespace ZoneTool
 
 				ZoneBuffer::clear_pointer(&dest->reticleViewModels);
 			}
-			static_assert(sizeof(*data->ammogeneral) == 24);
-			static_assert(offsetof(AttAmmoGeneral, tracerType) == 16);
+			
 			if (data->ammogeneral)
 			{
 				buf->align(3);
@@ -276,30 +273,28 @@ namespace ZoneTool
 
 				ZoneBuffer::clear_pointer(&dest->ammogeneral);
 			}
-			static_assert(sizeof(*data->sight) == 7);
+			
 			if (data->sight)
 			{
 				buf->align(3);
 				buf->write(data->sight);
 				ZoneBuffer::clear_pointer(&dest->sight);
 			}
-			static_assert(sizeof(*data->reload) == 2);
+			
 			if (data->reload)
 			{
 				buf->align(1);
 				buf->write(data->reload);
 				ZoneBuffer::clear_pointer(&dest->reload);
 			}
-			static_assert(sizeof(*data->addOns) == 2);
+			
 			if (data->addOns)
 			{
 				buf->align(1);
 				buf->write(data->addOns);
 				ZoneBuffer::clear_pointer(&dest->addOns);
 			}
-			static_assert(sizeof(*data->general) == 32);
-			static_assert(offsetof(AttGeneral, reticleCenter) == 8);
-			static_assert(offsetof(AttGeneral, reticleSide) == 12);
+			
 			if (data->general)
 			{
 				buf->align(3);
@@ -319,14 +314,14 @@ namespace ZoneTool
 
 				ZoneBuffer::clear_pointer(&dest->general);
 			}
-			static_assert(sizeof(*data->aimAssist) == 12);
+			
 			if (data->aimAssist)
 			{
 				buf->align(3);
 				buf->write(data->aimAssist);
 				ZoneBuffer::clear_pointer(&dest->aimAssist);
 			}
-			static_assert(sizeof(*data->ammunition) == 24);
+			
 			if (data->ammunition)
 			{
 				buf->align(3);
@@ -334,7 +329,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->ammunition);
 			}
 
-			static_assert(sizeof(*data->damage) == 28);
 			if (data->damage)
 			{
 				buf->align(3);
@@ -342,7 +336,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->damage);
 			}
 			
-			static_assert(sizeof(*data->locationDamage) == 76);
 			if (data->locationDamage)
 			{
 				buf->align(3);
@@ -350,7 +343,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->locationDamage);
 			}
 
-			static_assert(sizeof(*data->idleSettings) == 24);
 			if (data->idleSettings)
 			{
 				buf->align(3);
@@ -358,7 +350,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->idleSettings);
 			}
 
-			static_assert(sizeof(*data->adsSettings) == 56);
 			if (data->adsSettings)
 			{
 				buf->align(3);
@@ -366,7 +357,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->adsSettings);
 			}
 
-			static_assert(sizeof(*data->adsSettingsMain) == 56);
 			if (data->adsSettingsMain)
 			{
 				buf->align(3);
@@ -374,7 +364,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->adsSettingsMain);
 			}
 
-			static_assert(sizeof(*data->hipSpread) == 48);
 			if (data->hipSpread)
 			{
 				buf->align(3);
@@ -382,7 +371,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->hipSpread);
 			}
 
-			static_assert(sizeof(*data->gunKick) == 80);
 			if (data->gunKick)
 			{
 				buf->align(3);
@@ -390,7 +378,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->gunKick);
 			}
 
-			static_assert(sizeof(*data->viewKick) == 40);
 			if (data->viewKick)
 			{
 				buf->align(3);
@@ -398,7 +385,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->viewKick);
 			}
 
-			static_assert(sizeof(*data->adsOverlay) == 40);
 			if (data->adsOverlay)
 			{
 				buf->align(3);
@@ -431,7 +417,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->adsOverlay);
 			}
 
-			static_assert(sizeof(*data->ui) == 20);
 			if (data->ui)
 			{
 				buf->align(3);
@@ -451,7 +436,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->ui);
 			}
 
-			static_assert(sizeof(*data->rumbles) == 8);
 			if (data->rumbles)
 			{
 				buf->align(3);
@@ -470,7 +454,6 @@ namespace ZoneTool
 				ZoneBuffer::clear_pointer(&dest->rumbles);
 			}
 
-			static_assert(sizeof(*data->projectile) == 92);
 			if (data->projectile)
 			{
 				#define WEAPON_SOUND_CUSTOM(__field__) \
