@@ -1000,19 +1000,23 @@ namespace ZoneTool
 				{
 					zone->add_asset_of_type(attachment, this->asset_->scopes[i]->szInternalName);
 				}
+				
+			}
 
-				if (i >= 3) continue;
+			for (auto i = 0u; i < 3; i++)
+			{
+				if (data->underBarrels[i])
+				{
+					zone->add_asset_of_type(attachment, this->asset_->underBarrels[i]->szInternalName);
+				}
+			}
+
+			for (auto i = 0u; i < 4; i++)
+			{
 				if (data->others && data->others[i])
 				{
 					zone->add_asset_of_type(attachment, this->asset_->others[i]->szInternalName);
 				}
-
-				// Projectile attachments require fixing.
-				// if (i >= 4) continue;
-				// if (data->attachment2[i])
-				// {
-				// 	zone->AddAssetOfType(attachment, this->asset_->attachment2[i]->szInternalName);
-				// }
 			}
 
 			if (data->soundOverrides)
@@ -2216,20 +2220,10 @@ namespace ZoneTool
 				{
 					data["scopes"][i] = "";
 				}
+			}
 
-				if (i >= 4) continue;
-
-				if (asset->others && asset->others[i])
-				{
-					data["others"][i] = asset->others[i]->szInternalName;
-				}
-				else
-				{
-					data["others"][i] = "";
-				}
-
-				if (i >= 3) continue;
-
+			for (int i = 0; i < 3; i++)
+			{
 				if (asset->underBarrels && asset->underBarrels[i])
 				{
 					data["underBarrels"][i] = asset->underBarrels[i]->szInternalName;
@@ -2237,6 +2231,18 @@ namespace ZoneTool
 				else
 				{
 					data["underBarrels"][i] = "";
+				}
+			}
+
+			for (int i = 4; i < 3; i++)
+			{
+				if (asset->others && asset->others[i])
+				{
+					data["others"][i] = asset->others[i]->szInternalName;
+				}
+				else
+				{
+					data["others"][i] = "";
 				}
 			}
 

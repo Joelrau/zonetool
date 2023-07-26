@@ -2262,7 +2262,7 @@ namespace ZoneTool
 		{
 			float pos[2];
 			float normal[2];
-			float texCoord[2];
+			float texCoord;
 
 			Json ToJson()
 			{
@@ -2270,7 +2270,7 @@ namespace ZoneTool
 
 				JSON_FIELD_ARR(pos, 2);
 				JSON_FIELD_ARR(normal, 2);
-				JSON_FIELD_ARR(texCoord, 2);
+				JSON_FIELD(texCoord);
 
 				return data;
 			}
@@ -4211,42 +4211,90 @@ namespace ZoneTool
 			short* notetrackSoundMapValues;
 		};
 
-		struct AttachmentDefUnk
+#pragma pack(push, 4)
+		enum AttachmentType : std::int32_t
 		{
-			char _pad1[16];
-			TracerDef* tracer;
-			char _pad2[4];
+			ATTACHMENT_SCOPE = 0x0,
+			ATTACHMENT_UNDERBARREL = 0x1,
+			ATTACHMENT_OTHER = 0x2,
+			ATTACHMENT_COUNT = 0x3,
 		};
+
+		enum weapType_t : std::int32_t
+		{
+			WEAPTYPE_NONE = 0x0,
+			WEAPTYPE_BULLET = 0x1,
+			WEAPTYPE_GRENADE = 0x2,
+			WEAPTYPE_PROJECTILE = 0x3,
+			WEAPTYPE_RIOTSHIELD = 0x4,
+			WEAPTYPE_NUM = 0x5,
+		};
+
+		enum weapClass_t : std::int32_t
+		{
+			WEAPCLASS_RIFLE = 0x0,
+			WEAPCLASS_SNIPER = 0x1,
+			WEAPCLASS_MG = 0x2,
+			WEAPCLASS_SMG = 0x3,
+			WEAPCLASS_SPREAD = 0x4,
+			WEAPCLASS_PISTOL = 0x5,
+			WEAPCLASS_GRENADE = 0x6,
+			WEAPCLASS_ROCKETLAUNCHER = 0x7,
+			WEAPCLASS_TURRET = 0x8,
+			WEAPCLASS_THROWINGKNIFE = 0x9,
+			WEAPCLASS_NON_PLAYER = 0xA,
+			WEAPCLASS_ITEM = 0xB,
+			WEAPCLASS_NUM = 0xC,
+		};
+
+		enum PenetrateType : std::int32_t
+		{
+			PENETRATE_TYPE_NONE = 0x0,
+			PENETRATE_TYPE_SMALL = 0x1,
+			PENETRATE_TYPE_MEDIUM = 0x2,
+			PENETRATE_TYPE_LARGE = 0x3,
+			PENETRATE_TYPE_COUNT = 0x4,
+		};
+
+		enum ImpactType : std::int32_t
+		{
+			IMPACT_TYPE_NONE = 0x0,
+			IMPACT_TYPE_BULLET_SMALL = 0x1,
+			IMPACT_TYPE_BULLET_LARGE = 0x2,
+			IMPACT_TYPE_BULLET_AP = 0x3,
+			IMPACT_TYPE_BULLET_EXPLODE = 0x4,
+			IMPACT_TYPE_SHOTGUN = 0x5,
+			IMPACT_TYPE_SHOTGUN_EXPLODE = 0x6,
+			IMPACT_TYPE_GRENADE_BOUNCE = 0x7,
+			IMPACT_TYPE_GRENADE_EXPLODE = 0x8,
+			IMPACT_TYPE_ROCKET_EXPLODE = 0x9,
+			IMPACT_TYPE_PROJECTILE_DUD = 0xA,
+			IMPACT_TYPE_COUNT = 0xB,
+		};
+
+		enum weapFireType_t : std::int32_t
+		{
+			WEAPON_FIRETYPE_FULLAUTO = 0x0,
+			WEAPON_FIRETYPE_SINGLESHOT = 0x1,
+			WEAPON_FIRETYPE_BURSTFIRE2 = 0x2,
+			WEAPON_FIRETYPE_BURSTFIRE3 = 0x3,
+			WEAPON_FIRETYPE_BURSTFIRE4 = 0x4,
+			WEAPON_FIRETYPE_DOUBLEBARREL = 0x5,
+			WEAPON_FIRETYPECOUNT = 0x6,
+			WEAPON_FIRETYPE_BURSTFIRE_FIRST = 0x2,
+			WEAPON_FIRETYPE_BURSTFIRE_LAST = 0x4,
+		};
+
 
 		struct AttAmmoGeneral
 		{
-			std::int32_t penetrateType;
+			PenetrateType penetrateType;
 			float penetrateMultiplier;
-			std::int32_t impactType;
-			std::int32_t fireType;
+			ImpactType impactType;
+			weapFireType_t fireType;
 			TracerDef* tracerType;
 			bool rifleBullet;
 			bool armorPiercing;
-			char pad[2];
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(penetrateType);
-				JSON_FIELD(penetrateMultiplier);
-				JSON_FIELD(impactType);
-				JSON_FIELD(fireType);
-				JSON_ASSET(tracerType, TracerDef);
-				JSON_FIELD(rifleBullet);
-				JSON_FIELD(armorPiercing);
-
-				return data;
-			}
 		};
 
 		struct AttSight
@@ -4258,75 +4306,24 @@ namespace ZoneTool
 			bool canHoldBreath;
 			bool canVariableZoom;
 			bool hideRailWithThisScope;
-			// bool useScopeDrift;
-			// bool useDualFOV;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(aimDownSight);
-				JSON_FIELD(adsFire);
-				JSON_FIELD(rechamberWhileAds);
-				JSON_FIELD(noAdsWhenMagEmpty);
-				JSON_FIELD(canHoldBreath);
-				JSON_FIELD(canVariableZoom);
-				JSON_FIELD(hideRailWithThisScope);
-
-				return data;
-			}
 		};
 
 		struct AttReload
 		{
 			bool noPartialReload;
 			bool segmentedReload;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(noPartialReload);
-				JSON_FIELD(segmentedReload);
-
-				return data;
-			}
 		};
 
 		struct AttAddOns
 		{
 			bool motionTracker;
 			bool silenced;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(motionTracker);
-				JSON_FIELD(silenced);
-
-				return data;
-			}
 		};
 
 		struct AttGeneral
 		{
 			bool boltAction;
 			bool inheritsPerks;
-			bool reticleSpin45;
-			char pad[1];
 			float enemyCrosshairRange;
 			Material* reticleCenter;
 			Material* reticleSide;
@@ -4334,28 +4331,13 @@ namespace ZoneTool
 			int reticleSideSize;
 			float moveSpeedScale;
 			float adsMoveSpeedScale;
+		};
 
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(boltAction);
-				JSON_FIELD(inheritsPerks);
-				JSON_FIELD(reticleSpin45);
-				JSON_FIELD(enemyCrosshairRange);
-				JSON_ASSET(reticleCenter, Material);
-				JSON_ASSET(reticleSide, Material);
-				JSON_FIELD(reticleCenterSize);
-				JSON_FIELD(reticleSideSize);
-				JSON_FIELD(moveSpeedScale);
-				JSON_FIELD(adsMoveSpeedScale);
-
-				return data;
-			}
+		struct AttAimAssist
+		{
+			float autoAimRange;
+			float aimAssistRange;
+			float aimAssistRangeAds;
 		};
 
 		struct AttAmmunition
@@ -4363,21 +4345,9 @@ namespace ZoneTool
 			int maxAmmo;
 			int startAmmo;
 			int clipSize;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(maxAmmo);
-				JSON_FIELD(startAmmo);
-				JSON_FIELD(clipSize);
-
-				return data;
-			}
+			int shotCount;
+			int reloadAmmoAdd;
+			int reloadStartAdd;
 		};
 
 		struct AttDamage
@@ -4389,25 +4359,6 @@ namespace ZoneTool
 			float minDamageRange;
 			int playerDamage;
 			int minPlayerDamage;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(damage);
-				JSON_FIELD(minDamage);
-				JSON_FIELD(meleeDamage);
-				JSON_FIELD(maxDamageRange);
-				JSON_FIELD(minDamageRange);
-				JSON_FIELD(playerDamage);
-				JSON_FIELD(minPlayerDamage);
-
-				return data;
-			}
 		};
 
 		struct AttLocationDamage
@@ -4431,37 +4382,6 @@ namespace ZoneTool
 			float locLeftLegLower;
 			float locLeftFoot;
 			float locGun;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(locNone);
-				JSON_FIELD(locHelmet);
-				JSON_FIELD(locHead);
-				JSON_FIELD(locNeck);
-				JSON_FIELD(locTorsoUpper);
-				JSON_FIELD(locTorsoLower);
-				JSON_FIELD(locRightArmUpper);
-				JSON_FIELD(locRightArmLower);
-				JSON_FIELD(locRightHand);
-				JSON_FIELD(locLeftArmUpper);
-				JSON_FIELD(locLeftArmLower);
-				JSON_FIELD(locLeftHand);
-				JSON_FIELD(locRightLegUpper);
-				JSON_FIELD(locRightLegLower);
-				JSON_FIELD(locRightFoot);
-				JSON_FIELD(locLeftLegUpper);
-				JSON_FIELD(locLeftLegLower);
-				JSON_FIELD(locLeftFoot);
-				JSON_FIELD(locGun);
-
-				return data;
-			}
 		};
 
 		struct AttIdleSettings
@@ -4472,24 +4392,6 @@ namespace ZoneTool
 			float idleProneFactor;
 			float adsIdleLerpStartTime;
 			float adsIdleLerpTime;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(hipIdleAmount);
-				JSON_FIELD(hipIdleSpeed);
-				JSON_FIELD(idleCrouchFactor);
-				JSON_FIELD(idleProneFactor);
-				JSON_FIELD(adsIdleLerpStartTime);
-				JSON_FIELD(adsIdleLerpTime);
-
-				return data;
-			}
 		};
 
 		struct AttADSSettings
@@ -4504,66 +4406,10 @@ namespace ZoneTool
 			float adsZoomFov;
 			float adsZoomInFrac;
 			float adsZoomOutFrac;
-			float adsFovLerpTime;
-			// float adsBobFactor;
-			// float adsViewBobMult;
-			float adsFireRateScale;
-			float adsDamageRangeScale;
-			float adsFireAnimFrac;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(adsSpread);
-				JSON_FIELD(adsAimPitch);
-				JSON_FIELD(adsTransInTime);
-				JSON_FIELD(adsTransOutTime);
-				JSON_FIELD(adsReloadTransTime);
-				JSON_FIELD(adsCrosshairInFrac);
-				JSON_FIELD(adsCrosshairOutFrac);
-				JSON_FIELD(adsZoomFov);
-				JSON_FIELD(adsZoomInFrac);
-				JSON_FIELD(adsZoomOutFrac);
-				JSON_FIELD(adsFovLerpTime);
-				JSON_FIELD(adsFireRateScale);
-				JSON_FIELD(adsDamageRangeScale);
-				JSON_FIELD(adsFireAnimFrac);
-
-				return data;
-			}
-		};
-
-		struct AttScopeDriftSettings
-		{
-			float fScopeDriftDelay;
-			float fScopeDriftLerpInTime;
-			float fScopeDriftSteadyTime;
-			float fScopeDriftLerpOutTime;
-			float fScopeDriftSteadyFactor;
-			float fScopeDriftUnsteadyFactor;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(fScopeDriftDelay);
-				JSON_FIELD(fScopeDriftLerpInTime);
-				JSON_FIELD(fScopeDriftSteadyTime);
-				JSON_FIELD(fScopeDriftLerpOutTime);
-				JSON_FIELD(fScopeDriftSteadyFactor);
-				JSON_FIELD(fScopeDriftUnsteadyFactor);
-
-				return data;
-			}
+			float adsBobFactor;
+			float adsViewBobMult;
+			float adsViewErrorMin;
+			float adsViewErrorMax;
 		};
 
 		struct AttHipSpread
@@ -4580,30 +4426,6 @@ namespace ZoneTool
 			float hipSpreadDecayRate;
 			float hipSpreadDuckedDecay;
 			float hipSpreadProneDecay;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(hipSpreadStandMin);
-				JSON_FIELD(hipSpreadDuckedMin);
-				JSON_FIELD(hipSpreadProneMin);
-				JSON_FIELD(hipSpreadMax);
-				JSON_FIELD(hipSpreadDuckedMax);
-				JSON_FIELD(hipSpreadProneMax);
-				JSON_FIELD(hipSpreadFireAdd);
-				JSON_FIELD(hipSpreadTurnAdd);
-				JSON_FIELD(hipSpreadMoveAdd);
-				JSON_FIELD(hipSpreadDecayRate);
-				JSON_FIELD(hipSpreadDuckedDecay);
-				JSON_FIELD(hipSpreadProneDecay);
-
-				return data;
-			}
 		};
 
 		struct AttGunKick
@@ -4614,7 +4436,6 @@ namespace ZoneTool
 			float hipGunKickPitchMax;
 			float hipGunKickYawMin;
 			float hipGunKickYawMax;
-			// float hipGunKickMagMin;
 			float hipGunKickAccel;
 			float hipGunKickSpeedMax;
 			float hipGunKickSpeedDecay;
@@ -4625,43 +4446,10 @@ namespace ZoneTool
 			float adsGunKickPitchMax;
 			float adsGunKickYawMin;
 			float adsGunKickYawMax;
-			// float adsGunKickMagMin;
 			float adsGunKickAccel;
 			float adsGunKickSpeedMax;
 			float adsGunKickSpeedDecay;
 			float adsGunKickStaticDecay;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(hipGunKickReducedKickBullets);
-				JSON_FIELD(hipGunKickReducedKickPercent);
-				JSON_FIELD(hipGunKickPitchMin);
-				JSON_FIELD(hipGunKickPitchMax);
-				JSON_FIELD(hipGunKickYawMin);
-				JSON_FIELD(hipGunKickYawMax);
-				JSON_FIELD(hipGunKickAccel);
-				JSON_FIELD(hipGunKickSpeedMax);
-				JSON_FIELD(hipGunKickSpeedDecay);
-				JSON_FIELD(hipGunKickStaticDecay);
-				JSON_FIELD(adsGunKickReducedKickBullets);
-				JSON_FIELD(adsGunKickReducedKickPercent);
-				JSON_FIELD(adsGunKickPitchMin);
-				JSON_FIELD(adsGunKickPitchMax);
-				JSON_FIELD(adsGunKickYawMin);
-				JSON_FIELD(adsGunKickYawMax);
-				JSON_FIELD(adsGunKickAccel);
-				JSON_FIELD(adsGunKickSpeedMax);
-				JSON_FIELD(adsGunKickSpeedDecay);
-				JSON_FIELD(adsGunKickStaticDecay);
-
-				return data;
-			}
 		};
 
 		struct AttViewKick
@@ -4670,66 +4458,18 @@ namespace ZoneTool
 			float hipViewKickPitchMax;
 			float hipViewKickYawMin;
 			float hipViewKickYawMax;
-			// float hipViewKickMagMin;
 			float hipViewKickCenterSpeed;
 			float adsViewKickPitchMin;
 			float adsViewKickPitchMax;
 			float adsViewKickYawMin;
 			float adsViewKickYawMax;
-			// float adsViewKickMagMin;
 			float adsViewKickCenterSpeed;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_FIELD(hipViewKickPitchMin);
-				JSON_FIELD(hipViewKickPitchMax);
-				JSON_FIELD(hipViewKickYawMin);
-				JSON_FIELD(hipViewKickYawMax);
-				JSON_FIELD(hipViewKickCenterSpeed);
-				JSON_FIELD(adsViewKickPitchMin);
-				JSON_FIELD(adsViewKickPitchMax);
-				JSON_FIELD(adsViewKickYawMin);
-				JSON_FIELD(adsViewKickYawMax);
-				JSON_FIELD(adsViewKickCenterSpeed);
-
-				return data;
-			}
 		};
 
-		struct AttADSOverlay
+		struct __declspec(align(4)) AttADSOverlay
 		{
 			ADSOverlay overlay;
-			bool hybridToggle;
 			bool thermalScope;
-			bool thermalToggle;
-			bool outlineEnemies;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_ASSET(overlay.shader, Material);
-				JSON_ASSET(overlay.shaderLowRes, Material);
-				JSON_ASSET(overlay.shaderEMP, Material);
-				JSON_ASSET(overlay.shaderEMPLowRes, Material);
-
-				JSON_FIELD(hybridToggle);
-				JSON_FIELD(thermalScope);
-				JSON_FIELD(thermalToggle);
-				JSON_FIELD(outlineEnemies);
-
-				return data;
-			}
 		};
 
 		struct AttUI
@@ -4739,44 +4479,12 @@ namespace ZoneTool
 			weaponIconRatioType_t dpadIconRatio;
 			weaponIconRatioType_t ammoCounterIconRatio;
 			ammoCounterClipType_t ammoCounterClip;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_ASSET(dpadIcon, Material);
-				JSON_ASSET(ammoCounterIcon, Material);
-
-				JSON_FIELD(dpadIconRatio);
-				JSON_FIELD(ammoCounterIconRatio);
-				JSON_FIELD(ammoCounterClip);
-
-				return data;
-			}
 		};
 
 		struct AttRumbles
 		{
 			const char* fireRumble;
 			const char* meleeImpactRumble;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				JSON_STRING(fireRumble);
-				JSON_STRING(meleeImpactRumble);
-
-				return data;
-			}
 		};
 
 		struct AttProjectile
@@ -4790,15 +4498,13 @@ namespace ZoneTool
 			int projectileActivateDist;
 			float projectileLifetime;
 			XModel* projectileModel;
-			int projExplosionType;
+			weapProjExplosion_t projExplosionType;
 			FxEffectDef* projExplosionEffect;
 			bool projExplosionEffectForceNormalUp;
-			char pad1[3];
 			snd_alias_list_t* projExplosionSound;
 			FxEffectDef* projDudEffect;
 			snd_alias_list_t* projDudSound;
 			bool projImpactExplode;
-			char pad2[3];
 			float destabilizationRateTime;
 			float destabilizationCurvatureMax;
 			int destabilizeDistance;
@@ -4806,52 +4512,15 @@ namespace ZoneTool
 			int projIgnitionDelay;
 			FxEffectDef* projIgnitionEffect;
 			snd_alias_list_t* projIgnitionSound;
-
-			void Parse(Json& data, ZoneMemory* mem)
-			{
-			}
-
-			Json ToJson()
-			{
-				Json data;
-
-				/*JSON_ASSET(projectileModel, XModel);
-
-				JSON_ASSET(projExplosionSound, snd_alias_list_t);
-				JSON_ASSET(projDudSound, snd_alias_list_t);
-				JSON_ASSET(projIgnitionSound, snd_alias_list_t);
-
-				JSON_ASSET(projExplosionEffect, FxEffectDef);
-				JSON_ASSET(projDudEffect, FxEffectDef);
-				JSON_ASSET(projTrailEffect, FxEffectDef);
-				JSON_ASSET(projIgnitionEffect, FxEffectDef);*/
-
-				JSON_FIELD(explosionRadius);
-				JSON_FIELD(explosionInnerDamage);
-				JSON_FIELD(explosionOuterDamage);
-				JSON_FIELD(damageConeAngle);
-				JSON_FIELD(projectileSpeed);
-				JSON_FIELD(projectileSpeedUp);
-				JSON_FIELD(projectileActivateDist);
-				JSON_FIELD(projectileLifetime);
-				JSON_FIELD(projExplosionEffectForceNormalUp);
-				JSON_FIELD(projImpactExplode);
-				JSON_FIELD(destabilizationRateTime);
-				JSON_FIELD(destabilizationCurvatureMax);
-				JSON_FIELD(destabilizeDistance);
-				JSON_FIELD(projIgnitionDelay);
-
-				return data;
-			}
 		};
 
 		struct AttachmentDef
 		{
 			const char* szInternalName;
 			const char* szDisplayName;
-			std::int32_t type;
-			std::int32_t weaponType;
-			std::int32_t weapClass;
+			AttachmentType type;
+			weapType_t weaponType;
+			weapClass_t weapClass;
 			XModel** worldModels;
 			XModel** viewModels;
 			XModel** reticleViewModels;
@@ -4860,11 +4529,11 @@ namespace ZoneTool
 			AttReload* reload;
 			AttAddOns* addOns;
 			AttGeneral* general;
+			AttAimAssist* aimAssist;
 			AttAmmunition* ammunition;
-			AttIdleSettings* idleSettings;
 			AttDamage* damage;
 			AttLocationDamage* locationDamage;
-			AttScopeDriftSettings* scopeDriftSettings;
+			AttIdleSettings* idleSettings;
 			AttADSSettings* adsSettings;
 			AttADSSettings* adsSettingsMain;
 			AttHipSpread* hipSpread;
@@ -4889,8 +4558,8 @@ namespace ZoneTool
 			int loadIndex;
 			bool hideIronSightsWithThisAttachment;
 			bool shareAmmoWithAlt;
-			char pad[2];
 		};
+#pragma pack(pop)
 
 #pragma pack(push, 4)
 		struct WeaponCompleteDef

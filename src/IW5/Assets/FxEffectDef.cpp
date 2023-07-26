@@ -376,18 +376,23 @@ namespace ZoneTool
 					if (data->extended.trailDef)
 					{
 						buf->align(3);
-						buf->write(data->extended.trailDef, sizeof(FxTrailDef));
+						auto dest_traildef = buf->write(data->extended.trailDef);
+
+						static_assert(sizeof(FxTrailDef) == 36);
+						static_assert(sizeof(FxTrailVertex) == 20);
 
 						if (data->extended.trailDef->verts)
 						{
 							buf->align(3);
 							buf->write(data->extended.trailDef->verts, data->extended.trailDef->vertCount);
+							ZoneBuffer::clear_pointer(&dest_traildef->verts);
 						}
 
 						if (data->extended.trailDef->inds)
 						{
 							buf->align(1);
 							buf->write(data->extended.trailDef->inds, data->extended.trailDef->indCount);
+							ZoneBuffer::clear_pointer(&dest_traildef->inds);
 						}
 
 						ZoneBuffer::clear_pointer(&dest->extended.trailDef);
@@ -552,17 +557,17 @@ count.amplitude)[0]);
 				PRINTFLOATRANGE(1, "spawnOffsetRadius", elem->spawnOffsetRadius);
 				PRINTFLOATRANGE(1, "spawnOffsetHeight", elem->spawnOffsetHeight);
 				PRINTFLOATRANGE(1, "spawnAnglePitch", elem->spawnAngles[0]);
-				PRINTFLOATRANGE(1, "spawnAngleYaw", elem->spawnAngles[1]);
-				PRINTFLOATRANGE(1, "spawnAngleRoll", elem->spawnAngles[2]);
-				PRINTFLOATRANGE(1, "angleVelPitch", elem->angularVelocity[0]);
-				PRINTFLOATRANGE(1, "angleVelYaw", elem->angularVelocity[1]);
-				PRINTFLOATRANGE(1, "angleVelRoll", elem->angularVelocity[2]);
-				PRINTFLOATRANGE(1, "initialRot", elem->initialRotation);
-				PRINTFLOATRANGE(1, "gravity", elem->gravity);
-				PRINTFLOATRANGE(1, "elasticity", elem->reflectionFactor); // NOT SURE
+PRINTFLOATRANGE(1, "spawnAngleYaw", elem->spawnAngles[1]);
+PRINTFLOATRANGE(1, "spawnAngleRoll", elem->spawnAngles[2]);
+PRINTFLOATRANGE(1, "angleVelPitch", elem->angularVelocity[0]);
+PRINTFLOATRANGE(1, "angleVelYaw", elem->angularVelocity[1]);
+PRINTFLOATRANGE(1, "angleVelRoll", elem->angularVelocity[2]);
+PRINTFLOATRANGE(1, "initialRot", elem->initialRotation);
+PRINTFLOATRANGE(1, "gravity", elem->gravity);
+PRINTFLOATRANGE(1, "elasticity", elem->reflectionFactor); // NOT SURE
 
-				for (int g = 0; g < std::min(elem->velIntervalCount + 1, 2); g++)
-				{
+for (int g = 0; g < std::min(elem->velIntervalCount + 1, 2); g++)
+{
 #define DUMPVELGRAPH(__INDEX__, __CHARACTER__) \
 					fprintf(fp, "\tvelGraph%i" __CHARACTER__ " 0\n", g); \
 					fprintf(fp, "\t{\n"); \
@@ -576,32 +581,32 @@ count.amplitude)[0]);
 					fprintf(fp, "\t\t}\n"); \
 					fprintf(fp, "\t};\n")
 
-					DUMPVELGRAPH(0, "X");
-					DUMPVELGRAPH(1, "Y");
-					DUMPVELGRAPH(2, "Z");
-				}
+	DUMPVELGRAPH(0, "X");
+	DUMPVELGRAPH(1, "Y");
+	DUMPVELGRAPH(2, "Z");
+}
 
-				// TODO dump atlas data
-				PRINTINT(1, "atlastBehavior", elem->atlas.behavior);
-				PRINTINT(1, "atlasIndex", elem->atlas.index);
-				PRINTINT(1, "atlasFps", elem->atlas.fps);
-				PRINTINT(1, "atlasLoopCount", elem->atlas.loopCount);
-				PRINTINT(1, "atlasColIndexBits", elem->atlas.colIndexBits);
-				PRINTINT(1, "atlasRowIndexBits", elem->atlas.rowIndexBits);
-				PRINTINT(1, "atlasEntryCount", elem->atlas.entryCount);
+// TODO dump atlas data
+PRINTINT(1, "atlastBehavior", elem->atlas.behavior);
+PRINTINT(1, "atlasIndex", elem->atlas.index);
+PRINTINT(1, "atlasFps", elem->atlas.fps);
+PRINTINT(1, "atlasLoopCount", elem->atlas.loopCount);
+PRINTINT(1, "atlasColIndexBits", elem->atlas.colIndexBits);
+PRINTINT(1, "atlasRowIndexBits", elem->atlas.rowIndexBits);
+PRINTINT(1, "atlasEntryCount", elem->atlas.entryCount);
 
-				// TODO dump graphs
-				PRINTINT(1, "lightingFrac", elem->lightingFrac);
-				// TODO convert bounds to origin + radius
-				PRINTSTRING(1, "fxOnImpact", (elem->effectOnImpact) ? elem->effectOnImpact->name : "");
-				PRINTSTRING(1, "fxOnDeath", (elem->effectOnDeath) ? elem->effectOnDeath->name : "");
-				PRINTINT(1, "sortOrder", elem->sortOrder);
-				PRINTSTRING(1, "emission", (elem->effectEmitted) ? elem->effectEmitted->name : "");
-				// TODO add trail data
-				PRINTFLOATRANGE(1, "emitDist", elem->emitDist);
-				PRINTFLOATRANGE(1, "emitDistVariance", elem->emitDistVariance);
+// TODO dump graphs
+PRINTINT(1, "lightingFrac", elem->lightingFrac);
+// TODO convert bounds to origin + radius
+PRINTSTRING(1, "fxOnImpact", (elem->effectOnImpact) ? elem->effectOnImpact->name : "");
+PRINTSTRING(1, "fxOnDeath", (elem->effectOnDeath) ? elem->effectOnDeath->name : "");
+PRINTINT(1, "sortOrder", elem->sortOrder);
+PRINTSTRING(1, "emission", (elem->effectEmitted) ? elem->effectEmitted->name : "");
+// TODO add trail data
+PRINTFLOATRANGE(1, "emitDist", elem->emitDist);
+PRINTFLOATRANGE(1, "emitDistVariance", elem->emitDistVariance);
 
-				fprintf(fp, "}\n");
+fprintf(fp, "}\n");
 			}
 
 
@@ -646,10 +651,15 @@ count.amplitude)[0]);
 				}
 			}
 		}
-		
+
 		void IFxEffectDef::dump(FxEffectDef* asset)
 		{
 			AssetDumper dump;
+
+			if (std::string(asset->name).find("misc/fireworks/fireworks_00_launch_emit") != std::string::npos)
+			{
+				//__debugbreak();
+			}
 
 			if (!dump.open("fx\\"s + asset->name + ".fxe"))
 			{

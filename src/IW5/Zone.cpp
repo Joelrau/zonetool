@@ -229,6 +229,11 @@ namespace ZoneTool
 			// write assets
 			for (auto& asset : m_assets)
 			{
+#ifdef DEBUG
+				auto xassettypes = reinterpret_cast<char**>(0x7C6208);
+				ZONETOOL_INFO("writing asset \"%s\" of type %s...", asset->name().data(), xassettypes[asset->type()]);
+#endif
+
 				// push stream
 				buf->push_stream(0);
 				buf->align(3);
