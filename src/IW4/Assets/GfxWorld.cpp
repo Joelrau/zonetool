@@ -807,6 +807,14 @@ namespace ZoneTool
 				buf->write(data->heroLights, data->heroLightCount);
 				ZoneBuffer::clear_pointer(&dest->heroLights);
 			}
+			//codol maps recompiled using zonebuilder need this fix
+			if (data->sortKeyDistortion)
+			{
+				if (data->sortKeyDistortion == 44)
+				{
+					dest->sortKeyDistortion = 43;
+				}
+			}
 
 			END_LOG_STREAM;
 			buf->pop_stream();
