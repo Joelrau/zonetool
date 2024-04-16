@@ -21,6 +21,7 @@
 #include "H1/Structs.hpp"
 #include "IW6/Structs.hpp"
 #include "IW7/Structs.hpp"
+#include "S1/Structs.hpp"
 
 using namespace zonetool;
 

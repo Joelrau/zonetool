@@ -20,6 +20,11 @@ namespace ZoneTool
 		extern std::uint8_t get_material_type_from_name(const std::string& name);
 	}
 
+	namespace S1
+	{
+		extern std::unordered_map<std::string, std::string> mapped_techsets;
+	}
+
 	namespace IW5
 	{
 		class IMaterial
