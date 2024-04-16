@@ -144,6 +144,7 @@ namespace zonetool
 		iw7,
 		iw6,
 		h1,
+		s1,
 	};
 	extern dump_target dumping_target;
 }

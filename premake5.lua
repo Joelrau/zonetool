@@ -117,6 +117,7 @@ workspace "zonetool"
 	include "src/IW7.lua"
 	include "src/T6.lua"
 	include "src/H1.lua"
+	include "src/S1.lua"
 	
 	X64:project()
 
@@ -129,3 +130,4 @@ workspace "zonetool"
 	IW7:project()
 	T6:project()
 	H1:project()
+	S1:project()

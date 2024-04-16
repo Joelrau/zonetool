@@ -13,8 +13,9 @@
 #include <IW3/IW3.hpp>
 #include <IW4/IW4.hpp>
 #include <IW5/IW5.hpp>
-#include "T6/T6.hpp"
+#include <T6/T6.hpp>
 #include <H1/H1.hpp>
+#include <S1/S1.hpp>
 
 #pragma comment(lib, "Dbghelp")
 
@@ -228,6 +229,10 @@ namespace ZoneTool
 				{
 					target = zonetool::dump_target::iw7;
 				}
+				else if (target_str == "s1")
+				{
+					target = zonetool::dump_target::s1;
+				}				
 
 				ZONETOOL_INFO("current dump target: %s (%d)", target_str.data(), target);
 			}
