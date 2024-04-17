@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "SoundCurve.hpp"
+
 #include <H1\Assets\SoundCurve.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

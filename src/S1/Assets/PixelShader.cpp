@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "PixelShader.hpp"
+
 #include <H1\Assets\PixelShader.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

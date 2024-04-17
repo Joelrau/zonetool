@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "MapEnts.hpp"
+
 #include <H1\Assets\MapEnts.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

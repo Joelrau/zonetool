@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "FxEffectDef.hpp"
+
 #include <H1\Assets\FxEffectDef.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

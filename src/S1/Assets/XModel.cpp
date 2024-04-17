@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "XModel.hpp"
+
 #include <H1\Assets\XModel.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

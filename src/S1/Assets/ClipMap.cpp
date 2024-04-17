@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "ClipMap.hpp"
+
 #include <H1\Assets\ClipMap.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

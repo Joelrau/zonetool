@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "GlassWorld.hpp"
+
 #include <H1\Assets\GlassWorld.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

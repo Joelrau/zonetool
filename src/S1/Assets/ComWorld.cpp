@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "ComWorld.hpp"
+
 #include <H1\Assets\ComWorld.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

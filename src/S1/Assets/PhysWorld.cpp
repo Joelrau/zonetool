@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "PhysWorld.hpp"
+
 #include <H1\Assets\PhysWorld.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

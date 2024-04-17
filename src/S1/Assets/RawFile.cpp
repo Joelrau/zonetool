@@ -1,9 +1,8 @@
 #include "stdafx.hpp"
 
-#include <zlib.h>
+#include "RawFile.hpp"
 
 #include <H1\Assets\RawFile.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

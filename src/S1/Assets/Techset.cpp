@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 
+#include "Techset.hpp"
+
 namespace ZoneTool::S1
 {
 	void ITechset::dump_constant_buffer_indexes(const std::string& techset, const std::string& material, unsigned char* cbi)

@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 
+#include "VertexShader.hpp"
+
 namespace ZoneTool::S1
 {
 	void IVertexShader::dump(MaterialVertexShader* asset)

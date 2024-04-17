@@ -1,5 +1,8 @@
 #pragma once
 
+#include <H1\Structs.hpp>
+#include <S1\Structs.hpp>
+
 namespace ZoneTool::S1
 {
 	class ITechset : public IAsset

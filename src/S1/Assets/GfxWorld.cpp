@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 
+#include "GfxWorld.hpp"
+
 namespace ZoneTool::S1
 {
 	void IGfxWorld::dump(GfxWorld* asset)

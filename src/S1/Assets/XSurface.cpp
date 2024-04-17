@@ -1,7 +1,8 @@
 #include "stdafx.hpp"
 
+#include "XSurface.hpp"
+
 #include <H1\Assets\XSurface.hpp>
-#include <H1\Structs.hpp>
 
 namespace ZoneTool::S1
 {

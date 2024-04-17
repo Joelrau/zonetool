@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 
+#include "Sound.hpp"
+
 namespace ZoneTool::S1
 {
 	namespace snd
@@ -239,7 +241,7 @@ namespace ZoneTool::S1
 		"whizbys",
 		};
 
-		const char* get_vol_nod_name(short index)
+		const char* get_vol_mod_name(short index)
 		{
 			return volume_mod_groups[index];
 		}

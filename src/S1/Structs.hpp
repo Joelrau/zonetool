@@ -1510,7 +1510,7 @@ namespace ZoneTool::S1
 		unsigned char constantBufferIndex[180];
 		MaterialConstantBufferDef PTR64 constantBufferTable;
 		unsigned char constantBufferCount;
-		const char* PTR64 subMaterials;
+		const char PTR64 PTR64 subMaterials;
 	}; assert_sizeof(Material, 0x1E0);
 
 	struct GfxImageLoadDef
@@ -2410,7 +2410,7 @@ namespace ZoneTool::S1
 		NetConstStringType stringType;
 		NetConstStringSource sourceType;
 		unsigned int entryCount;
-		const char* PTR64 stringList;
+		const char PTR64 PTR64 stringList;
 	}; assert_sizeof(NetConstStrings, 0x20);
 
 	struct LuaFile
@@ -2866,8 +2866,8 @@ namespace ZoneTool::S1
 
 	union XAnimDynamicFrames
 	{
-		unsigned char(*_1)[3];
-		unsigned short(*_2)[3];
+		unsigned char(PTR64 _1)[3];
+		unsigned short(PTR64 _2)[3];
 	};
 
 	union XAnimDynamicIndices
@@ -2899,7 +2899,7 @@ namespace ZoneTool::S1
 
 	struct XAnimDeltaPartQuatDataFrames2
 	{
-		short(*frames)[2];
+		short(PTR64 frames)[2];
 		XAnimDynamicIndices indices;
 	};
 
@@ -2917,7 +2917,7 @@ namespace ZoneTool::S1
 
 	struct XAnimDeltaPartQuatDataFrames
 	{
-		short(*frames)[4];
+		short(PTR64 frames)[4];
 		XAnimDynamicIndices indices;
 	};
 
@@ -3000,7 +3000,7 @@ namespace ZoneTool::S1
 		unsigned short blendShapeWeightCount; // 146
 		short u4; // unused? padding?
 		scr_string_t PTR64 blendShapeWeightNames; // 152
-		char(*blendShapeWeightUnknown1)[3]; // 160
+		char(PTR64 blendShapeWeightUnknown1)[3]; // 160
 		unsigned short PTR64 blendShapeWeightUnknown2; // 168
 		unsigned short PTR64 blendShapeWeightUnknown3; // 176
 		unsigned short PTR64 blendShapeWeightUnknown4; // 184
@@ -3372,7 +3372,7 @@ namespace ZoneTool::S1
 		DObjAnimMat PTR64 baseMat; // 96
 		ReactiveMotionModelPart PTR64 reactiveMotionParts; // 104
 		ReactiveMotionModelTweaks PTR64 reactiveMotionTweaks; // 112
-		Material* PTR64 materialHandles; // 120
+		Material PTR64 PTR64 materialHandles; // 120
 		XModelLodInfo lodInfo[6]; // 128
 		char numLods; // 512
 		char collLod; // 513
@@ -3404,7 +3404,7 @@ namespace ZoneTool::S1
 		int u4; // 648
 		int u5; // 652
 		SkeletonScript PTR64 skeletonScript; // 656
-		XModel* PTR64 compositeModels; // 664
+		XModel PTR64 PTR64 compositeModels; // 664
 		XPhysBoneInfo PTR64 bonePhysics; // 672
 	}; assert_sizeof(XModel, 0x2A8);
 
@@ -3664,9 +3664,9 @@ namespace ZoneTool::S1
 		weapType_t weaponType; // 20
 		weapClass_t weapClass; // 24
 		weapGreebleType_t greebleType; // 28
-		XModel* PTR64 worldModels; // 32 (2 xmodels)
-		XModel* PTR64 viewModels; // 40 (2 xmodels)
-		XModel* PTR64 reticleViewModels; // 48 (32 xmodels)
+		XModel PTR64 PTR64 worldModels; // 32 (2 xmodels)
+		XModel PTR64 PTR64 viewModels; // 40 (2 xmodels)
+		XModel PTR64 PTR64 reticleViewModels; // 48 (32 xmodels)
 		AttChargeInfo PTR64 chargeInfo; // 56
 		AttHybridSettings PTR64 hybridSettings; // 64
 		unsigned short PTR64 waFieldOffsets; // 72
@@ -4095,17 +4095,17 @@ namespace ZoneTool::S1
 		};
 		const char PTR64 szDisplayName; // 8
 		const char PTR64 szOverlayName; // 16
-		XModel* PTR64 gunModel; // 24 (2 xmodels)
+		XModel PTR64 PTR64 gunModel; // 24 (2 xmodels)
 		XModel PTR64 handModel; // 32
 		XModel PTR64 unknownModel; // 40
 		const char PTR64 szModeName; // 48
 		Material PTR64 camoWorldModelMaterialOverride; // 56
 		Material PTR64 camoViewModelMaterialOverride; // 64
-		XAnimParts* PTR64 szXAnimsRightHanded; // 72 (180 xanims)
-		XAnimParts* PTR64 szXAnimsLeftHanded; // 80 (180 xanims)
+		XAnimParts PTR64 PTR64 szXAnimsRightHanded; // 72 (180 xanims)
+		XAnimParts PTR64 PTR64 szXAnimsLeftHanded; // 80 (180 xanims)
 		scr_string_t PTR64 hideTags; // 88 (32 xstrings)
-		WeaponAttachment* PTR64 attachments; // 96 (weaponDef + 1316 attachments)
-		XAnimParts* PTR64 szXAnims; // 104 (180 xanims)
+		WeaponAttachment PTR64 PTR64 attachments; // 96 (weaponDef + 1316 attachments)
+		XAnimParts PTR64 PTR64 szXAnims; // 104 (180 xanims)
 		AnimOverrideEntry PTR64 animOverrides; // 112 (weaponDef + 1317 overrides)
 		SoundOverrideEntry PTR64 soundOverrides; // 120 (weaponDef + 1318 overrides)
 		FXOverrideEntry PTR64 fxOverrides; // 128 (weaponDef + 1319 overrides)
@@ -4116,7 +4116,7 @@ namespace ZoneTool::S1
 		scr_string_t PTR64 notetrackRumbleMapKeys; // 168 (16 xstrings)
 		scr_string_t PTR64 notetrackRumbleMapValues; // 176 (16 xstrings)
 		scr_string_t PTR64 notetrackFXMapKeys; // 184 (16 xstrings)
-		FxEffectDef* PTR64 notetrackFXMapValues; // 192 (16 effects)
+		FxEffectDef PTR64 PTR64 notetrackFXMapValues; // 192 (16 effects)
 		scr_string_t PTR64 notetrackFXMapTagValues; // 200 (16 xstrings)
 		const char PTR64 szAltWeaponName; // 208
 		FxEffectDef PTR64 viewFlashEffect; // 216
@@ -4205,8 +4205,8 @@ namespace ZoneTool::S1
 		snd_alias_list_t PTR64 adsEnterSoundPlayer; // 880
 		snd_alias_list_t PTR64 adsLeaveSoundPlayer; // 888
 		snd_alias_list_t PTR64 adsCrosshairEnemySound; // 896
-		snd_alias_list_t* PTR64 bounceSound; // 904 (53 sounds)
-		snd_alias_list_t* PTR64 rollingSound; // 912 (53 sounds)
+		snd_alias_list_t PTR64 PTR64 bounceSound; // 904 (53 sounds)
+		snd_alias_list_t PTR64 PTR64 rollingSound; // 912 (53 sounds)
 		FxEffectDef PTR64 viewShellEjectEffect; // 920
 		FxEffectDef PTR64 worldShellEjectEffect; // 928
 		FxEffectDef PTR64 viewLastShotEjectEffect; // 936
@@ -4214,7 +4214,7 @@ namespace ZoneTool::S1
 		FxEffectDef PTR64 viewMagEjectEffect; // 952
 		Material PTR64 reticleCenter; // 960
 		Material PTR64 reticleSide; // 968
-		XModel* PTR64 worldModel; // 976 (2 xmodels)
+		XModel PTR64 PTR64 worldModel; // 976 (2 xmodels)
 		XModel PTR64 worldClipModel; // 984
 		XModel PTR64 rocketModel; // 992
 		XModel PTR64 knifeModel; // 1000
@@ -5110,7 +5110,7 @@ namespace ZoneTool::S1
 	struct UIFunctionList
 	{
 		int totalFunctions;
-		Statement_s* PTR64 functions;
+		Statement_s PTR64 PTR64 functions;
 	};
 
 	struct StaticDvar
@@ -5122,13 +5122,13 @@ namespace ZoneTool::S1
 	struct StaticDvarList
 	{
 		int numStaticDvars;
-		StaticDvar* PTR64 staticDvars;
+		StaticDvar PTR64 PTR64 staticDvars;
 	};
 
 	struct StringList
 	{
 		int totalStrings;
-		const char* PTR64 strings;
+		const char PTR64 PTR64 strings;
 	};
 
 	struct ExpressionSupportingData
@@ -5195,7 +5195,7 @@ namespace ZoneTool::S1
 	struct MenuEventHandlerSet
 	{
 		int eventHandlerCount;
-		MenuEventHandler* PTR64 eventHandlers;
+		MenuEventHandler PTR64 PTR64 eventHandlers;
 	};
 
 	struct ItemKeyHandler
@@ -5442,14 +5442,14 @@ namespace ZoneTool::S1
 		menuData_t PTR64 data;
 		windowDef_t window;
 		int itemCount;
-		itemDef_t* PTR64 items;
+		itemDef_t PTR64 PTR64 items;
 	};
 
 	struct MenuList
 	{
 		const char PTR64 name;
 		int menuCount;
-		menuDef_t* PTR64 menus;
+		menuDef_t PTR64 PTR64 menus;
 	};
 
 	struct cplane_s
@@ -6493,7 +6493,7 @@ namespace ZoneTool::S1
 		unsigned int PTR64 isInUse;
 		unsigned int PTR64 cellBits;
 		unsigned char PTR64 visData;
-		float(*linkOrg)[3];
+		float(PTR64 linkOrg)[3];
 		float PTR64 halfThickness;
 		unsigned short PTR64 lightingHandles;
 		FxGlassGeometryData PTR64 initGeoData;
@@ -6564,7 +6564,7 @@ namespace ZoneTool::S1
 		bool isAncestor;
 		unsigned char recursionDepth;
 		unsigned char hullPointCount;
-		float(*hullPoints)[2];
+		float(PTR64 hullPoints)[2];
 		GfxPortal PTR64 queuedParent;
 	};
 
@@ -6577,7 +6577,7 @@ namespace ZoneTool::S1
 	{
 		GfxPortalWritable writable;
 		DpvsPlane plane;
-		float(*vertices)[3];
+		float(PTR64 vertices)[3];
 		unsigned short cellIndex;
 		unsigned short closeDistance;
 		unsigned char vertexCount;
@@ -6688,7 +6688,7 @@ namespace ZoneTool::S1
 	struct GfxWorldDraw
 	{
 		unsigned int reflectionProbeCount;
-		GfxImage* PTR64 reflectionProbes;
+		GfxImage PTR64 PTR64 reflectionProbes;
 		GfxReflectionProbe PTR64 reflectionProbeOrigins;
 		GfxRawTexture PTR64 reflectionProbeTextures;
 		unsigned int reflectionProbeReferenceCount;
@@ -8002,7 +8002,7 @@ namespace ZoneTool::S1
 	struct ScriptStringList
 	{
 		int count;
-		const char* PTR64 strings;
+		const char PTR64 PTR64 strings;
 	};
 
 	union GfxZoneTableEntry

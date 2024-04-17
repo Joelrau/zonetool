@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 
+#include "VertexDecl.hpp"
+
 namespace ZoneTool::S1
 {
 	void IVertexDecl::dump(MaterialVertexDeclaration* asset)
