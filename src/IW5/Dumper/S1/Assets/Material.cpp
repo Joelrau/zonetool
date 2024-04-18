@@ -107,15 +107,15 @@ namespace ZoneTool
 			{"mc_l_sm_r0c0n0s0_nocast",					"mc_l_sm_r0c0n0sd0_nfwpf"}, // no nocast
 			{"mc_l_sm_r0c0n0s0o0",						"mc_l_sm_r0c0n0sd0_nfwpf"}, // not sure
 			{"mc_l_sm_r0c0n0s0p0",						"mc_l_sm_r0c0n0sd0p0_nfwpf"},
-			{"mc_l_sm_r0c0p0",							"wc_l_sm_r0c0p0_nfwpf"}, // mc -> wc
+			{"mc_l_sm_r0c0p0",							"m_l_sm_r0c0p0_nfwpf"}, // mc -> m
 			{"mc_l_sm_r0c0q0n0",						"mc_l_sm_r0c0n0_nfwpf"},
 			{"mc_l_sm_r0c0q0n0s0",						"mc_l_sm_r0c0n0sd0_nfwpf"},
 			{"mc_l_sm_r0c0q0n0s0p0",					"mc_l_sm_r0c0q0n0sd0p0_nfwpf"},
 			{"mc_l_sm_t0c0",							"mc_l_sm_t0c0_nfwpf"},
 			{"mc_l_sm_t0c0_nocast",						"mc_l_sm_t0c0_nfwpf_nocast"},
-			{"mc_l_sm_t0c0s0",							"wc_l_sm_t0c0sd0_nfwpf"},		// mc -> wc
-			{"mc_l_sm_t0c0n0",							"wc_l_sm_t0c0n0_nfwpf"},		// ^
-			{"mc_l_sm_t0c0n0_nocast",					"wc_l_sm_t0c0n0_nfwpf"},		// ^ (no nocast)
+			{"mc_l_sm_t0c0s0",							"m_l_sm_t0c0sd0_nfwpf"},		// mc -> m
+			{"mc_l_sm_t0c0n0",							"m_l_sm_t0c0n0_nfwpf"},			// ^
+			{"mc_l_sm_t0c0n0_nocast",					"m_l_sm_t0c0n0_nfwpf"},			// ^ (no nocast)
 			{"mc_l_sm_t0c0n0s0",						"mc_l_sm_t0c0n0sd0_nfwpf"},
 			{"mc_l_sm_t0c0n0s0_nocast",					"mc_l_sm_t0c0n0sd0_nfwpf_nocast"},
 			{"mc_l_sm_t0c0n0s0p0",						"mc_l_sm_t0c0n0sd0p0_nfwpf"},
@@ -130,8 +130,8 @@ namespace ZoneTool
 			{"mc_l_sm_b0c0n0s0",						"mc_l_sm_lmpb_ndw_b0c0n0sd0_cltrans"},
 			{"mc_l_sm_b0c0n0s0p0",						"mc_l_sm_lmpb_ndw_b0c0n0sd0_nfwpf_frt_im_aat"}, // couldn't find
 			{"mc_l_sm_b0c0p0",							"mc_l_sm_lmpb_ndw_b0c0_nfwpf_frt_im_aat"}, // couldn't find
-			{"mc_l_sm_b0c0q0n0s0",						"wc_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf_frt_aat"}, // mc -> wc
-			{"mc_l_sm_b0c0q0n0s0p0",					"wc_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf_frt_aat"}, // ^ couldn't find
+			{"mc_l_sm_b0c0q0n0s0",						"mc_l_sm_b0c0q0n0sd0_cltrans"}, // cltrans
+			{"mc_l_sm_b0c0q0n0s0p0",					"m_l_sm_ndw_b0c0q0n0sd0p0_cltrans"}, // mc -> m ^ couldn't find
 			{"mc_l_sm_b0c0n0s0_custom_growing_ice_cracks", "mc_l_sm_lmpb_ndw_b0c0n0sd0_nfwpf_frt_im_aat"}, // couldn't find
 			{"mc_l_sm_b0c0n0s0_custom_growing_ice_cracks_sat", "mc_l_sm_lmpb_ndw_b0c0n0sd0_nfwpf_frt_im_aat"}, // couldn't find
 
