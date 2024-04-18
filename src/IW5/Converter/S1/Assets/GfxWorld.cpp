@@ -18,7 +18,7 @@ namespace ZoneTool::IW5
 			s1_asset->name = asset->name;
 			s1_asset->baseName = asset->baseName;
 
-			s1_asset->bspVersion = 111;
+			s1_asset->bspVersion = 109;
 
 			s1_asset->planeCount = asset->planeCount;
 			s1_asset->nodeCount = asset->nodeCount;

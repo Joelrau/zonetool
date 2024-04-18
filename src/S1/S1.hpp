@@ -14,6 +14,7 @@ using ordered_json = nlohmann::ordered_json;
 using namespace zonetool;
 
 #include "Structs.hpp"
+#include <H1\Structs.hpp>
 
 #include "Assets/ClipMap.hpp"
 #include "Assets/ComWorld.hpp"

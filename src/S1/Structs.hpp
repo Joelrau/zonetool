@@ -1,8 +1,6 @@
 #pragma once
 #include <d3d11.h>
 
-//#include <H1/Structs.hpp>
-
 #define PTR64 * __ptr64
 #define PTR32 * __ptr32
 

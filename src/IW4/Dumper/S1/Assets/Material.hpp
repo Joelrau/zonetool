@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ZoneTool::IW4::H1Dumper
+namespace ZoneTool::IW4::S1Dumper
 {
 	void dump(Material* asset);
 }

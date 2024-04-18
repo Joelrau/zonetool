@@ -211,7 +211,7 @@ namespace ZoneTool
 	matdata[#entry] = asset->info.entry;
 	}
 
-	namespace IW4::H1Dumper
+	namespace IW4::S1Dumper
 	{
 		void dump(Material* asset)
 		{
