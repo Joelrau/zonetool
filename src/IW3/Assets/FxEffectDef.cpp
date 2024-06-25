@@ -38,6 +38,15 @@ namespace ZoneTool
 				{
 					iw4_fx->elemDefs[i].extended.trailDef = nullptr;
 				}
+
+				if (asset->elemDefs[i].elemType == FX_ELEM_TYPE_OMNI_LIGHT || asset->elemDefs[i].elemType == FX_ELEM_TYPE_SPOT_LIGHT)
+				{
+					for (int j = 0; j < asset->elemDefs[i].visStateIntervalCount + 1; j++)
+					{
+						iw4_fx->elemDefs[i].visSamples[j].base.scale = 1.0f;
+						iw4_fx->elemDefs[i].visSamples[j].amplitude.scale = 1.0f;
+					}
+				}
 			}
 			return iw4_fx;
 		}

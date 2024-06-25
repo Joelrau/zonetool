@@ -29,7 +29,7 @@ namespace ZoneTool::IW5
 			IW7_asset->framerate = asset->framerate;
 			IW7_asset->frequency = asset->frequency;
 			IW7_asset->names = mem.allocate<IW7::scr_string_t>(IW7_asset->boneCount[9]);
-			for (auto i = 0; i < IW7_asset->boneCount[9]; i++)
+			for (auto i = 0; i < asset->boneCount[9]; i++)
 			{
 				IW7_asset->names[i] = static_cast<IW7::scr_string_t>(asset->names[i]);
 			}

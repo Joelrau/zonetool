@@ -171,6 +171,11 @@ namespace ZoneTool
 
 			iw4_clipmap->mapEnts = mem.allocate<IW4::MapEnts>();
 			iw4_clipmap->mapEnts->name = asset->mapEnts->name;
+			iw4_clipmap->mapEnts->stageCount = 1;
+			iw4_clipmap->mapEnts->stageNames = mem.allocate<IW4::Stage>();
+			iw4_clipmap->mapEnts->stageNames[0].name = (char*)mem.duplicate_string("stage 0");
+			iw4_clipmap->mapEnts->stageNames[0].triggerIndex = 0x400;
+			iw4_clipmap->mapEnts->stageNames[0].sunPrimaryLightIndex = 0x1;
 
 			auto* iw4_mapEnts = iw4_clipmap->mapEnts;
 

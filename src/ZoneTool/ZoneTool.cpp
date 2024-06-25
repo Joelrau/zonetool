@@ -319,7 +319,30 @@ namespace ZoneTool
 					}
 					else if (args[i] == "-dumpzone")
 					{
-						current_linker->dump_zone(args[i + 1]);
+						std::string target_str = "";
+						if (i + 2 < args.size())
+						{
+							target_str = args[i + 2];
+						}
+
+						auto target = zonetool::dump_target::h1;
+						if (target_str == "h1")
+						{
+							target = zonetool::dump_target::h1;
+						}
+						else if (target_str == "iw6")
+						{
+							target = zonetool::dump_target::iw6;
+						}
+						else if (target_str == "iw7")
+						{
+							target = zonetool::dump_target::iw7;
+						}
+
+						std::string zone = args[i + 1];
+						current_linker->dump_zone(zone, target);
+
+						if (!target_str.empty()) i++;
 						i++;
 					}
 				}

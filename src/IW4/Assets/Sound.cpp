@@ -98,12 +98,12 @@ namespace ZoneTool
 			return iw5_asset;
 		}
 
-		void ISound::dump(snd_alias_list_t* asset)
+		void ISound::dump(snd_alias_list_t* asset, const std::function<std::string(const char* filename)>& get_streamed_sound_data)
 		{
 			allocator allocator;
 			auto* iw5_asset = generate_sound(asset, allocator);
 
-			IW5::ISound::dump(iw5_asset, filesystem_read_big_file);
+			IW5::ISound::dump(iw5_asset, get_streamed_sound_data);
 		}
 	}
 }

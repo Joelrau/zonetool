@@ -176,6 +176,17 @@ static std::string to_lower_copy(const std::string& str)
 	return lowercase;
 }
 
+static std::string to_upper_copy(const std::string& str)
+{
+	std::string lowercase;
+	lowercase.reserve(str.size()); // preallocate memory for efficiency
+	for (char c : str)
+	{
+		lowercase += std::toupper(c);
+	}
+	return lowercase;
+}
+
 static std::vector<std::string> split(const std::string& rawInput, const std::vector<char>& delims)
 {
 	std::vector<std::string> strings;

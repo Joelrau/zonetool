@@ -10,7 +10,7 @@ namespace ZoneTool
 			allocator allocator;
 			auto* iw5_model = allocator.allocate<IW5::XModel>();
 			memcpy(iw5_model, asset, sizeof(XModel));
-			iw5_model->quantization = 0;
+			iw5_model->quantization = 0.0f;
 
 			for (auto i = 0; i < asset->numLods; i++)
 			{

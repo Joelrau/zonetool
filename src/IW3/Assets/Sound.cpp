@@ -88,7 +88,7 @@ namespace ZoneTool
 			allocator allocator;
 			auto* iw4_asset = generate_sound(asset, allocator);
 
-			IW4::ISound::dump(iw4_asset);
+			IW4::ISound::dump(iw4_asset, filesystem_read_big_file);
 		}
 	}
 }

@@ -67,42 +67,42 @@ namespace ZoneTool
 		std::unordered_map<std::uint8_t, std::uint8_t> mapped_sortkeys =
 		{
 			{0, 48},	// Distortion (confirmed)
-			// Opaque water (never used)
-			// Boat hull (never used)
-{3, 1},		// Opaque ambient
-{4, 2},		// Opaque (confirmed)
-{5, 3},		// Sky (confirmed)
-{6, 4},		// Skybox sun/moon
-{7, 5},		// Clouds  NOT SURE
-{8, 6},		// Horizon NOT SURE
-{9, 7},		// Decal bottom 1
-{10, 8},	// Decal bottom 2
-{11, 9},	// Decal bottom 3
-{12, 10},	// Decal static (confirmed)
-{13, 11},	// Decal mid 1
-{14, 12},	// Decal mid 2 (confirmed)
-{15, 13},	// Decal mid 3
-{24, 14},	// Weapon Impact (confirmed)
-{29, 15},	// Decal top 1
-{30, 16},	// Decal top 2 (confirmed)
-{31, 17},	// Decal top 3
-//{32, 32},	// Multiplicative
-//{33, 33},	// Banner/ Curtain (wild guess!)
-//{34, 34},	// Hair. I matched it with german shepherd material sortkey, i hope its ok.
-//{35, 35},	// Underwater
-//{36, 36},	// Transparent water
-//{37, 37},	// Corona (wild guess)
-{38, 26},	// Window inside
-{39, 27},	// Window outside (confirmed)
-//{40, 40},	// Before effects 1 (wild guess)
-//{41, 41},	// Before effects 2 (wild guess)
-//{42, 42},	// Before effects 3 (extremely wild guess)
-{43, 7},	// Blend / additive => to a decal layer (confirmed)
-{48, 53},	// Effect auto sort! (confirmed)
-{56, 30},	// AE Bottom
-{57, 31},	// AE Middle
-{58, 32},	// AE top (confirmed)
-{59, 36},	// Viewmodel effect
+						// Opaque water (never used)
+						// Boat hull (never used)
+			{3, 1},		// Opaque ambient
+			{4, 2},		// Opaque (confirmed)
+			{5, 3},		// Sky (confirmed)
+			{6, 4},		// Skybox sun/moon
+			{7, 5},		// Clouds  NOT SURE
+			{8, 6},		// Horizon NOT SURE
+			{9, 7},		// Decal bottom 1
+			{10, 8},	// Decal bottom 2
+			{11, 9},	// Decal bottom 3
+			{12, 10},	// Decal static (confirmed)
+			{13, 11},	// Decal mid 1
+			{14, 12},	// Decal mid 2 (confirmed)
+			{15, 13},	// Decal mid 3
+			{24, 14},	// Weapon Impact (confirmed)
+			{29, 15},	// Decal top 1
+			{30, 16},	// Decal top 2 (confirmed)
+			{31, 17},	// Decal top 3
+			//{32, 32},	// Multiplicative
+			//{33, 33},	// Banner/ Curtain (wild guess!)
+			//{34, 34},	// Hair. I matched it with german shepherd material sortkey, i hope its ok.
+			//{35, 35},	// Underwater
+			//{36, 36},	// Transparent water
+			//{37, 37},	// Corona (wild guess)
+			{38, 26},	// Window inside
+			{39, 27},	// Window outside (confirmed)
+			//{40, 40},	// Before effects 1 (wild guess)
+			//{41, 41},	// Before effects 2 (wild guess)
+			//{42, 42},	// Before effects 3 (extremely wild guess)
+			{43, 7},	// Blend / additive => to a decal layer (confirmed)
+			{48, 53},	// Effect auto sort! (confirmed)
+			{56, 30},	// AE Bottom
+			{57, 31},	// AE Middle
+			{58, 32},	// AE top (confirmed)
+			{59, 36},	// Viewmodel effect
 		};
 
 		std::unordered_map<std::string, std::uint8_t> mapped_sortkeys_by_techset =

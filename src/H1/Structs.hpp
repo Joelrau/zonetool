@@ -3376,12 +3376,21 @@ namespace ZoneTool::H1
 		float brightness;
 		float maxLength;
 		int exponent;
-		char __pad0[24];
+		float unk;
+		float bulbRadius;
+		float multiplier;
+		float fadeOffset[2];
+		char unk1;
+		char opl;
+		char unk2;
+		char unused;
 	}; assert_sizeof(FxSpotLightDef, 0x30);
 
 	struct FxOmniLightDef
 	{
-		char __pad0[16];
+		float bulbRadius;
+		float multiplier;
+		float fadeOffset[2];
 	}; assert_sizeof(FxOmniLightDef, 0x10);
 
 	struct FxFlareDef

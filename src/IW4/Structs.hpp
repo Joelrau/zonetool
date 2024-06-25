@@ -246,14 +246,14 @@ namespace ZoneTool
 			unsigned int loadBits[2];
 		};
 
-		struct GfxImageLoadDef // actually a IDirect3DTexture* but this is easier
+		struct GfxImageLoadDef
 		{
-			char mipLevels;
-			char flags;
-			short dimensions[3];
-			int format; // usually the compression Magic
-			int dataSize; // set to zero to load from IWD
-			char* texture; // texture
+			char levelCount;
+			char pad[3];
+			int flags;
+			int format;
+			int resourceSize;
+			char data[1];
 		};
 
 		enum GfxImageCategory : unsigned char
@@ -279,14 +279,13 @@ namespace ZoneTool
 			int platform[2];
 		};
 
-		// from iw5xport
 		struct GfxImage
 		{
 			GfxImageLoadDef* texture;
-			unsigned char mapType; // 5 is cube, 4 is 3d, 3 is 2d
-			GfxImageCategory semantic;
+			unsigned char mapType;
+			unsigned char semantic;
 			unsigned char category;
-			bool useSrgbReads; // is this flags? lmfao
+			bool useSrgbReads;
 			Picmip picmip;
 			bool noPicmip;
 			char track;

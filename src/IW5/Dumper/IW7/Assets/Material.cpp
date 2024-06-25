@@ -3,90 +3,134 @@
 
 //#include "IW7/Assets/Material.hpp"
 
+//r0 - replace
+//c0 - color map
+//no - normal map
+//s0 - specular map
+//p0 - parallax
+//a0 - Add
+//b0 - Blend
+//d0 - Detail
+//t0 - transparent ? (means that its replace + alpha test >= 128 meaning either full / no transparency per pixel)
+//q0 - (don't know the word, it's a detail map for normals)
+
 namespace ZoneTool
 {
 	namespace IW7
 	{
 		std::unordered_map<std::string, std::string> mapped_techsets =
 		{
-			{"mc_l_sm_r0c0",					"mo_l_sm_replace_i0c0"},
-			{"mc_l_sm_r0c0s0",					"mo_l_sm_replace_i0c0s0"},
-			{"mc_l_sm_r0c0n0s0",				"mo_l_sm_replace_i0c0s0n0"},
+			{"mc_l_sm_r0c0",							"mo_l_sm_replace_i0c0"},
+			{"mc_l_sm_r0c0s0",							"mo_l_sm_replace_i0c0s0"},
+			{"mc_l_sm_r0c0n0s0",						"mo_l_sm_replace_i0c0s0n0"},
 
-			{"2d",								"2d"},
+			{"2d",										"2d"},
+
+			{"effect",									"eq_effect_blend_lin_ndw_nocast"},
+			{"effect_nofog",							"eq_effect_blend_lin_nofog_ndw_nocast"},
+			{"effect_zfeather_add",						"eq_effect_zfeather_add_lin_ct_ndw_nocast"},
+			{"effect_zfeather_add_nofog_eyeoffset",		"eq_effect_zfeather_add_lin_nofog_eyeoffset_ndw_nocast"},
+			{"effect_zfeather_add_nofog",				"eq_effect_zfeather_add_lin_nofog_ndw_nocast"},
+
+			{"distortion_scale",						"eq_distortion_scale"},
+			{"distortion_scale_zfeather",				"eq_distortion_scale_zfeather"},
+		};
+
+		std::unordered_map<std::string, std::string> mapped_techsets_effect_vertlit =
+		{
+			{"effect",									"ev_effect_blend_lin_ct_ndw_nocast"},
 		};
 
 		enum MaterialType : std::uint8_t
 		{
 			MTL_TYPE_DEFAULT = 0x0, // ""
-			MTL_TYPE_MO = 23, // "mo"
-			MTL_TYPE_MCO = 24, // "mco"
-			MTL_TYPE_W = 68, // "w"
-			MTL_TYPE_WC = 69, // "wc"
+			MTL_TYPE_MODEL = 1, // "m"
+			MTL_TYPE_MODEL_SELFVIS = 23, // "mo"
+			MTL_TYPE_MODEL_VERTCOL_SELFVIS = 24, // "mco"
+			MTL_TYPE_WORLD = 68, // "w"
+			MTL_TYPE_WORLD_VERTCOL = 69, // "wc"
+			MTL_TYPE_EFFECT_LMAP = 71, // "el"
+			MTL_TYPE_EFFECT_VERTLIT = 72, // "ev"
+			MTL_TYPE_EFFECT_QUAD = 73, // "eq"
 		};
 
-		std::unordered_map<std::string, std::string> material_prefixes[] =
+		std::string prefixes[] =
 		{
-			{{"m", "mo"},
-			{"me", "mo"},
-			{"mc", "mo"},
-			{"w", "w"},
-			{"wc", "wc"},
-			{"gfx", "ev"}},
+			"mo",
+			"ev",
+			"eq",
 		};
 
-		std::string replace_material_prefix(const std::string& name)
+		std::uint8_t prefixes_types[] =
 		{
-			for (auto& prefix_map : material_prefixes)
+			MTL_TYPE_MODEL_SELFVIS,
+			MTL_TYPE_EFFECT_VERTLIT,
+			MTL_TYPE_EFFECT_QUAD,
+		};
+
+		std::string get_mapped_techset(const std::string& techset, bool effect_vertlit)
+		{
+			auto& map = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
+			if (map.find(techset) == map.end())
 			{
-				for (auto& pair : prefix_map)
+				return "2d";
+			}
+			return map[techset];
+		}
+
+		std::unordered_map<std::string, std::string> prefix_cache;
+		std::string replace_material_prefix(const std::string& name, std::string techset, bool effect_vertlit)
+		{
+			auto& map = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
+
+			if (!techset.empty() && map.find(techset) != map.end())
+			{
+				std::string new_tech = map[techset];
+				for (auto& prefix : prefixes)
 				{
-					auto prefix = pair.first + "/";
-					auto replacement = pair.second + "/";
-					
-					if (name.starts_with(prefix))
+					if (new_tech.starts_with(prefix + "_"))
 					{
+						auto offset_end = name.find("/");
+						if (offset_end == std::string::npos)
+						{
+							offset_end = 0;
+						}
+
+						const auto replacement = prefix + "/";
+
 						std::string replaced = name;
-						replaced.replace(0, prefix.length(), replacement);
+						replaced.replace(0, offset_end, replacement);
+						prefix_cache[name] = replaced;
 						return replaced;
 					}
 				}
 			}
+
+			if (prefix_cache.contains(name))
+			{
+				return prefix_cache[name];
+			}
+
 			return name;
 		}
 
-		std::uint8_t get_material_type_from_name(const std::string& name)
+		std::uint8_t get_material_type_from_techset(std::string techset) // iw7_techset
 		{
-			auto prefix_idx = name.find("/");
-			if (prefix_idx != std::string::npos && prefix_idx)
+			if (!techset.empty())
 			{
-				std::string prefix = std::string(name.begin(), name.begin() + prefix_idx);
-				if (prefix == "m")
+				for (auto prefix_idx = 0; prefix_idx < std::size(prefixes); prefix_idx++)
 				{
-					return IW7::MTL_TYPE_MO;
-				}
-				else if (prefix == "me")
-				{
-					return IW7::MTL_TYPE_MO;
-				}
-				else if (prefix == "mc")
-				{
-					return IW7::MTL_TYPE_MO;
-				}
-				else if (prefix == "w")
-				{
-					return IW7::MTL_TYPE_W;
-				}
-				else if (prefix == "wc")
-				{
-					return IW7::MTL_TYPE_WC;
-				}
-				else if (prefix != "gfx")
-				{
-					ZONETOOL_WARNING("Unknown material type for prefix \"%s\" (material: %s)", prefix.data(), name.data());
+					const auto prefix = prefixes[prefix_idx];
+					const auto type = prefixes_types[prefix_idx];
+
+					if (techset.starts_with(prefix + "_"))
+					{
+						return type;
+					}
 				}
 			}
-			return H1::MTL_TYPE_DEFAULT;
+
+			return IW7::MTL_TYPE_DEFAULT;
 		}
 
 		IW7::TextureSemantic surf_flags_conversion_table[13]

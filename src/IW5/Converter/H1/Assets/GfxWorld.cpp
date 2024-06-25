@@ -58,11 +58,11 @@ namespace ZoneTool::IW5
 			h1_asset->lastSunPrimaryLightIndex = asset->lastSunPrimaryLightIndex;
 			h1_asset->primaryLightCount = asset->primaryLightCount;
 			h1_asset->primaryLightEnvCount = asset->primaryLightCount + 1;
-			h1_asset->sortKeyLitDecal = 7; // h1_asset->sortKeyLitDecal = asset->sortKeyLitDecal;
-			h1_asset->sortKeyEffectDecal = 43; // h1_asset->sortKeyEffectDecal = asset->sortKeyEffectDecal;
+			h1_asset->sortKeyLitDecal = 7;
+			h1_asset->sortKeyEffectDecal = 43;
 			h1_asset->sortKeyTopDecal = 17;
-			h1_asset->sortKeyEffectAuto = 53; // h1_asset->sortKeyEffectAuto = asset->sortKeyEffectAuto;
-			h1_asset->sortKeyDistortion = 48; // h1_asset->sortKeyDistortion = asset->sortKeyDistortion;
+			h1_asset->sortKeyEffectAuto = 53;
+			h1_asset->sortKeyDistortion = 48;
 			h1_asset->sortKeyHair = 18;
 			h1_asset->sortKeyEffectBlend = 33;
 
@@ -76,7 +76,7 @@ namespace ZoneTool::IW5
 				h1_asset->dpvsPlanes.sceneEntCellBits[i] = asset->dpvsPlanes.sceneEntCellBits[i];
 			}
 
-			h1_asset->aabbTreeCounts = mem.allocate<H1::GfxCellTreeCount>(h1_asset->dpvsPlanes.cellCount); //reinterpret_cast<IW6::GfxCellTreeCount* __ptr64>(asset->aabbTreeCounts);
+			h1_asset->aabbTreeCounts = mem.allocate<H1::GfxCellTreeCount>(h1_asset->dpvsPlanes.cellCount);
 			h1_asset->aabbTrees = mem.allocate<H1::GfxCellTree>(h1_asset->dpvsPlanes.cellCount);
 			for (int i = 0; i < h1_asset->dpvsPlanes.cellCount; i++)
 			{
@@ -109,13 +109,6 @@ namespace ZoneTool::IW5
 
 				auto add_portal = [](H1::GfxPortal* h1_portal, IW5::GfxPortal* iw5_portal)
 				{
-					//h1_portal->writable.isQueued = iw5_portal->writable.isQueued;
-					//h1_portal->writable.isAncestor = iw5_portal->writable.isAncestor;
-					//h1_portal->writable.recursionDepth = iw5_portal->writable.recursionDepth;
-					//h1_portal->writable.hullPointCount = iw5_portal->writable.hullPointCount;
-					//h1_portal->writable.hullPoints = reinterpret_cast<float(*__ptr64)[2]>(iw5_portal->writable.hullPoints);
-					//h1_portal->writable.queuedParent = add_portal(iw5_portal->writable.queuedParent); // mapped at runtime
-
 					memcpy(&h1_portal->plane, &iw5_portal->plane, sizeof(float[4]));
 					h1_portal->vertices = reinterpret_cast<float(*__ptr64)[3]>(iw5_portal->vertices);
 					h1_portal->cellIndex = iw5_portal->cellIndex;
@@ -409,7 +402,7 @@ namespace ZoneTool::IW5
 					REINTERPRET_CAST_SAFE(h1_asset->shadowGeom[i].smodelIndex, asset->shadowGeom[i].smodelIndex);
 				}
 			}
-			h1_asset->shadowGeomOptimized = nullptr;
+			h1_asset->shadowGeomOptimized = h1_asset->shadowGeom;
 
 			h1_asset->lightRegion = mem.allocate<H1::GfxLightRegion>(h1_asset->primaryLightCount);
 			for (unsigned int i = 0; i < h1_asset->primaryLightCount; i++)

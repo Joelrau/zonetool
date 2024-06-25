@@ -111,7 +111,7 @@ namespace ZoneTool::IW7
 	struct XAnimParts;
 	struct XModelSurfs;
 	struct XModel;
-	struct Mayhem;
+	struct MayhemData;
 	struct Material;
 	struct ComputeShader;
 	struct MaterialVertexShader;
@@ -199,12 +199,13 @@ namespace ZoneTool::IW7
 	{
 		FxEffectDef PTR64 fx;
 		ParticleSystemDef PTR64 particleSystemDef;
+		void PTR64 data;
 	};
 
 	enum FxCombinedType : std::uint8_t
 	{
-		FX_COMBINED_DEFAULT,
-		FX_COMBINED_PARTICLE_SYSTEM,
+		FX_COMBINED_FX,
+		FX_COMBINED_VFX,
 	};
 
 	struct FxCombinedDef
@@ -213,7 +214,7 @@ namespace ZoneTool::IW7
 		FxCombinedType type;
 	};
 
-	//typedef const char PTR64 SndAliasLookup;
+	typedef const char PTR64 SndAliasLookup;
 
 	struct PhysicsLibrary
 	{
@@ -541,24 +542,44 @@ namespace ZoneTool::IW7
 		PhysicsVFXEventAssetRules rules;
 	}; assert_sizeof(PhysicsVFXEventAsset, 0x20);
 
+	struct PhysicsAssetUsageCounter
+	{
+		int serverEnt;
+		int clientEnt;
+		int dynEnt;
+	};
+
 	struct PhysicsAsset
 	{
 		const char PTR64 name;
 		unsigned int havokDataSize;
 		char PTR64 havokData;
-		char __pad0[8];
+		int numRigidBodies;
 		int numConstraints;
 		int numSFXEventAssets;
-		PhysicsSFXEventAsset PTR64  PTR64 sfxEventAssets;
+		PhysicsSFXEventAsset PTR64 PTR64 sfxEventAssets;
 		int numVFXEventAssets;
-		PhysicsVFXEventAsset PTR64  PTR64 vfxEventAssets;
-		char __pad1[16];
+		PhysicsVFXEventAsset PTR64 PTR64 vfxEventAssets;
+		PhysicsAssetUsageCounter physicsUsageCounter;
+		char __pad0[4]; // unused
 	}; assert_sizeof(PhysicsAsset, 0x50);
+
+	struct unk_1453E1188
+	{
+		char __pad0[68];
+	}; assert_sizeof(unk_1453E1188, 68);
+
+	struct unk_1453E1068
+	{
+		int numUnk;
+		unk_1453E1188 PTR64 unk;
+	}; assert_sizeof(unk_1453E1068, 16);
 
 	struct PhysicsFXPipeline
 	{
 		const char PTR64 name;
-		char __pad0[24];
+		char __pad0[8];
+		unk_1453E1068 unk;
 	}; assert_sizeof(PhysicsFXPipeline, 0x20);
 
 	struct PhysicsFXShape
@@ -583,8 +604,8 @@ namespace ZoneTool::IW7
 
 	union XAnimDynamicFrames
 	{
-		unsigned char( PTR64 _1)[3];
-		unsigned short( PTR64 _2)[3];
+		unsigned char(PTR64 _1)[3];
+		unsigned short(PTR64 _2)[3];
 	};
 
 	union XAnimDynamicIndices
@@ -616,7 +637,7 @@ namespace ZoneTool::IW7
 
 	struct XAnimDeltaPartQuatDataFrames2
 	{
-		short( PTR64 frames)[2];
+		short(PTR64 frames)[2];
 		XAnimDynamicIndices indices;
 	};
 
@@ -634,7 +655,7 @@ namespace ZoneTool::IW7
 
 	struct XAnimDeltaPartQuatDataFrames
 	{
-		short( PTR64 frames)[4];
+		short(PTR64 frames)[4];
 		XAnimDynamicIndices indices;
 	};
 
@@ -684,7 +705,8 @@ namespace ZoneTool::IW7
 		unsigned char boneCount[10]; // 119
 		unsigned char notifyCount; // 129
 		unsigned char assetType; // 130
-		unsigned char ikType; // 131
+		unsigned char unk1; // 131
+		unsigned char unk2; // 132
 	}; assert_sizeof(XAnimParts, 0x88);
 
 	struct XSurfaceCollisionAabb
@@ -717,7 +739,7 @@ namespace ZoneTool::IW7
 
 	struct XRigidVertList
 	{
-		unsigned short boneOffset;
+		unsigned short boneOffsetIndex;
 		unsigned short vertCount;
 		unsigned short triOffset;
 		unsigned short triCount;
@@ -840,7 +862,8 @@ namespace ZoneTool::IW7
 	struct XSurfaceSubdivInfo
 	{
 		XSurfaceSubdivLevel PTR64 levels;
-		char __pad0[24];
+		unsigned int flags;
+		char __pad0[20];
 		GfxSubdivCache cache;
 	}; assert_sizeof(XSurfaceSubdivInfo, 0x38);
 
@@ -869,15 +892,47 @@ namespace ZoneTool::IW7
 
 	typedef unsigned short XBlendInfo;
 
+	enum XSurfaceFlagBits
+	{
+		SURF_FLAG_BIT_VERTCOL_GREY = 0x0,
+		SURF_FLAG_BIT_VERTCOL_NONE = 0x1,
+		SURF_FLAG_BIT_SKINNED = 0x2,
+		SURF_FLAG_BIT_REACTIVE_MOTION = 0x3,
+		SURF_FLAG_BIT_LIGHTMAP_COORDS = 0x4,
+		SURF_FLAG_BIT_SUBDIV = 0x5,
+		SURF_FLAG_BIT_TENSION = 0x6,
+		SURF_FLAG_BIT_SELF_VISIBILITY = 0x7,
+		SURF_FLAG_BIT_SECONDUV = 0x8,
+		SURF_FLAG_BIT_MAYHEM_CUSTOM_CHANNELS = 0x9,
+		SURF_FLAG_BIT_MAYHEM_SELFVIS = 0xA,
+		SURF_FLAG_BIT_COUNT = 0xB,
+	};
+
+	enum XSurfaceFlags
+	{
+		SURF_FLAG_NONE = 0x0,
+		SURF_FLAG_VERTCOL_GREY = 0x1,
+		SURF_FLAG_VERTCOL_NONE = 0x2,
+		SURF_FLAG_SKINNED = 0x4,
+		SURF_FLAG_REACTIVE_MOTION = 0x8,
+		SURF_FLAG_LIGHTMAP_COORDS = 0x10,
+		SURF_FLAG_SUBDIV = 0x20,
+		SURF_FLAG_TENSION = 0x40,
+		SURF_FLAG_SELF_VISIBILITY = 0x80,
+		SURF_FLAG_SECONDUV = 0x100,
+		SURF_FLAG_MAYHEM_CUSTOM_CHANNELS = 0x200,
+		SURF_FLAG_MAYHEM_SELFVIS = 0x400,
+	};
+
 	struct XSurface
 	{
 		unsigned short flags;
 		unsigned short vertCount;
 		unsigned short triCount;
 		unsigned char rigidVertListCount;
-		char subdivLevelCount;
-		short blendVertCounts[8];
-		int blendVertSize;
+		unsigned char subdivLevelCount;
+		unsigned short blendVertCounts[8];
+		unsigned int blendVertSize;
 		char __pad0[4];
 		GfxVertexUnion0 verts0;
 		Face PTR64 triIndices;
@@ -888,7 +943,7 @@ namespace ZoneTool::IW7
 		XBlendInfo PTR64 blendVerts;
 		ID3D11Buffer PTR64 blendVertsBuffer;
 		ID3D11ShaderResourceView PTR64 blendVertsView;
-		float( PTR64 lmapUnwrap)[2];
+		float(PTR64 lmapUnwrap)[2];
 		ID3D11Buffer PTR64 vblmapBuffer;
 		ID3D11ShaderResourceView PTR64 vblmapView;
 		XSurfaceSubdivInfo PTR64 subdiv;
@@ -948,6 +1003,13 @@ namespace ZoneTool::IW7
 		float scale[4];
 	};
 
+	enum XModelLodInfoFlags
+	{
+		XMODEL_LODINFO_FLAG_NONE = 0x0,
+		XMODEL_LODINFO_FLAG_SUBDIV = 0x1,
+		XMODEL_LODINFO_FLAG_SUBDIV_NON_ADAPTIVE = 0x2,
+	};
+
 	struct XModelLodInfo
 	{
 		float dist;
@@ -956,10 +1018,184 @@ namespace ZoneTool::IW7
 		XModelSurfs PTR64 modelSurfs;
 		int partBits[8];
 		XSurface PTR64 surfs;
-		int unk; // subdivLodValidMask?
+		int subdivLodValidMask;
 		char flags;
-		char pad[3];
 	}; assert_sizeof(XModelLodInfo, 0x40);
+
+	enum SurfaceFlags : std::uint32_t
+	{
+		SURFACE_FLAG_NONE = 0x00000000,
+		SURFACE_FLAG_BARK = 0x00080000,
+		SURFACE_FLAG_BRICK = 0x00100000,
+		SURFACE_FLAG_CARPET_SOLID = 0x00180000,
+		SURFACE_FLAG_CLOTH = 0x00200000,
+		SURFACE_FLAG_CONCRETE_DRY = 0x00280000,
+		SURFACE_FLAG_DIRT = 0x00300000,
+		SURFACE_FLAG_FLESH = 0x00380000,
+		SURFACE_FLAG_FOLIAGE_DRY = 0x00400000,
+		SURFACE_FLAG_GLASS_PANE = 0x00480000,
+		SURFACE_FLAG_GRASS_SHORT = 0x00500000,
+		SURFACE_FLAG_GRAVEL = 0x00580000,
+		SURFACE_FLAG_ICE_SOLID = 0x00600000,
+		SURFACE_FLAG_METAL_THICK = 0x00680000,
+		SURFACE_FLAG_METAL_GRATE = 0x00700000,
+		SURFACE_FLAG_MUD = 0x00780000,
+		SURFACE_FLAG_PAPER = 0x00800000,
+		SURFACE_FLAG_PLASTER = 0x00880000,
+		SURFACE_FLAG_ROCK = 0x00900000,
+		SURFACE_FLAG_SAND = 0x00980000,
+		SURFACE_FLAG_SNOW = 0x00A00000,
+		SURFACE_FLAG_WATER = 0x00A80000,
+		SURFACE_FLAG_WOOD_SOLID = 0x00B00000,
+		SURFACE_FLAG_ASPHALT_DRY = 0x00B80000,
+		SURFACE_FLAG_CERAMIC = 0x00C00000,
+		SURFACE_FLAG_PLASTIC = 0x00C80000,
+		SURFACE_FLAG_RUBBER = 0x00D00000,
+		SURFACE_FLAG_FRUIT = 0x00D80000,
+		SURFACE_FLAG_METAL_PAINTED = 0x00E00000,
+		SURFACE_FLAG_RIOTSHIELD = 0x00E80000,
+		SURFACE_FLAG_SLUSH = 0x00F00000,
+		SURFACE_FLAG_ASPHALT_WET = 0x00F80000,
+		SURFACE_FLAG_CARPET_WOOD = 0x01000000,
+		SURFACE_FLAG_CARPET_METAL = 0x01080000,
+		SURFACE_FLAG_CONCRETE_WET = 0x01100000,
+		SURFACE_FLAG_CUSHION = 0x01180000,
+		SURFACE_FLAG_DEFAULT = 0x01200000,
+		SURFACE_FLAG_FOLIAGE_WET = 0x01280000,
+		SURFACE_FLAG_GLASS_BROKEN = 0x01300000,
+		SURFACE_FLAG_GLASS_SOLID = 0x01380000,
+		SURFACE_FLAG_GLASS_VEHICLE = 0x01400000,
+		SURFACE_FLAG_GRASS_TALL = 0x01480000,
+		SURFACE_FLAG_ICE_THIN = 0x01500000,
+		SURFACE_FLAG_METAL_THIN = 0x01580000,
+		SURFACE_FLAG_ROBOT_HEAD = 0x01600000,
+		SURFACE_FLAG_ROBOT_TORSO = 0x01680000,
+		SURFACE_FLAG_ROBOT_LIMB = 0x01700000,
+		SURFACE_FLAG_ROBOT_ARMOR = 0x01780000,
+		SURFACE_FLAG_BIG_ROBOT_HEAD = 0x01800000,
+		SURFACE_FLAG_BIG_ROBOT_LIMB = 0x01880000,
+		SURFACE_FLAG_WATER_KNEE = 0x01900000,
+		SURFACE_FLAG_WATER_WAIST = 0x01980000,
+		SURFACE_FLAG_WOOD_FLOOR = 0x01A00000,
+		SURFACE_FLAG_USER_TERRAIN_1 = 0x01A80000,
+		SURFACE_FLAG_USER_TERRAIN_2 = 0x01B00000,
+		SURFACE_FLAG_USER_TERRAIN_3 = 0x01B80000,
+		SURFACE_FLAG_USER_TERRAIN_4 = 0x01C00000,
+		SURFACE_FLAG_USER_TERRAIN_5 = 0x01C80000,
+		SURFACE_FLAG_USER_TERRAIN_6 = 0x01D00000,
+		SURFACE_FLAG_USER_TERRAIN_7 = 0x01D80000,
+		SURFACE_FLAG_USER_TERRAIN_8 = 0x01E00000,
+		SURFACE_FLAG_USER_TERRAIN_9 = 0x01E80000,
+		SURFACE_FLAG_USER_TERRAIN_10 = 0x01F00000,
+		SURFACE_FLAG_CODE_RESERVED = 0x01F80000,
+		SURFACE_FLAG_OPAQUEGLASS = 0x01380000,
+		SURFACE_FLAG_CLIPMISSILE = 0x00000000,
+		SURFACE_FLAG_AI_NOSIGHT = 0x00000000,
+		SURFACE_FLAG_CLIPSHOT = 0x00000000,
+		SURFACE_FLAG_PLAYERCLIP = 0x00000000,
+		SURFACE_FLAG_MONSTERCLIP = 0x00000000,
+		SURFACE_FLAG_AICLIPALLOWDEATH = 0x00000000,
+		SURFACE_FLAG_VEHICLECLIP = 0x00000000,
+		SURFACE_FLAG_ITEMCLIP = 0x00000000,
+		SURFACE_FLAG_NODROP = 0x00000000,
+		SURFACE_FLAG_NONSOLID = 0x00004000,
+		SURFACE_FLAG_DETAIL = 0x00000000,
+		SURFACE_FLAG_STRUCTURAL = 0x00000000,
+		SURFACE_FLAG_PORTAL = 0x80000000,
+		SURFACE_FLAG_CANSHOOTCLIP = 0x00000000,
+		SURFACE_FLAG_ORIGIN = 0x00000000,
+		SURFACE_FLAG_SKY = 0x00000004,
+		SURFACE_FLAG_NOCASTSHADOW = 0x00040000,
+		SURFACE_FLAG_PHYSICSGEOM = 0x00000000,
+		SURFACE_FLAG_LIGHTPORTAL = 0x00000000,
+		SURFACE_FLAG_OUTDOORBOUNDS = 0x00000000,
+		SURFACE_FLAG_SLICK = 0x00000002,
+		SURFACE_FLAG_NOIMPACT = 0x00000010,
+		SURFACE_FLAG_NOMARKS = 0x00000020,
+		SURFACE_FLAG_NOPENETRATE = 0x00000100,
+		SURFACE_FLAG_LADDER = 0x00000008,
+		SURFACE_FLAG_NODAMAGE = 0x00000001,
+		SURFACE_FLAG_MANTLEON = 0x02000000,
+		SURFACE_FLAG_MANTLEOVER = 0x04000000,
+		SURFACE_FLAG_STAIRS = 0x00000200,
+		SURFACE_FLAG_SOFT = 0x00001000,
+		SURFACE_FLAG_NOSTEPS = 0x00002000,
+		SURFACE_FLAG_NODRAW = 0x00000080,
+		SURFACE_FLAG_NOLIGHTMAP = 0x00000400,
+		SURFACE_FLAG_NODLIGHT = 0x00020000,
+		SURFACE_FLAG_NAVINCLUSIONVOLUME = 0x00000000,
+		SURFACE_FLAG_NAVEXCLUSIONVOLUME = 0x00000000,
+		SURFACE_FLAG_NAV3DVOLUME = 0x00000000,
+	};
+
+	enum SurfaceTypeBits : std::uint64_t
+	{
+		SURFACE_TYPE_BIT_NONE = 0x0,
+		SURFACE_TYPE_BIT_BARK = 0x1,
+		SURFACE_TYPE_BIT_BRICK = 0x2,
+		SURFACE_TYPE_BIT_CARPET_SOLID = 0x4,
+		SURFACE_TYPE_BIT_CLOTH = 0x8,
+		SURFACE_TYPE_BIT_CONCRETE_DRY = 0x10,
+		SURFACE_TYPE_BIT_DIRT = 0x20,
+		SURFACE_TYPE_BIT_FLESH = 0x40,
+		SURFACE_TYPE_BIT_FOLIAGE_DRY = 0x80,
+		SURFACE_TYPE_BIT_GLASS_PANE = 0x100,
+		SURFACE_TYPE_BIT_GRASS_SHORT = 0x200,
+		SURFACE_TYPE_BIT_GRAVEL = 0x400,
+		SURFACE_TYPE_BIT_ICE_SOLID = 0x800,
+		SURFACE_TYPE_BIT_METAL_THICK = 0x1000,
+		SURFACE_TYPE_BIT_METAL_GRATE = 0x2000,
+		SURFACE_TYPE_BIT_MUD = 0x4000,
+		SURFACE_TYPE_BIT_PAPER = 0x8000,
+		SURFACE_TYPE_BIT_PLASTER = 0x10000,
+		SURFACE_TYPE_BIT_ROCK = 0x20000,
+		SURFACE_TYPE_BIT_SAND = 0x40000,
+		SURFACE_TYPE_BIT_SNOW = 0x80000,
+		SURFACE_TYPE_BIT_WATER = 0x100000,
+		SURFACE_TYPE_BIT_WOOD_SOLID = 0x200000,
+		SURFACE_TYPE_BIT_ASPHALT_DRY = 0x400000,
+		SURFACE_TYPE_BIT_CERAMIC = 0x800000,
+		SURFACE_TYPE_BIT_PLASTIC = 0x1000000,
+		SURFACE_TYPE_BIT_RUBBER = 0x2000000,
+		SURFACE_TYPE_BIT_FRUIT = 0x4000000,
+		SURFACE_TYPE_BIT_METAL_PAINTED = 0x8000000,
+		SURFACE_TYPE_BIT_RIOTSHIELD = 0x10000000,
+		SURFACE_TYPE_BIT_SLUSH = 0x20000000,
+		SURFACE_TYPE_BIT_ASPHALT_WET = 0x40000000,
+		SURFACE_TYPE_BIT_CARPET_WOOD = 0x80000000,
+		SURFACE_TYPE_BIT_CARPET_METAL = 0x100000000,
+		SURFACE_TYPE_BIT_CONCRETE_WET = 0x200000000,
+		SURFACE_TYPE_BIT_CUSHION = 0x400000000,
+		SURFACE_TYPE_BIT_DEFAULT = 0x800000000,
+		SURFACE_TYPE_BIT_FOLIAGE_WET = 0x1000000000,
+		SURFACE_TYPE_BIT_GLASS_BROKEN = 0x2000000000,
+		SURFACE_TYPE_BIT_GLASS_SOLID = 0x4000000000,
+		SURFACE_TYPE_BIT_GLASS_VEHICLE = 0x8000000000,
+		SURFACE_TYPE_BIT_GRASS_TALL = 0x10000000000,
+		SURFACE_TYPE_BIT_ICE_THIN = 0x20000000000,
+		SURFACE_TYPE_BIT_METAL_THIN = 0x40000000000,
+		SURFACE_TYPE_BIT_ROBOT_HEAD = 0x80000000000,
+		SURFACE_TYPE_BIT_ROBOT_TORSO = 0x100000000000,
+		SURFACE_TYPE_BIT_ROBOT_LIMB = 0x200000000000,
+		SURFACE_TYPE_BIT_ROBOT_ARMOR = 0x400000000000,
+		SURFACE_TYPE_BIT_BIG_ROBOT_HEAD = 0x800000000000,
+		SURFACE_TYPE_BIT_BIG_ROBOT_LIMB = 0x1000000000000,
+		SURFACE_TYPE_BIT_WATER_KNEE = 0x2000000000000,
+		SURFACE_TYPE_BIT_WATER_WAIST = 0x4000000000000,
+		SURFACE_TYPE_BIT_WOOD_FLOOR = 0x8000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_1 = 0x10000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_2 = 0x20000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_3 = 0x40000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_4 = 0x80000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_5 = 0x100000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_6 = 0x200000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_7 = 0x400000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_8 = 0x800000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_9 = 0x1000000000000000,
+		SURFACE_TYPE_BIT_USER_TERRAIN_10 = 0x2000000000000000,
+		SURFACE_TYPE_BIT_CODE_RESERVED = 0x4000000000000000,
+		SURFACE_TYPE_BIT_OPAQUEGLASS = 0x8000000000000000,
+	};
 
 	struct XModelCollSurf_s
 	{
@@ -999,12 +1235,29 @@ namespace ZoneTool::IW7
 		CharCollBoundsType_Num = 0xA,
 	};
 
+	enum XModelFlags
+	{
+		XMODEL_FLAG_NONE = 0x0,
+		XMODEL_FLAG_ANIMATED_VERTS = 0x1,
+		XMODEL_FLAG_REACTIVE_MOTION = 0x8,
+		XMODEL_FLAG_COMPOSITE = 0x400,
+		XMODEL_FLAG_HAS_ANY_DEFAULT_SURFS = 0x10000,
+		XMODEL_FLAG_HAS_MAYHEM_SELFVIS = 0x8000000,
+	};
+
+	struct XModelPhysicsUsageCounter
+	{
+		int serverEnt;
+		int clientEnt;
+		int dynEnt;
+	};
+
 	struct XModel
 	{
 		const char PTR64 name;
 		char unused01;
-		unsigned char unknown01;
-		char maxLoadedLod;
+		bool hasLods;
+		unsigned char maxLoadedLod;
 		unsigned char numLods;
 		unsigned char collLod;
 		unsigned char shadowCutoffLod;
@@ -1021,12 +1274,13 @@ namespace ZoneTool::IW7
 		float radius;
 		Bounds bounds;
 		int memUsage;
-		unsigned int unknown02Count;
-		char unk_01[12]; // unknown data
+		unsigned int physicsLODDataSize;
+		XModelPhysicsUsageCounter physicsUsageCounter;
 		ScriptableDef PTR64 scriptableMoverDef;
 		XAnimProceduralBones PTR64 proceduralBones;
 		scr_string_t PTR64 aimAssistBones;
 		unsigned char numAimAssistBones;
+		float edgeLength;
 		unsigned int noScalePartBits[8];
 		scr_string_t PTR64 boneNames;
 		unsigned char PTR64 parentList;
@@ -1036,17 +1290,16 @@ namespace ZoneTool::IW7
 		DObjAnimMat PTR64 baseMat;
 		ReactiveMotionModelPart PTR64 reactiveMotionParts;
 		ReactiveMotionModelTweaks PTR64 reactiveMotionTweaks;
-		Material PTR64  PTR64 materialHandles;
+		Material PTR64 PTR64 materialHandles;
 		XModelLodInfo lodInfo[6];
 		XModelCollSurf_s PTR64 collSurfs;
 		XBoneInfo PTR64 boneInfo;
 		unsigned short PTR64 invHighMipRadius;
-		PhysicsAsset PTR64 physAsset;
-		PhysicsFXShape PTR64 physFxShape;
-		char PTR64 unknown02;
-		unsigned short unknownNamesCount;
-		char unk_02[6]; // unknown data
-		scr_string_t PTR64 unknownNames;
+		PhysicsAsset PTR64 physicsAsset;
+		PhysicsFXShape PTR64 physicsFXShape;
+		char PTR64 physicsLODData;
+		unsigned int physicsLODDataNameCount;
+		scr_string_t PTR64 physicsLODDataNames;
 		unsigned char impactType;
 		char unk_03[15]; // unknown data
 		unsigned char unknown03Count;
@@ -1055,7 +1308,7 @@ namespace ZoneTool::IW7
 		unsigned char unknownVec3Count;
 		char unk_04[6]; // unknown data
 		vec3_t PTR64 unknownVec3;
-		unsigned char unk;
+		unsigned char unknownIndex2;
 		unsigned char unknown04Count;
 		char unk_05[6]; // unknown data
 		unk_1453E14D8 PTR64 unknown04;
@@ -1082,10 +1335,10 @@ namespace ZoneTool::IW7
 	{
 		char PTR64 diskQuat;
 		char PTR64 diskPos;
-		unsigned __int16 PTR64 diskQuatFrames;
-		unsigned __int16 PTR64 diskPosFrames;
-		unsigned __int16 PTR64 numDiskQuatFrames;
-		unsigned __int16 PTR64 numDiskPosFrames;
+		unsigned short PTR64 diskQuatFrames;
+		unsigned short PTR64 diskPosFrames;
+		unsigned short PTR64 numDiskQuatFrames;
+		unsigned short PTR64 numDiskPosFrames;
 		MayhemTransBounds PTR64 transBounds;
 		GfxWrappedBaseBuffer quat;
 		GfxWrappedBaseBuffer pos;
@@ -1116,8 +1369,8 @@ namespace ZoneTool::IW7
 	struct MayhemDataKeysSplineCompressed
 	{
 		char PTR64 keys;
-		unsigned __int16 PTR64 numKeys;
-		unsigned __int16 PTR64 keyFrames;
+		unsigned short PTR64 numKeys;
+		unsigned short PTR64 keyFrames;
 		unsigned int totalCompressedKeyFrames;
 		unsigned int numStreams;
 		unsigned int keyStride;
@@ -1340,18 +1593,17 @@ namespace ZoneTool::IW7
 
 	struct GfxDrawSurfFields
 	{
-
+		unsigned __int64 objectId : 16; // p0 >> 0
+		unsigned __int64 pad0 : 32;
+		unsigned __int64 tessellation : 2; // p0 >> 48
+		unsigned __int64 pad1 : 14;
+		unsigned __int64 pad2 : 64;
 	};
 
 	union GfxDrawSurf
 	{
 		GfxDrawSurfFields fields;
 		Packed128 packed;
-	};
-
-	enum SurfaceTypeBits : std::uint64_t
-	{
-
 	};
 
 	struct MaterialInfo
@@ -1445,7 +1697,7 @@ namespace ZoneTool::IW7
 		unsigned char PTR64 constantBufferIndex; // [152]
 		MaterialConstantBufferDef PTR64 constantBufferTable;
 		unsigned char constantBufferCount;
-		const char PTR64  PTR64 subMaterials;
+		const char PTR64 PTR64 subMaterials;
 	}; assert_sizeof(Material, 0x118);
 	assert_offsetof(Material, techniqueSet, 56);
 	assert_offsetof(Material, textureCount, 48);
@@ -1661,7 +1913,7 @@ namespace ZoneTool::IW7
 		short techniqueMaskStartIndex[3];
 		short unk[2];
 		unsigned __int64 techniqueMask[3];
-		MaterialTechnique PTR64  PTR64 techniques;
+		MaterialTechnique PTR64 PTR64 techniques;
 	}; assert_sizeof(MaterialTechniqueSet, 0x38);
 	assert_offsetof(MaterialTechniqueSet, techniqueCount, 12);
 	assert_offsetof(MaterialTechniqueSet, techniques, 48);
@@ -1828,10 +2080,12 @@ namespace ZoneTool::IW7
 		const char PTR64 name;
 	}; assert_sizeof(GfxImage, 0x70);
 
+	typedef uint32_t SndStringHash;
+
 	struct snd_volmod_info_t
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		float value;
 	};
 
@@ -1856,12 +2110,15 @@ namespace ZoneTool::IW7
 		SND_FAR_REVERB_NONE = 0x0,
 		SND_FAR_REVERB_FULL = 0x1,
 		SND_FAR_REVERB_WET_ONLY = 0x2,
+		SND_FAR_REVERB_UNK3 = 3,
+		SND_FAR_REVERB_UNK4 = 4,
+		SND_FAR_REVERB_UNK5 = 5,
 	};
 
 	struct snd_entchannel_info_t
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		int priority;
 		SndEntchannelSpaitalType spatialType;
 		bool isRestricted;
@@ -1877,7 +2134,7 @@ namespace ZoneTool::IW7
 	struct DopplerPreset
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		float speedOfSound;
 		float playerVelocityScale;
 		float minPitch;
@@ -1888,7 +2145,7 @@ namespace ZoneTool::IW7
 	struct OcclusionShape
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		float unk;
 		float innerAngleVolume;
 		float outerAngleVolume;
@@ -1901,7 +2158,7 @@ namespace ZoneTool::IW7
 	struct SndCurve
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		int numPoints;
 		vec2_t points[16];
 	};
@@ -1910,7 +2167,7 @@ namespace ZoneTool::IW7
 	struct SpeakerMap
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		float monoToStereo[2];
 		float stereoToStereo[4];
 		float monoTo51[6];
@@ -1922,7 +2179,7 @@ namespace ZoneTool::IW7
 	struct SndContext
 	{
 		char PTR64 type;
-		unsigned int typeId;
+		SndStringHash typeId;
 		int numValues;
 		int startIndex;
 		bool allowDefaults;
@@ -1933,7 +2190,7 @@ namespace ZoneTool::IW7
 	struct SndContextValue
 	{
 		char PTR64 value;
-		unsigned int valueId;
+		SndStringHash valueId;
 	};
 
 	struct SndMasterEqParam
@@ -1969,7 +2226,7 @@ namespace ZoneTool::IW7
 	struct SndMaster
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		SndMasterEqParamBank dialogEq;
 		SndMasterEqParamBank weapExpScenesEq;
 		SndMasterEqParamBank sfxEq;
@@ -2024,11 +2281,252 @@ namespace ZoneTool::IW7
 		SndMaster PTR64 masters;
 	}; assert_sizeof(SndGlobals, 0xD0);
 
-	enum SoundVolMod : std::int32_t
+	enum SndVolMod
 	{
-		SND_VOLMOD_DEFAULT,
-		SND_VOLMOD_HUD,
+		SND_VOLMOD_HUD = 0,
+		SND_VOLMOD_INTERFACE = 1,
+		SND_VOLMOD_INTERFACE_MUSIC = 2,
+		SND_VOLMOD_MUSIC = 3,
+		SND_VOLMOD_MUSIC_EMITTER = 4,
+		SND_VOLMOD_MUSIC_EMITTER_PA = 5,
+		SND_VOLMOD_AMBIENCE = 6,
+		SND_VOLMOD_AMBIENCE_DIST = 7,
+		SND_VOLMOD_ELEMENT = 8,
+		SND_VOLMOD_EMITTER = 9,
+		SND_VOLMOD_PHYSICS = 10,
+		SND_VOLMOD_BODYFALL = 11,
+		SND_VOLMOD_FOLEY_PLR = 12,
+		SND_VOLMOD_FOLEYMP_PLR = 13,
+		SND_VOLMOD_FOLEY_NPC = 14,
+		SND_VOLMOD_FOLEYMP_NPC = 15,
+		SND_VOLMOD_FOLEY_WPN_PLR = 16,
+		SND_VOLMOD_FOLEY_WPN_NPC = 17,
+		SND_VOLMOD_FOOTSTEP_PLR = 18,
+		SND_VOLMOD_FOOTSTEP_NPC = 19,
+		SND_VOLMOD_FOOTSTEPMP_PLR = 20,
+		SND_VOLMOD_FOOTSTEPMP_NPC = 21,
+		SND_VOLMOD_MELEE_PLR = 22,
+		SND_VOLMOD_MELEE_NPC = 23,
+		SND_VOLMOD_CHATTERAL = 24,
+		SND_VOLMOD_CHATTERAX = 25,
+		SND_VOLMOD_REACTIONAL = 26,
+		SND_VOLMOD_REACTIONAX = 27,
 		SND_VOLMOD_VOICEOVER = 28,
+		SND_VOLMOD_VOICEOVER_RADIO = 29,
+		SND_VOLMOD_VOICEOVER_RADIO_3D = 30,
+		SND_VOLMOD_VOICEOVER_CRITICAL = 31,
+		SND_VOLMOD_VOICEOVER_AMB = 32,
+		SND_VOLMOD_VOICEOVER_PLR = 33,
+		SND_VOLMOD_DESTRUCT = 34,
+		SND_VOLMOD_EXPLOSION = 35,
+		SND_VOLMOD_EXPLOSION_GRENADE = 36,
+		SND_VOLMOD_EXPLOSION_FLASHBANG = 37,
+		SND_VOLMOD_EXPLOSION_ROCKET = 38,
+		SND_VOLMOD_EXPLOSION_CAR = 39,
+		SND_VOLMOD_REX_EMITTERS = 40,
+		SND_VOLMOD_IMPACT = 41,
+		SND_VOLMOD_IMPACT_PLR = 42,
+		SND_VOLMOD_IMPACT_NPC = 43,
+		SND_VOLMOD_IMPACT_PLR_TO_NPC = 44,
+		SND_VOLMOD_IMPACTMP = 45,
+		SND_VOLMOD_IMPACTMP_PLR = 46,
+		SND_VOLMOD_IMPACTMP_NPC = 47,
+		SND_VOLMOD_IMPACTMP_PLR_TO_NPC = 48,
+		SND_VOLMOD_WHIZBY = 49,
+		SND_VOLMOD_WHIZBYMP = 50,
+		SND_VOLMOD_VEHICLE_PLR = 51,
+		SND_VOLMOD_VEHICLE_NPC = 52,
+		SND_VOLMOD_VEHICLE_WPN_PLR = 53,
+		SND_VOLMOD_VEHICLE_WPN_NPC = 54,
+		SND_VOLMOD_VEHICLE = 55,
+		SND_VOLMOD_GRENADEBOUNCE = 56,
+		SND_VOLMOD_GRENADEBOUNCEMP = 57,
+		SND_VOLMOD_SHELLCASINGS = 58,
+		SND_VOLMOD_SHELLCASINGSMP = 59,
+		SND_VOLMOD_WPN_PLR = 60,
+		SND_VOLMOD_WPNMP_PLR = 61,
+		SND_VOLMOD_WPN_NPC = 62,
+		SND_VOLMOD_WPNMP_NPC = 63,
+		SND_VOLMOD_WPN_PROJECTILE = 64,
+		SND_VOLMOD_WPNMP_PROJECTILE = 65,
+		SND_VOLMOD_WPN_REFLECTIONS = 66,
+		SND_VOLMOD_WPN_REFLECTIONS_MID = 67,
+		SND_VOLMOD_WPN_REFLECTIONS_FAR = 68,
+		SND_VOLMOD_NA = 69,
+		SND_VOLMOD_MAX = 70,
+		SND_VOLMOD_SCRIPTED1 = 71,
+		SND_VOLMOD_SCRIPTED2 = 72,
+		SND_VOLMOD_SCRIPTED3 = 73,
+		SND_VOLMOD_SCRIPTED4 = 74,
+		SND_VOLMOD_SCRIPTED5 = 75,
+		SND_VOLMOD_FULLVOLUME = 76,
+		SND_VOLMOD_PERKMP_QUIET = 77,
+		SND_VOLMOD_DEATHSDOOR = 78,
+		SND_VOLMOD_DEFAULT = 79,
+	};
+
+	enum SndChannel
+	{
+		SND_CHANNEL_SCN_FX_UNRES_3D = 0,
+		SND_CHANNEL_SCN_LFE_UNRES_3D = 1,
+		SND_CHANNEL_SCN_FX_UNRES_2D = 2,
+		SND_CHANNEL_SCN_LFE_UNRES_2D = 3,
+		SND_CHANNEL_SCN_FX_SPECIAL_UNRES_3D = 4,
+		SND_CHANNEL_SCN_FX_SPECIAL_UNRES_2D = 5,
+		SND_CHANNEL_SCN_FX_UNRES_3D_LIM = 6,
+		SND_CHANNEL_SCN_FX_UNRES_2D_LIM = 7,
+		SND_CHANNEL_SCN_FX_RES_3D = 8,
+		SND_CHANNEL_SCN_FX_RES_2D = 9,
+		SND_CHANNEL_MELEE_PLR_2D = 10,
+		SND_CHANNEL_WEAP_PLR_FIRE_1_2D = 11,
+		SND_CHANNEL_WEAP_PLR_FIRE_2_2D = 12,
+		SND_CHANNEL_WEAP_PLR_FIRE_3_2D = 13,
+		SND_CHANNEL_WEAP_PLR_FIRE_4_2D = 14,
+		SND_CHANNEL_WEAP_PLR_FIRE_OVERLAP_2D = 15,
+		SND_CHANNEL_WEAP_PLR_FIRE_LFE_2D = 16,
+		SND_CHANNEL_WEAP_PLR_FIRE_ALT_1_2D = 17,
+		SND_CHANNEL_WEAP_PLR_FIRE_ALT_2_2D = 18,
+		SND_CHANNEL_WEAP_PLR_FIRE_ALT_3_2D = 19,
+		SND_CHANNEL_WEAP_PLR_FIRE_ALT_4_2D = 20,
+		SND_CHANNEL_WEAP_PLR_FIRE_ALT_OVERLAP_2D = 21,
+		SND_CHANNEL_WEAP_PLR_FIRE_ALT_LFE_2D = 22,
+		SND_CHANNEL_FOLEY_PLR_STEP_2D = 23,
+		SND_CHANNEL_FOLEY_PLR_STEP_UNRES_2D = 24,
+		SND_CHANNEL_FOLEY_PLR_MVMT_UNRES_2D_LIM = 25,
+		SND_CHANNEL_FOLEY_PLR_WEAP_2D_LIM = 26,
+		SND_CHANNEL_RELOAD_PLR_RES_2D = 27,
+		SND_CHANNEL_RELOAD_PLR_UNRES_2D = 28,
+		SND_CHANNEL_RELOAD_PLR_AKIMBO_RES_2D = 29,
+		SND_CHANNEL_RELOAD_PLR_AKIMBO_UNRES_2D = 30,
+		SND_CHANNEL_SPEAR_REFL_CLOSE_UNRES_3D_LIM = 31,
+		SND_CHANNEL_SPEAR_REFL_UNRES_3D_LIM = 32,
+		SND_CHANNEL_WEAP_NPC_MAIN_3D = 33,
+		SND_CHANNEL_WEAP_NPC_MECH_3D = 34,
+		SND_CHANNEL_WEAP_NPC_MID_3D = 35,
+		SND_CHANNEL_WEAP_NPC_LFE_3D = 36,
+		SND_CHANNEL_WEAP_NPC_DIST_3D = 37,
+		SND_CHANNEL_WEAP_NPC_LO_3D = 38,
+		SND_CHANNEL_MELEE_NPC_3D = 39,
+		SND_CHANNEL_PLR_USE_MISC_UNRES_2D = 40,
+		SND_CHANNEL_PLR_UI_INGAME_UNRES_2D = 41,
+		SND_CHANNEL_PLR_USE_PS4SPKR_RES_2D = 42,
+		SND_CHANNEL_EQUIP_USE_UNRES_3D = 43,
+		SND_CHANNEL_EQUIP_UI_INGAME_UNRES_3D = 44,
+		SND_CHANNEL_ABILITY_PLR_UNRES_2D = 45,
+		SND_CHANNEL_ABILITY_NPC_UNRES_3D = 46,
+		SND_CHANNEL_EXPLO_1_3D = 47,
+		SND_CHANNEL_EXPLO_2_3D = 48,
+		SND_CHANNEL_EXPLO_3_3D = 49,
+		SND_CHANNEL_EXPLO_4_3D = 50,
+		SND_CHANNEL_EXPLO_5_3D = 51,
+		SND_CHANNEL_EXPLO_LFE_3D = 52,
+		SND_CHANNEL_EXPLO_DIST_1_3D = 53,
+		SND_CHANNEL_EXPLO_DIST_2_3D = 54,
+		SND_CHANNEL_FOLEY_C12_STEP_3D = 55,
+		SND_CHANNEL_FOLEY_C12_LFE_3D = 56,
+		SND_CHANNEL_PROJECTILE_LOOP_CLOSE = 57,
+		SND_CHANNEL_PROJECTILE_LOOP_MID = 58,
+		SND_CHANNEL_PROJECTILE_LOOP_DIST = 59,
+		SND_CHANNEL_WHIZBY_IN_UNRES_3D_LIM = 60,
+		SND_CHANNEL_WHIZBY_OUT_UNRES_3D_LIM = 61,
+		SND_CHANNEL_BULLETIMPACT_UNRES_3D_LIM = 62,
+		SND_CHANNEL_BEAMIMPACT_UNRES_3D_LIM = 63,
+		SND_CHANNEL_BULLETIMPACT_LO_UNRES_3D_LIM = 64,
+		SND_CHANNEL_BULLET_RICOCHETS_UNRES_3D_LIM = 65,
+		SND_CHANNEL_BULLET_RICO_REFLECT_UNRES_3D_LIM = 66,
+		SND_CHANNEL_BULLETFLESH_1_UNRES_3D_LIM = 67,
+		SND_CHANNEL_BULLETFLESH_2_UNRES_3D_LIM = 68,
+		SND_CHANNEL_BULLETFLESH_LFE_UNRES_2D_LIM = 69,
+		SND_CHANNEL_BULLETFLESH_NPC_1_UNRES_3D_LIM = 70,
+		SND_CHANNEL_BULLETFLESH_NPC_2_UNRES_3D_LIM = 71,
+		SND_CHANNEL_BULLETFLESH_NPCNPC1_UNRES_3D_LIM = 72,
+		SND_CHANNEL_BULLETFLESH_NPCNPC2_UNRES_3D_LIM = 73,
+		SND_CHANNEL_MELEE_IMPACT_3D = 74,
+		SND_CHANNEL_FOLEY_NPC_STEP_3D = 75,
+		SND_CHANNEL_FOLEY_NPC_STEP_UNRES_3D = 76,
+		SND_CHANNEL_FOLEY_NPC_ZMB_STEP_3D_LIM = 77,
+		SND_CHANNEL_FOLEY_NPC_MVMT_UNRES_3D_LIM = 78,
+		SND_CHANNEL_FOLEY_NPC_WEAP_UNRES_3D_LIM = 79,
+		SND_CHANNEL_RELOAD_NPC_RES_3D = 80,
+		SND_CHANNEL_RELOAD_NPC_UNRES_3D = 81,
+		SND_CHANNEL_VOICE_AIR_3D = 82,
+		SND_CHANNEL_VOICE_RADIO_3D = 83,
+		SND_CHANNEL_VOICE_RADIO_2D = 84,
+		SND_CHANNEL_VOICE_NARRATION_2D = 85,
+		SND_CHANNEL_VOICE_SPECIAL_2D = 86,
+		SND_CHANNEL_VOICE_WALLA_1_3D = 87,
+		SND_CHANNEL_VOICE_BCHATTER_1_3D = 88,
+		SND_CHANNEL_VOICE_BCHATTER_LO_UNRES_3D_LIM = 89,
+		SND_CHANNEL_VOICE_PLR_2D = 90,
+		SND_CHANNEL_VOICE_PLR_EFFORTS_2D = 91,
+		SND_CHANNEL_VOICE_PLR_BREATH_2D = 92,
+		SND_CHANNEL_VOICE_ANIMAL_1_3D = 93,
+		SND_CHANNEL_AMB_BED_2D = 94,
+		SND_CHANNEL_AMB_ELM_UNRES_3D = 95,
+		SND_CHANNEL_AMB_ELM_INT_UNRES_3D = 96,
+		SND_CHANNEL_AMB_ELM_EXT_UNRES_3D = 97,
+		SND_CHANNEL_AMB_ELM_UNRES_2D_LIM = 98,
+		SND_CHANNEL_AMB_ELM_UNRES_2D = 99,
+		SND_CHANNEL_AMB_ELM_INT_SPECIAL_UNRES_3D = 100,
+		SND_CHANNEL_AMB_ELM_EXT_SPECIAL_UNRES_3D = 101,
+		SND_CHANNEL_BODYFALLS_HI_UNRES_3D_LIM = 102,
+		SND_CHANNEL_VEHICLE_AIR_FLYBY_CLOSE_3D_LIM = 103,
+		SND_CHANNEL_VEHICLE_AIR_LOOPS_3D_LIM = 104,
+		SND_CHANNEL_VEHICLE_AIR_FLYBY_MIDFAR_3D_LIM = 105,
+		SND_CHANNEL_VEHICLE_WEAP_CLOSE_3D_LIM = 106,
+		SND_CHANNEL_VEHICLE_HI_RES_3D = 107,
+		SND_CHANNEL_VEHICLE_HI_UNRES_3D = 108,
+		SND_CHANNEL_VEHICLE_LFE_3D = 109,
+		SND_CHANNEL_VEHICLE_LO_3D_LIM = 110,
+		SND_CHANNEL_VEHICLE_UNRES_2D = 111,
+		SND_CHANNEL_VEHICLE_UNRES_2D_LIM = 112,
+		SND_CHANNEL_SHOCK_NOFILTER_2D = 113,
+		SND_CHANNEL_HURT_NOFILTER_2D = 114,
+		SND_CHANNEL_SHOCK1_NOFILTER_3D = 115,
+		SND_CHANNEL_SHOCK2_NOFILTER_3D = 116,
+		SND_CHANNEL_MUSIC_LR = 117,
+		SND_CHANNEL_MUSIC_LSRS = 118,
+		SND_CHANNEL_MUSICNOPAUSE_LR = 119,
+		SND_CHANNEL_MUSICNOPAUSE_LSRS = 120,
+		SND_CHANNEL_MUS_EMITTER_3D = 121,
+		SND_CHANNEL_MENU_UNRES_2D = 122,
+		SND_CHANNEL_MENU_1_2D_LIM = 123,
+		SND_CHANNEL_MENU_2_2D_LIM = 124,
+		SND_CHANNEL_PHYSICS_HI_UNRES_3D_LIM = 125,
+		SND_CHANNEL_PHYSICS_LO_UNRES_3D_LIM = 126,
+		SND_CHANNEL_BODYFALLS_LO_UNRES_3D_LIM = 127,
+		SND_CHANNEL_SPECIAL_HI_UNRES_1_3D = 128,
+		SND_CHANNEL_SPECIAL_HI_UNRES_1_2D = 129,
+		SND_CHANNEL_SPECIAL_LO_UNRES_1_3D = 130,
+		SND_CHANNEL_SPECIAL_LO_UNRES_1_2D = 131,
+		SND_CHANNEL_PA_SPEAKER = 132,
+		SND_CHANNEL_PA_VOICE = 133,
+	};
+
+	enum SndAliasType
+	{
+		SAT_LOADED = 0x0,
+		SAT_REV_VEHICLE = 0x1,
+		SAT_HYBRID_PCM = 0x2,
+		SAT_STREAMED = 0x3,
+		SAT_PRIMED = 0x4,
+		SAT_COUNT = 0x5,
+	};
+
+	struct SndAliasFlags
+	{
+		unsigned int looping : 3; // 0
+		unsigned int reverb : 1; // 3
+		unsigned int shape : 3; // 4
+		unsigned int type : 2; // 7
+		unsigned int channel : 8; // 9
+		unsigned int unused : 1; // 17
+		unsigned int ignoreDistanceCheck : 1; // 18
+		unsigned int precached : 1; // 19
+		unsigned int MusicContent : 2; // 20
+		unsigned int GPadOutput : 2; // 22
+		unsigned int ForceSubtitle : 1; // 24
+		unsigned int pad : 7; // 26
 	};
 
 	struct SndAlias
@@ -2036,15 +2534,15 @@ namespace ZoneTool::IW7
 		const char PTR64 aliasName;
 		const char PTR64 subtitle;
 		const char PTR64 secondaryAliasName;
-		const char PTR64 unk_24;
+		const char PTR64 stopAliasName;
 		const char PTR64 assetFileName;
-		unsigned int id;
-		unsigned int secondaryId;
-		unsigned int unk_48;
-		unsigned int assetId;
-		unsigned int contextType;
-		unsigned int contextValue;
-		unsigned int duck;
+		SndStringHash id;
+		SndStringHash secondaryId;
+		SndStringHash stopAliasID;
+		SndStringHash assetId;
+		SndStringHash contextType;
+		SndStringHash contextValue;
+		SndStringHash duck;
 		int sequence;
 		float volMin;
 		float volMax;
@@ -2055,7 +2553,7 @@ namespace ZoneTool::IW7
 		float distMin;
 		float distMax;
 		float velocityMin;
-		int flags;
+		SndAliasFlags flags;
 		int masterPriority;
 		float masterPercentage;
 		float slavePercentage;
@@ -2063,14 +2561,20 @@ namespace ZoneTool::IW7
 		float lfePercentage;
 		float centerPercentage;
 		int startDelay;
-		int volumeFalloffCurve; // guess
+		unsigned char volumeFalloffCurveIndex;
+		unsigned char lpfCurveIndex;
+		unsigned char hpfCurveIndex;
+		unsigned char reverbSendCurveIndex;
 		float envelopMin;
 		float envelopMax;
 		float envelopPercentage;
-		int speakerMap; // guess
+		unsigned char speakerMapIndex;
+		char pad1[3];
 		float reverbMultiplier;
 		float farReverbMultiplier;
-		int dopplerPreset; // guess
+		unsigned char occlusionShapeIndex;
+		unsigned char dopplerPresetIndex;
+		char pad2[2];
 		float smartPanDistance2d;
 		float smartPanDistance3d;
 		float smartPanAttenuation2d;
@@ -2084,7 +2588,7 @@ namespace ZoneTool::IW7
 	struct SndAliasList
 	{
 		const char PTR64 aliasName;
-		unsigned int id;
+		SndStringHash id;
 		SndAlias PTR64 head;
 		int count;
 		int sequence;
@@ -2101,7 +2605,7 @@ namespace ZoneTool::IW7
 	struct SndSendEffectParams
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		float smoothing;
 		float earlyTime;
 		float lateTime;
@@ -2133,7 +2637,7 @@ namespace ZoneTool::IW7
 	struct ADSRSetting
 	{
 		const char PTR64 name;
-		unsigned int id;
+		SndStringHash id;
 		float attackLength;
 		ADSRCurve attackCurve;
 		float decayLength;
@@ -2147,23 +2651,23 @@ namespace ZoneTool::IW7
 	struct AmbientDef
 	{
 		const char PTR64 name;
-		unsigned int id;
-		unsigned __int16 ambientEventIndex;
-		unsigned __int16 numEvents;
+		SndStringHash id;
+		unsigned short ambientEventIndex;
+		unsigned short numEvents;
 		float timeMin;
 		float timeMax;
 	};
 
 	struct AmbientEvent
 	{
-		unsigned int id;
-		unsigned __int16 ambientElementIndex;
+		SndStringHash id;
+		unsigned short ambientElementIndex;
 		float weight;
 	};
 
 	struct AmbientElement
 	{
-		unsigned int id;
+		SndStringHash id;
 		const char PTR64 unusedNameField;
 		const char PTR64 aliasName;
 		float rangeMin;
@@ -2187,9 +2691,9 @@ namespace ZoneTool::IW7
 
 	struct FilterDef
 	{
-		unsigned int id;
-		char entChannelIdx;
-		char band;
+		SndStringHash id;
+		unsigned char entChannelIdx;
+		unsigned char band;
 		SND_EQTYPE type;
 		float freq;
 		float gain;
@@ -2198,8 +2702,8 @@ namespace ZoneTool::IW7
 
 	struct MixDef
 	{
-		unsigned int id;
-		unsigned __int16 volModIndex;
+		SndStringHash id;
+		unsigned short volModIndex;
 		float volume;
 		float fade;
 	};
@@ -2207,7 +2711,7 @@ namespace ZoneTool::IW7
 	struct AdsrZoneEntry
 	{
 		const char PTR64 name;
-		unsigned int id;
+		SndStringHash id;
 		const char PTR64 weaponName;
 		int adsrIdx;
 		unsigned int weaponIdx;
@@ -2215,8 +2719,8 @@ namespace ZoneTool::IW7
 
 	struct OccludeDef
 	{
-		unsigned int id;
-		unsigned __int16 entChannelIdx;
+		SndStringHash id;
+		unsigned short entChannelIdx;
 		float cutoffLevel1;
 		float cutoffLevel2;
 		float cutoffLevel3;
@@ -2229,8 +2733,8 @@ namespace ZoneTool::IW7
 
 	struct ReverbDef
 	{
-		unsigned int id;
-		unsigned int roomTypeId;
+		SndStringHash id;
+		SndStringHash roomTypeId;
 		char roomType[64];
 		float dryLevel;
 		float wetLevel;
@@ -2239,35 +2743,35 @@ namespace ZoneTool::IW7
 
 	struct TimescaleEntry
 	{
-		unsigned int id;
-		unsigned int presetName;
+		SndStringHash id;
+		SndStringHash presetName;
 		int entChannelIdx;
 		float scale;
 	}; assert_sizeof(TimescaleEntry, 16);
 
 	struct ZoneDef
 	{
-		unsigned int id;
-		unsigned int stateId;
-		__int16 reverbIndex;
-		__int16 startOcclusionIndex;
-		__int16 numOcclusion;
-		__int16 startFilterIndex;
-		__int16 numFilter;
-		__int16 startMixIndex;
-		__int16 numMix;
+		SndStringHash id;
+		SndStringHash stateId;
+		short reverbIndex;
+		short startOcclusionIndex;
+		short numOcclusion;
+		short startFilterIndex;
+		short numFilter;
+		short startMixIndex;
+		short numMix;
 		const char PTR64 ambientStream;
-		__int16 startAdsrZoneIndex;
-		__int16 numAdsrZone;
-		__int16 startNPCAdsrZoneIndex;
-		__int16 numNPCAdsrZone;
-		__int16 ambientDefIndex;
-		__int16 numAmbientDef; // idk
-		__int16 startFullOccIndex;
-		__int16 numDisableFullOcc;
-		__int16 startPlayerBreathStateIndex;
-		__int16 numPlayerBreathStates;
-		unsigned int weapReflId;
+		short startAdsrZoneIndex;
+		short numAdsrZone;
+		short startNPCAdsrZoneIndex;
+		short numNPCAdsrZone;
+		short ambientDefIndex;
+		short unkIndex; // idk
+		short startFullOccIndex;
+		short numDisableFullOcc;
+		short startPlayerBreathStateIndex;
+		short numPlayerBreathStates;
+		SndStringHash weapReflId;
 		//bool exterior;
 		const char PTR64 zoneName;
 		const char PTR64 stateName;
@@ -2281,33 +2785,43 @@ namespace ZoneTool::IW7
 		const char PTR64 weapReflName;
 		const char PTR64 fullOccName;
 		const char PTR64 playerBreathStateName;
-		unsigned int contextType1;
-		unsigned int contextValue1;
-		unsigned int contextType2;
-		unsigned int contextValue2;
-		unsigned int contextType3;
-		unsigned int contextValue3;
-		unsigned int contextType4;
-		unsigned int contextValue4;
-		//unsigned int duck;
+		SndStringHash contextType1;
+		SndStringHash contextValue1;
+		SndStringHash contextType2;
+		SndStringHash contextValue2;
+		SndStringHash contextType3;
+		SndStringHash contextValue3;
+		SndStringHash contextType4;
+		SndStringHash contextValue4;
+		//SndStringHash duck;
 	}; assert_sizeof(ZoneDef, 184);
 
 	struct unk_1453E2FD8
 	{
-		unsigned int id;
-		int __pad0[13]; //char __pad0[56];
+		SndStringHash id;
+		const char PTR64 name;
+		float unk3;
+		float unk4;
+		float unk5;
+		float unk6;
+		int unk7;
+		int unk8;
+		int unk9;
+		float unk10;
+		float unk11;
+		int unk12;
 	}; assert_sizeof(unk_1453E2FD8, 56);
 
 	struct FullOcclusionDef
 	{
-		unsigned int id;
-		unsigned int presetName;
+		SndStringHash id;
+		SndStringHash presetName;
 		int entChannelIdx;
 	};
 
 	struct PlayerBreathStateDef
 	{
-		unsigned int stateType;
+		SndStringHash stateType;
 		const char PTR64 inhaleAlias;
 		const char PTR64 exhaleAlias;
 		int minBreaths;
@@ -2315,7 +2829,7 @@ namespace ZoneTool::IW7
 
 	struct SoundTable
 	{
-		unsigned int id;
+		SndStringHash id;
 		ADSRSetting PTR64 adsrSettings;
 		unsigned int adsrCount;
 		AmbientDef PTR64 ambientDefs;
@@ -2351,26 +2865,24 @@ namespace ZoneTool::IW7
 	struct SndDuck
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		float fadeIn;
 		float fadeOut;
 		float startDelay;
 		float minDistance;
 		float distance;
 		float length;
-		unsigned int fadeInCurve;
-		unsigned int fadeOutCurve;
-		float PTR64 hpf;
+		SndStringHash fadeInCurve;
+		SndStringHash fadeOutCurve;
+		float PTR64 attenuation;
 		float PTR64 lpf;
 		bool updateWhilePaused;
 		bool trackAmplitude;
 		bool disableInSplitscreen;
-		char pad;
-		int unk1;
-		int unk2;
-		float aliasHpf;
+		float unused[2];
+		float aliasAttenuation;
 		float aliasLpf;
-		unsigned int duckAlias;
+		SndStringHash duckAlias;
 	}; assert_sizeof(SndDuck, 144);
 
 	enum SndMusicAssetType
@@ -2383,8 +2895,8 @@ namespace ZoneTool::IW7
 	struct SndMusicAsset
 	{
 		char alias[64];
-		unsigned int aliasId;
-		int inactive;
+		SndStringHash aliasId;
+		int looping;
 		int completeLoop;
 		int removeAfterPlay;
 		int firstRandom;
@@ -2395,14 +2907,13 @@ namespace ZoneTool::IW7
 		int bpm;
 		int assetType;
 		int loopNumber;
-		unsigned int sampleCount;
+		int order;
 		int startDelayBeats;
 		int startFadeBeats;
 		int stopDelayBeats;
 		int stopFadeBeats;
-		//int startOffsetFrames;
+		int startOffsetFrames;
 		int meter;
-		unsigned int sampleRate;
 	}; assert_sizeof(SndMusicAsset, 140);
 
 	enum SndMusicStateStatus
@@ -2414,7 +2925,7 @@ namespace ZoneTool::IW7
 	struct SndMusicState
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		SndMusicAsset intro;
 		SndMusicAsset exit;
 		unsigned int loopCount;
@@ -2433,7 +2944,7 @@ namespace ZoneTool::IW7
 	struct SndMusicSet
 	{
 		char name[64];
-		unsigned int id;
+		SndStringHash id;
 		unsigned int stateCount;
 		SndMusicState PTR64 states;
 	}; assert_sizeof(SndMusicSet, 80);
@@ -2515,7 +3026,7 @@ namespace ZoneTool::IW7
 	{
 		const char PTR64 name;
 		vec3_t origin;
-		unsigned __int16 triggerIndex;
+		unsigned short triggerIndex;
 		char sunPrimaryLightIndex;
 		unsigned int entityUID;
 		char unk[20];
@@ -2941,7 +3452,7 @@ namespace ZoneTool::IW7
 		unsigned int nodeCount;
 		pathnode_t PTR64 nodes;
 		bool parentIndexResolved;
-		unsigned __int16 version;
+		unsigned short version;
 		int visBytes;
 		char PTR64 pathVis;
 		int nodeTreeCount;
@@ -3124,7 +3635,7 @@ namespace ZoneTool::IW7
 		short PTR64 audioStateIds;
 		CTAudRvbPanInfo PTR64 audioRvbPanInfo;
 		short PTR64 transientIndex; // guess
-		ClientEntityLinkToDef PTR64  PTR64 linkTo;
+		ClientEntityLinkToDef PTR64 PTR64 linkTo;
 	}; assert_sizeof(ClientTriggers, 0xB8);
 
 	struct ClientTriggerBlendNode
@@ -3196,21 +3707,35 @@ namespace ZoneTool::IW7
 		float radius;
 		ClipInfo PTR64 info;
 		PhysicsAsset PTR64 physicsAsset;
-		//unsigned __int16 physicsShapeOverrideIdx;
-		//unsigned __int16 navObstacleIdx;
+		unsigned short physicsShapeOverrideIdx;
+		unsigned short navObstacleIdx;
 		unsigned int edgeFirstIndex;
-		unsigned int edgeTotalCount;
+		//unsigned int edgeTotalCount;
 	}; assert_sizeof(cmodel_t, 56);
 
-	enum DynEntityType : std::int32_t
+	enum DynEntityType : std::int8_t
 	{
 		DYNENT_TYPE_INVALID = 0x0,
+		DYNENT_TYPE_CLUTTER = 0x1,
+		DYNENT_TYPE_CLUTTER_NOSHADOW = 0x2,
+		DYNENT_TYPE_SCRIPTABLEINST = 0x3,
+		DYNENT_TYPE_SCRIPTABLEPHYSICS = 0x4,
+		DYNENT_TYPE_LINKED = 0x5,
+		DYNENT_TYPE_LINKED_NOSHADOW = 0x6,
+		DYNENT_TYPE_COUNT = 0x7,
+	};
+
+	enum DynEntityBasis
+	{
+		DYNENT_BASIS_MODEL = 0x0,
+		DYNENT_BASIS_BRUSH = 0x1,
+		DYNENT_BASIS_COUNT = 0x2,
 	};
 
 	struct GfxPlacement
 	{
-		float quat[4];
-		float origin[3];
+		vec4_t quat;
+		vec3_t origin;
 	};
 
 	struct DynEntityLinkToDef
@@ -3223,41 +3748,72 @@ namespace ZoneTool::IW7
 	struct DynEntityDef
 	{
 		DynEntityType type;
-		char __pad0[28];
+		char __pad0[31];
 		GfxPlacement pose;
 		char __pad1[4];
 		XModel PTR64 baseModel;
-		char __pad2[16];
+		unsigned short brushModel;
+		bool spawnActive;
+		char __pad2[1];
+		short instanceIndex;
+		char __pad3[10];
 		DynEntityLinkToDef PTR64 linkTo;
-		char __pad3[16];
+		bool noPhysics;
+		bool unk;
+		char __pad4[1];
+		bool distantShadows;
+		bool noSpotShadows;
+		bool isTransient;
+		bool transientZoneLoaded;
+		char __pad5[1];
+		char priority;
+		char __pad6[7];
 	}; assert_sizeof(DynEntityDef, 112);
 	assert_offsetof(DynEntityDef, baseModel, 64);
 	assert_offsetof(DynEntityDef, linkTo, 88);
 
-	struct unk_1453E3260
+	struct GpuLightGridRequestRecord
 	{
-		char __pad0[28];
-	}; assert_sizeof(unk_1453E3260, 28);
+		unsigned int lgvFrame;
+		unsigned int lgvHistoryEntry;
+		unsigned int lgvNumProbes;
+	};
 
-	struct unk_1453E4268
+	struct DynEntityPose
 	{
-		char __pad0[44];
-		unsigned int unk01Count;
-		unk_1453E3260 PTR64 unk01;
-		char PTR64 unk02;
-		char __pad1[8];
-	}; assert_sizeof(unk_1453E4268, 72);
-	assert_offsetof(unk_1453E4268, unk02, 56);
+		GfxPlacement pose;
+		float radius;
+		GpuLightGridRequestRecord lastGpuLightGridRequest;
+		unsigned int numPoses;
+		GfxPlacement PTR64 poses;
+		char PTR64 unk;
+		char __pad1[1];
+		bool cachedActive;
+		char __pad2[6];
+	}; assert_sizeof(DynEntityPose, 72);
+	assert_offsetof(DynEntityPose, unk, 56);
 
-	struct unk_1453E4278
+	struct DynEntityClient
 	{
-		char __pad0[56];
-	}; assert_sizeof(unk_1453E4278, 56);
+		unsigned short flags;
+		char __pad0[6];
+		XModel PTR64 activeModel;
+		int physicsSystemId;
+		int physicsSystemDetailId;
+		char numPhysicsBodies;
+		int singlePhysicsBody;
+		int detailBoundBody;
+		int unkId;
+		int dynEntDefId;
+		int locked;
+		char __pad3[8];
+	}; assert_sizeof(DynEntityClient, 56);
 
-	struct unk_1453E4238
+	struct DynEntityGlobalId
 	{
-		char __pad0[8];
-	}; assert_sizeof(unk_1453E4238, 8);
+		char basis;
+		unsigned int id;
+	}; assert_sizeof(DynEntityGlobalId, 8);
 
 	struct unk_1453E4280
 	{
@@ -3266,14 +3822,16 @@ namespace ZoneTool::IW7
 
 	struct unk_1453E4298
 	{
-		char __pad0[32];
+		char __pad0[28];
+		int unkIndex;
 		unsigned int unk01Count;
 		unk_1453E4280 PTR64 unk01;
 	}; assert_sizeof(unk_1453E4298, 48);
 
 	struct unk_1453E42A8
 	{
-		char __pad0[8];
+		int unkIndex;
+		int unk;
 	}; assert_sizeof(unk_1453E42A8, 8);
 
 	struct unk_1453E1130
@@ -3281,36 +3839,30 @@ namespace ZoneTool::IW7
 		char unk;
 	}; assert_sizeof(unk_1453E1130, 1);
 
-	struct unk_1453E20F0
+	struct ClientEntAnchor
 	{
-		int unk1;
-		scr_string_t unk2;
-	}; assert_sizeof(unk_1453E20F0, 8);
-
-	struct ScriptablePhysicsLimits
-	{
-		unsigned int clientStandaloneMainRigidBodyCount;
-		unsigned int clientStandaloneDetailedRigidBodyCount;
-		unsigned int clientStandaloneMotionCount;
-		unsigned int serverStandaloneMainRigidBodyCount;
-		unsigned int serverStandaloneDetailedRigidBodyCount;
-		unsigned int serverStandaloneMotionCount;
-	};
+		scr_string_t name;
+		int entNum;
+	}; assert_sizeof(ClientEntAnchor, 8);
 
 	struct unk_1453E24B0
 	{
 		XModel PTR64 model;
-		unsigned int count;
-		char __pad0[4];
+		bool neverMoves;
+		bool dynamicSimulation;
+		char __pad0[6];
 	}; assert_sizeof(unk_1453E24B0, 16);
 
 	struct unk_1453E2510
 	{
 		ScriptableDef PTR64 def;
-		char __pad0[64];
+		char __pad0[52];
+		short entityId;
+		char __pad1[10];
 		unk_1453E24B0 unk01;
-		char PTR64 unk02;
-		char __pad1[16];
+		unsigned int eventStreamBufferSize;
+		char PTR64 eventStreamBuffer;
+		char __pad2[4];
 	}; assert_sizeof(unk_1453E2510, 112);
 
 	struct unk_1453E2520
@@ -3330,23 +3882,21 @@ namespace ZoneTool::IW7
 		unk_1453E2520 unk01;
 		unk_1453E2530 unk02[2];
 		scr_string_t unk03;
+		int flags;
 		char __pad0[8];
-		scr_string_t unk04;
-		char __pad1[8];
-		scr_string_t unk05;
+		const char PTR64 unk04;
+		scr_string_t targetname;
 	}; assert_sizeof(ScriptableInstance, 464);
-	assert_offsetof(ScriptableInstance, unk03, 432);
-	assert_offsetof(ScriptableInstance, unk05, 456);
 
 	struct ScriptableReservedDynent
 	{
 		unsigned int dynentId;
-		__int16 next;
+		short next;
 	};
 
 	struct ScriptableReservedDynents
 	{
-		__int16 freeHead;
+		short freeHead;
 		unsigned int numReservedDynents;
 		ScriptableReservedDynent PTR64 reservedDynents;
 	};
@@ -3378,10 +3928,10 @@ namespace ZoneTool::IW7
 
 	struct ScriptableMapEnts
 	{
-		unsigned int instanceCount;
-		unsigned int unkCount1;
-		unsigned int unkCount2;
-		unsigned int unkCount3;
+		unsigned int totalInstanceCount;
+		unsigned int runtimeInstanceCount;
+		unsigned int reservedInstanceCount;
+		unsigned int pad;
 		ScriptableInstance PTR64 instances;
 		unk_1453E2560 unk;
 		Scriptable_EventSun_Data sunClientDatas[2];
@@ -3402,15 +3952,25 @@ namespace ZoneTool::IW7
 		unsigned int initialFlags;
 		unsigned int flags;
 		unsigned int mapEntLookup;
-		//unsigned __int16 transientIndexStored;
+		//unsigned short transientIndexStored;
 	}; assert_sizeof(MayhemInstance, 72);
+
+	enum SpawnerFieldType : std::uint8_t // VariableType
+	{
+		SF_TYPE_UNDEFINED = 0x0,
+		SF_TYPE_STRING = 0x2,
+		SF_TYPE_ISTRING = 0x3,
+		SF_TYPE_VECTOR = 0x4,
+		SF_TYPE_FLOAT = 0x5,
+		SF_TYPE_INTEGER = 0x6,
+	};
 
 	struct SpawnerField
 	{
 		scr_string_t key;
 		unsigned int keyCanonical;
 		scr_string_t value;
-		char type;
+		unsigned char type;
 	}; assert_sizeof(SpawnerField, 16);
 
 	struct Spawner
@@ -3428,7 +3988,7 @@ namespace ZoneTool::IW7
 	struct SpawnerList
 	{
 		unsigned int spawnerCount;
-		Spawner PTR64 spanwerList;
+		Spawner PTR64 spawnerList;
 	};
 
 	struct AudioPASpeaker
@@ -3455,10 +4015,10 @@ namespace ZoneTool::IW7
 		unsigned short dynEntCount[2];
 		unsigned short dynEntCountTotal;
 		DynEntityDef PTR64 dynEntDefList[2];
-		unk_1453E4268 PTR64 dynEntUnk01List[4];
-		unk_1453E4278 PTR64 dynEntUnk02List[4];
-		char __pad0[16];
-		unk_1453E4238 PTR64 unk1[2];
+		DynEntityPose PTR64 dynEntPoseList[2][2];
+		DynEntityClient PTR64 dynEntClientList[2][2]; // runtime data
+		short unkIndexes[8];
+		DynEntityGlobalId PTR64 dynEntGlobalIdList[2];
 		char __pad1[8];
 		unsigned int unk2Count;
 		unk_1453E4298 PTR64 unk2;
@@ -3466,8 +4026,8 @@ namespace ZoneTool::IW7
 		unk_1453E1130 PTR64 unk2_2[2];
 		unsigned int unk3Count;
 		unsigned int PTR64 unk3;
-		unsigned int unk4Count; // dynEntAnchorCount
-		unk_1453E20F0 PTR64 unk4; // DynEntityAnchor
+		unsigned int clientEntAnchorCount;
+		ClientEntAnchor PTR64 clientEntAnchors;
 		ScriptableMapEnts scriptableMapEnts;
 		unsigned int numMayhemScenes;
 		MayhemInstance PTR64 mayhemScenes;
@@ -3478,7 +4038,7 @@ namespace ZoneTool::IW7
 	assert_offsetof(MapEnts, havokEntsShapeDataSize, 336);
 	assert_offsetof(MapEnts, cmodels, 360);
 	assert_offsetof(MapEnts, dynEntDefList, 376);
-	assert_offsetof(MapEnts, unk1, 472);
+	assert_offsetof(MapEnts, dynEntGlobalIdList, 472);
 	assert_offsetof(MapEnts, unk2, 504);
 	assert_offsetof(MapEnts, scriptableMapEnts, 576);
 	assert_offsetof(MapEnts, audioPASpeakers, 824);
@@ -3495,9 +4055,9 @@ namespace ZoneTool::IW7
 		FxCombinedDef shatterEffect;
 		FxCombinedDef shatterSmallEffect;
 		FxCombinedDef crackDecalEffect;
-		const char PTR64 damagedSound;
-		const char PTR64 destroyedSound;
-		const char PTR64 destroyedQuietSound;
+		SndAliasLookup damagedSound;
+		SndAliasLookup destroyedSound;
+		SndAliasLookup destroyedQuietSound;
 		float highMipRadiusInvSq;
 		float shatteredHighMipRadiusInvSq;
 		int numCrackRings;
@@ -3526,16 +4086,16 @@ namespace ZoneTool::IW7
 	{
 		float texCoordOrigin[2];
 		unsigned int supportMask;
-		unsigned __int16 initIndex;
-		unsigned __int16 geoDataStart;
-		unsigned __int16 lightingIndex;
-		unsigned __int8 defIndex;
-		unsigned __int8 pad[3];
-		unsigned __int8 vertCount;
-		unsigned __int8 holeDataCount;
-		unsigned __int8 crackDataCount;
-		unsigned __int8 fanDataCount;
-		unsigned __int16 flags;
+		unsigned short initIndex;
+		unsigned short geoDataStart;
+		unsigned short lightingIndex;
+		unsigned char defIndex;
+		unsigned char pad[3];
+		unsigned char vertCount;
+		unsigned char holeDataCount;
+		unsigned char crackDataCount;
+		unsigned char fanDataCount;
+		unsigned short flags;
 		float areaX2;
 	};
 
@@ -3638,7 +4198,7 @@ namespace ZoneTool::IW7
 		int skySurfCount;
 		int PTR64 skyStartSurfs;
 		GfxImage PTR64 skyImage;
-		unsigned __int8 skySamplerState;
+		unsigned char skySamplerState;
 	}; assert_sizeof(GfxSky, 32);
 
 	struct GfxWorldDpvsPlanes
@@ -3669,8 +4229,8 @@ namespace ZoneTool::IW7
 		GfxPortalWritable writable;
 		DpvsPlane plane;
 		vec3_t PTR64 vertices;
-		unsigned __int16 cellIndex;
-		unsigned __int16 closeDistance;
+		unsigned short cellIndex;
+		unsigned short closeDistance;
 		char vertexCount;
 		vec3_t hullAxis[2];
 	};
@@ -3678,14 +4238,14 @@ namespace ZoneTool::IW7
 	struct GfxCell
 	{
 		Bounds bounds;
-		unsigned __int16 portalCount;
+		unsigned short portalCount;
 		GfxPortal PTR64 portals;
 	};
 
 	struct GfxCellTransientInfo
 	{
-		unsigned __int16 aabbTreeIndex;
-		unsigned __int16 transientZone;
+		unsigned short aabbTreeIndex;
+		unsigned short transientZone;
 	};
 
 	struct GfxReflectionProbe
@@ -3693,23 +4253,20 @@ namespace ZoneTool::IW7
 		char PTR64 livePath;
 		vec3_t origin;
 		vec3_t angles;
-		unsigned __int16 PTR64 probeInstances;
-		unsigned __int16 probeInstanceCount;
-		unsigned __int16 probeRelightingIndex;
-		unsigned int probeImageIndirection;
-	};
+		unsigned int PTR64 probeInstances;
+		unsigned int probeInstanceCount;
+		unsigned int probeRelightingIndex;
+	}; assert_sizeof(GfxReflectionProbe, 48);
 
 	struct GfxReflectionProbeRelightingData
 	{
 		unsigned int reflectionProbeIndex;
-		unsigned __int16 relightingFlags;
-		unsigned __int16 zoneCount;
+		unsigned short relightingFlags;
 		unsigned int gBufferAlbedoImageIndex;
 		unsigned int gBufferNormalImageIndex;
-		unsigned int gBufferSecondaryDiffuseImageIndex;
+		//unsigned int gBufferSecondaryDiffuseImageIndex;
 		float relightingScale;
-		unsigned __int16 PTR64 zones;
-	};
+	}; assert_sizeof(GfxReflectionProbeRelightingData, 20);
 
 	struct GfxReflectionProbeObb
 	{
@@ -3725,7 +4282,7 @@ namespace ZoneTool::IW7
 		char PTR64 livePath;
 		char PTR64 livePath2;
 		vec3_t probePosition;
-		unsigned __int16 probeImageIndex;
+		unsigned short probeImageIndex;
 		char lodLevel;
 		char flags;
 		vec4_t probeRotation;
@@ -3754,7 +4311,7 @@ namespace ZoneTool::IW7
 		unsigned int probeRelightingCount;
 		GfxReflectionProbeRelightingData PTR64 probeRelightingData;
 		unsigned int reflectionProbeGBufferImageCount;
-		GfxImage PTR64  PTR64 reflectionProbeGBufferImages;
+		GfxImage PTR64 PTR64 reflectionProbeGBufferImages;
 		GfxRawTexture PTR64 reflectionProbeGBufferTextures;
 		unsigned int reflectionProbeInstanceCount;
 		GfxReflectionProbeInstance PTR64 reflectionProbeInstances;
@@ -3788,15 +4345,10 @@ namespace ZoneTool::IW7
 		GfxWorldPackedLightmap PTR64 packedLightmap;
 	}; assert_sizeof(GfxWorldLightmapReindexData, 32);
 
-	struct unk_1453E41D8
+	struct GfxDecalVolumeCollection
 	{
 		char __pad0[388];
-	}; assert_sizeof(unk_1453E41D8, 388);
-
-	struct unk_1453E4A70
-	{
-		char __pad0[24];
-	}; assert_sizeof(unk_1453E4A70, 24);
+	}; assert_sizeof(GfxDecalVolumeCollection, 388);
 
 	struct GfxOrientedBoundingBox
 	{
@@ -3855,28 +4407,539 @@ namespace ZoneTool::IW7
 		GfxWorldReflectionProbeData reflectionProbeData;
 		GfxWorldLightmapReindexData lightmapReindexData;
 		GfxImage PTR64 iesLookupTexture;
-		unsigned int unk01Count;
-		unk_1453E41D8 PTR64 unk01;
+		unsigned int decalVolumeCollectionCount;
+		GfxDecalVolumeCollection PTR64 decalVolumeCollections;
 		GfxImage PTR64 lightmapOverridePrimary;
 		GfxImage PTR64 lightmapOverrideSecondary;
 		unsigned int lightMapCount;
-		GfxLightMap PTR64  PTR64 lightMaps;
-		unk_1453E4A70 PTR64 unk02;
-		char __pad0[24];
+		GfxLightMap PTR64 PTR64 lightMaps;
+		GfxTexture PTR64 lightmapTextures;
+		void PTR64 unused1;
+		void PTR64 unused2;
+		void PTR64 unused3;
 		unsigned int transientZoneCount;
 		GfxWorldTransientZone PTR64 transientZones[32];
 		unsigned int indexCount;
 		unsigned short PTR64 indices;
-		void PTR64 indexBuffer;
+		ID3D11Buffer PTR64 indexBuffer;
 		GfxWorldVolumetrics volumetrics;
 	}; assert_sizeof(GfxWorldDraw, 536);
 	assert_offsetof(GfxWorldDraw, iesLookupTexture, 144);
-	assert_offsetof(GfxWorldDraw, unk01Count, 152);
-	assert_offsetof(GfxWorldDraw, unk01, 160);
+	assert_offsetof(GfxWorldDraw, decalVolumeCollectionCount, 152);
+	assert_offsetof(GfxWorldDraw, decalVolumeCollections, 160);
 	assert_offsetof(GfxWorldDraw, transientZones, 240);
 	assert_offsetof(GfxWorldDraw, indices, 504);
 	assert_offsetof(GfxWorldDraw, indexBuffer, 512);
 	assert_offsetof(GfxWorldDraw, volumetrics, 520);
+
+	struct GfxLightGridTree
+	{
+		unsigned char maxDepth;
+		int nodeCount;
+		int leafCount;
+		int coordMinGridSpace[3];
+		int coordMaxGridSpace[3];
+		int coordHalfSizeGridSpace[3];
+		int defaultColorIndexBitCount;
+		int defaultLightIndexBitCount;
+		unsigned int PTR64 p_nodeTable;
+		int leafTableSize;
+		unsigned char PTR64 p_leafTable;
+	};
+
+	struct GfxLightGridColorsHDR
+	{
+		float rgb[56][3];
+	}; assert_sizeof(GfxLightGridColorsHDR, 672);
+
+	struct unk_1453E2FD0
+	{
+		float origin[3];
+	}; assert_sizeof(unk_1453E2FD0, 12);
+
+	struct unk_1453E47B0
+	{
+		char __pad0[88];
+	}; assert_sizeof(unk_1453E47B0, 88);
+
+	struct unk_1453E47D0
+	{
+		char __pad0[16];
+	}; assert_sizeof(unk_1453E47D0, 16);
+
+	struct unk_1453E47F8
+	{
+		char __pad0[16];
+	}; assert_sizeof(unk_1453E47F8, 16);
+
+	struct unk_1453E4830
+	{
+		char __pad0[4];
+	}; assert_sizeof(unk_1453E4830, 4);
+
+	struct GfxLightGridProbeData
+	{
+		unsigned int gpuVisibleProbesCount;
+		unk_1453E2FD0 PTR64 gpuVisibleProbes;
+		char PTR64 gpuVisibleProbesData; // 64  PTR64 (count  PTR64 0x2000)
+		void PTR64 gpuVisibleProbesBuffer;
+		void PTR64 gpuVisibleProbesView;
+		void PTR64 gpuVisibleProbesRWView;
+		unsigned int probesDataCount;
+		char PTR64 probesData; // 64  PTR64 count
+		void PTR64 probesDataBuffer;
+		void PTR64 probesDataView;
+		void PTR64 probesDataRWView;
+		unk_1453E2FD0 PTR64 probesPositions;
+		void PTR64 probesPositionsBuffer;
+		void PTR64 probesPositionsView;
+		unsigned int unk01Count;
+		unk_1453E47B0 PTR64 unk01;
+		unsigned int probeTetsCount;
+		unsigned int probeTetVisibilityCount;
+		unk_1453E47D0 PTR64 probeTets;
+		void PTR64 probeTetsBuffer;
+		void PTR64 probeTetsView;
+		unk_1453E47F8 PTR64 probeTetNeighbors;
+		void PTR64 probeTetNeighborsBuffer;
+		void PTR64 probeTetNeighborsView;
+		char PTR64 probeTetVisibility; // 64  PTR64 count
+		void PTR64 probeTetVisibilityBuffer;
+		void PTR64 probeTetVisibilityView;
+		unsigned int probeVoxelStartTetCount;
+		unk_1453E4830 PTR64 probeVoxelStartTet;
+		void PTR64 probeVoxelStartTetBuffer;
+		void PTR64 probeVoxelStartTetView;
+	}; assert_sizeof(GfxLightGridProbeData, 240);
+
+	struct GfxLightGrid
+	{
+		int unk[9];
+		int tableVersion;
+		int paletteVersion;
+		char rangeExponent8BitsEncoding;
+		char rangeExponent12BitsEncoding;
+		char rangeExponent16BitsEncoding;
+		unsigned char stageCount;
+		float PTR64 stageLightingContrastGain;
+		unsigned int paletteEntryCount;
+		int PTR64 paletteEntryAddress;
+		unsigned int paletteBitstreamSize;
+		unsigned char PTR64 paletteBitstream;
+		GfxLightGridColorsHDR skyLightGridColors;
+		GfxLightGridColorsHDR defaultLightGridColors;
+		GfxLightGridTree tree;
+		GfxLightGridProbeData probeData;
+	}; assert_sizeof(GfxLightGrid, 0x6D8);
+	assert_offsetof(GfxLightGrid, stageCount, 47);
+
+	struct GfxVoxelTreeHeader
+	{
+		int rootNodeDimension[4];
+		int nodeCoordBitShift[4];
+		vec4_t boundMin;
+		vec4_t boundMax;
+	}; assert_sizeof(GfxVoxelTreeHeader, 0x40);
+
+	struct GfxVoxelTopDownViewNode
+	{
+		int firstNodeIndex;
+		int zMin;
+		int zMax;
+	}; assert_sizeof(GfxVoxelTopDownViewNode, 12);
+
+	struct GfxVoxelInternalNode
+	{
+		int firstNodeIndex[2];
+		int childNodeMask[2];
+	}; assert_sizeof(GfxVoxelInternalNode, 16);
+
+	struct GfxVoxelLeafNode
+	{
+		unsigned short lightListAddress;
+	};
+
+	struct GfxVoxelTree
+	{
+		Bounds zoneBound;
+		int voxelTopDownViewNodeCount;
+		int voxelInternalNodeCount;
+		int voxelLeafNodeCount;
+		int lightListArraySize;
+		GfxVoxelTreeHeader PTR64 voxelTreeHeader;
+		GfxVoxelTopDownViewNode PTR64 voxelTopDownViewNodeArray;
+		GfxVoxelInternalNode PTR64 voxelInternalNodeArray;
+		GfxVoxelLeafNode PTR64 voxelLeafNodeArray;
+		unsigned short PTR64 lightListArray;
+		unsigned int PTR64 voxelInternalNodeDynamicLightList; // 2  PTR64 count
+		char __pad0[24];
+	}; assert_sizeof(GfxVoxelTree, 112);
+	assert_offsetof(GfxVoxelTree, voxelTreeHeader, 40);
+	assert_offsetof(GfxVoxelTree, voxelInternalNodeDynamicLightList, 80);
+
+	struct GfxFrustumLights
+	{
+		unsigned int indexCount;
+		unsigned short PTR64 indices;
+		unsigned int vertexCount;
+		char PTR64 vertices; // 32  PTR64 count
+		void PTR64 indexBuffer;
+		void PTR64 vertexBuffer;
+	}; assert_sizeof(GfxFrustumLights, 48);
+
+	struct GfxLightViewFrustum
+	{
+		unsigned int planeCount;
+		vec4_t PTR64 planes;
+		unsigned int indexCount;
+		unsigned short PTR64 indices;
+		unsigned int vertexCount;
+		vec3_t PTR64 vertices;
+	}; assert_sizeof(GfxLightViewFrustum, 48);
+
+	struct GfxHeightfield
+	{
+		Bounds bounds;
+		vec4_t lookupMatrix[4];
+		GfxImage PTR64 image;
+	}; assert_sizeof(GfxHeightfield, 96);
+
+	struct unk_1453E4B08
+	{
+		unsigned int unk01Count;
+		unsigned int PTR64 unk01; // unused
+		unsigned int unk02Count;
+		unsigned int PTR64 unk02; // unused
+		unsigned int unk03Count;
+		unsigned short PTR64 unk03;
+	}; assert_sizeof(unk_1453E4B08, 48);
+
+	struct GfxBrushModelWritable
+	{
+		Bounds bounds;
+	};
+
+	struct GfxBrushModel
+	{
+		GfxBrushModelWritable writable;
+		Bounds bounds;
+		float radius;
+		unsigned int startSurfIndex;
+		unsigned short surfaceCount;
+	}; assert_sizeof(GfxBrushModel, 60);
+
+	struct MaterialMemory
+	{
+		Material PTR64 material;
+		int memory;
+	};
+
+	struct sunflare_t
+	{
+		bool hasValidData;
+		Material PTR64 spriteMaterial;
+		Material PTR64 flareMaterial;
+		float spriteSize;
+		float flareMinSize;
+		float flareMinDot;
+		float flareMaxSize;
+		float flareMaxDot;
+		float flareMaxAlpha;
+		int flareFadeInTime;
+		int flareFadeOutTime;
+		float blindMinDot;
+		float blindMaxDot;
+		float blindMaxDarken;
+		int blindFadeInTime;
+		int blindFadeOutTime;
+		float glareMinDot;
+		float glareMaxDot;
+		float glareMaxLighten;
+		int glareFadeInTime;
+		int glareFadeOutTime;
+		float sunFxPosition[3];
+	}; assert_sizeof(sunflare_t, 112);
+
+	struct XModelDrawInfo
+	{
+		unsigned int hasGfxEntIndex : 1;
+		unsigned int lod : 4;
+		unsigned int materialLod : 1;
+		unsigned int surfBufSize : 24;
+		unsigned int surfId : 24;
+	};
+
+#pragma pack(push, 2)
+	struct GfxSceneDynModel
+	{
+		XModelDrawInfo info;
+		unsigned short dynEntId;
+	};
+#pragma pack(pop)
+
+	struct BModelDrawInfo
+	{
+		unsigned int surfId;
+	};
+
+#pragma pack(push, 2)
+	struct GfxSceneDynBrush
+	{
+		BModelDrawInfo info;
+		unsigned short dynEntId;
+	};
+#pragma pack(pop)
+
+	struct GfxShadowGeometry
+	{
+		unsigned short surfaceCount;
+		unsigned short smodelCount;
+		unsigned int PTR64 sortedSurfIndex;
+		unsigned short PTR64 smodelIndex;
+	}; assert_sizeof(GfxShadowGeometry, 24);
+
+	struct GfxLightRegionAxis
+	{
+		float dir[3];
+		float midPoint;
+		float halfSize;
+	};
+
+	struct GfxLightRegionHull
+	{
+		float kdopMidPoint[9];
+		float kdopHalfSize[9];
+		unsigned int axisCount;
+		GfxLightRegionAxis PTR64 axis;
+	};
+
+	struct GfxLightRegion
+	{
+		unsigned int hullCount;
+		GfxLightRegionHull PTR64 hulls;
+	};
+
+	struct GfxLightAABBNode
+	{
+		Bounds bound;
+		unsigned short firstChild;
+		unsigned short childCount;
+	}; assert_sizeof(GfxLightAABBNode, 28);
+
+	struct GfxLightAABB
+	{
+		unsigned short nodeCount;
+		unsigned short lightCount;
+		GfxLightAABBNode PTR64 nodeArray;
+		unsigned short PTR64 lightArray;
+	}; assert_sizeof(GfxLightAABB, 24);
+
+	struct GfxStaticModelInst
+	{
+		Bounds bounds;
+		float lightingOrigin[3];
+	};
+
+	struct srfTriangles_t
+	{
+		unsigned int vertexLayerData;
+		unsigned int firstVertex;
+		float maxEdgeLength;
+		unsigned short vertexCount;
+		unsigned short triCount;
+		unsigned int baseIndex;
+	};
+
+	struct GfxSurface
+	{
+		srfTriangles_t tris;
+		Material PTR64 material;
+		unsigned char lightmapIndex;
+		unsigned char flags;
+		unsigned short sortKey;
+		unsigned char unk1;
+		unsigned char unk2;
+		unsigned char unk3;
+		unsigned char unk4;
+		unsigned char transientZone;
+	}; assert_sizeof(GfxSurface, 48);
+	assert_offsetof(GfxSurface, material, 24);
+
+	struct GfxPackedPlacement
+	{
+		float origin[3];
+		float axis[3][3];
+		float scale;
+	};
+
+	struct GfxStaticModelVertexLighting
+	{
+		unsigned char visibility[4];
+		unsigned short ambientColorFloat16[4];
+		unsigned short highlightColorFloat16[4];
+	};
+
+	struct GfxStaticModelVertexLightingInfo
+	{
+		GfxStaticModelVertexLighting PTR64 lightingValues;
+		ID3D11Buffer PTR64 smodelLightingVb;
+		ID3D11Buffer PTR64 lightingValuesVb;
+		GfxSubdivCache cache;
+		int flags;
+		unsigned int numLightingValues;
+	}; assert_sizeof(GfxStaticModelVertexLightingInfo, 56);
+
+	struct GfxStaticModelLightmapInfo
+	{
+		float offset[2];
+		float scale[2];
+		int lightmapIndex;
+	};
+
+	enum StaticModelFlag : std::int32_t
+	{
+		// scale modifiers: 
+		// 0 = 4.0f
+		// 1 = 2.66667f
+		// 2 = 2.0f
+		// 3 = 1.6f
+		// 4 = 1.33333f
+		// 5 = 1.14286f
+		// 6 = 1.0f
+		// 7 = 0.888889f
+		// 8 = 0.8f
+		// 9 = 0.666667f
+		// 10 = 0.571429f
+		// 11 = 0.5f
+		// 12 = 0.4f
+		// 13 = 0.333333f
+		// 14 = 0.285714f
+		// 15 = 0.25f
+		STATIC_MODEL_FLAG_SCALE_MODIFIER_MASK = 0xF,
+		STATIC_MODEL_FLAG_NO_CAST_SHADOW = 0x10,
+		STATIC_MODEL_FLAG_GROUND_LIGHTING = 0x20,
+		STATIC_MODEL_FLAG_LIGHTGRID_LIGHTING = 0x40,
+		STATIC_MODEL_FLAG_VERTEXLIT_LIGHTING = 0x80,
+		STATIC_MODEL_FLAG_LIGHTMAP_LIGHTING = 0x100,
+		STATIC_MODEL_FLAG_ALLOW_FXMARK = 0x200,
+		STATIC_MODEL_FLAG_REACTIVEMOTION = 0x400,
+		STATIC_MODEL_FLAG_ANIMATED_VERTS = 0x800,
+	};
+
+	struct GfxStaticModelDrawInst
+	{
+		GfxPackedPlacement placement;
+		XModel PTR64 model;
+		GfxStaticModelVertexLightingInfo vertexLightingInfo;
+		GfxStaticModelLightmapInfo modelLightmapInfo;
+		unsigned short unk0;
+		unsigned short unk1;
+		unsigned short unk2;
+		unsigned short unk3;
+		unsigned short lightingHandle;
+		unsigned short unk5;
+		unsigned short unk6[4];
+		unsigned short cullDist;
+		unsigned short flags;
+		unsigned short unk9;
+		unsigned short unk10;
+		unsigned short unk11;
+		unsigned char unk13;
+		unsigned char unk14;
+		unsigned char unk15[4];
+		unsigned short primaryLightEnvIndex;
+		unsigned char reflectionProbeIndex;
+		unsigned char firstMtlSkinIndex;
+		unsigned char sunShadowFlags;
+		unsigned char transientZone;
+		unsigned char unk21;
+	}; assert_sizeof(GfxStaticModelDrawInst, 184);
+	assert_offsetof(GfxStaticModelDrawInst, model, 56);
+	assert_offsetof(GfxStaticModelDrawInst, vertexLightingInfo, 64);
+	assert_offsetof(GfxStaticModelDrawInst, cullDist, 160);
+
+	struct GfxSurfaceBounds
+	{
+		Bounds bounds;
+		unsigned int unk[3];
+	}; assert_sizeof(GfxSurfaceBounds, 36);
+
+	struct GfxWorldDpvsStatic
+	{
+		unsigned int smodelCount;
+		unsigned int staticSurfaceCount;
+		unsigned int litOpaqueSurfsBegin;
+		unsigned int litOpaqueSurfsEnd;
+		unsigned int litDecalSurfsBegin;
+		unsigned int litDecalSurfsEnd;
+		unsigned int litTransSurfsBegin;
+		unsigned int litTransSurfsEnd;
+		unsigned int emissiveSurfsBegin;
+		unsigned int emissiveSurfsEnd;
+		unsigned int smodelVisDataCount;
+		unsigned int surfaceVisDataCount;
+		unsigned int primaryLightVisDataCount;
+		unsigned int reflectionProbeVisDataCount;
+		unsigned int volumetricVisDataCount;
+		unsigned int decalVisDataCount;
+		unsigned int PTR64 smodelVisData[30];
+		unsigned int PTR64 surfaceVisData[30];
+		unsigned int PTR64 lodData;
+		unsigned int PTR64 primaryLightVisData[1];
+		unsigned int PTR64 reflectionProbeVisData[1];
+		unsigned int PTR64 volumetricVisData[1];
+		unsigned int PTR64 decalVisData[1];
+		unsigned int PTR64 tessellationCutoffVisData[30]; // only [0] used
+		unsigned int PTR64 sortedSurfIndex;
+		GfxStaticModelInst PTR64 smodelInsts;
+		GfxSurface PTR64 surfaces;
+		GfxSurfaceBounds PTR64 surfacesBounds;
+		GfxStaticModelDrawInst PTR64 smodelDrawInsts;
+		GfxDrawSurf PTR64 surfaceMaterials;
+		unsigned int PTR64 surfaceCastsSunShadow;
+		unsigned short PTR64 smodelUnk;
+		unsigned int sunShadowOptCount;
+		unsigned int sunSurfVisDataCount;
+		unsigned int PTR64 surfaceCastsSunShadowOpt;
+		char PTR64 PTR64 constantBuffers;
+		int usageCount;
+	}; assert_sizeof(GfxWorldDpvsStatic, 920);
+
+	struct GfxWorldDpvsDynamic
+	{
+		unsigned int dynEntClientWordCount[2];
+		unsigned int dynEntClientCount[2];
+		unsigned int PTR64 dynEntCellBits[2];
+		unsigned char PTR64 dynEntVisData[2][30];
+	}; assert_sizeof(GfxWorldDpvsDynamic, 512);
+
+	struct GfxHeroOnlyLight
+	{
+		unsigned char type;
+		unsigned char unused[3];
+		float color[3];
+		float dir[3];
+		float up[3];
+		float origin[3];
+		float radius;
+		float cosHalfFovOuter;
+		float cosHalfFovInner;
+		int exponent;
+	};
+
+	typedef void PTR64 umbraTomePtr_t;
+
+	struct UmbraGate
+	{
+		unsigned int objID;
+		Bounds bounds;
+		float closeDistance;
+	};
+
+	struct UmbraGate2
+	{
+		char __pad0[40];
+	};
 
 	struct GfxWorld
 	{
@@ -3887,10 +4950,10 @@ namespace ZoneTool::IW7
 		int nodeCount;
 		unsigned int surfaceCount;
 		int skyCount;
-		GfxSky PTR64 skies; // 40
+		GfxSky PTR64 skies;
 		unsigned int lastSunPrimaryLightIndex;
 		unsigned int primaryLightCount;
-		unsigned int unknown;
+		unsigned int movingScriptablePrimaryLightCount;
 		unsigned int sortKeyLitDecal;
 		unsigned int sortKeyEffectDecal;
 		unsigned int sortKeyTopDecal;
@@ -3906,13 +4969,78 @@ namespace ZoneTool::IW7
 		unsigned int sortKeyTransEnd;
 		unsigned int sortKeyEmissiveBegin;
 		unsigned int sortKeyEmissiveEnd;
-		GfxWorldDpvsPlanes dpvsPlanes; // 120
+		GfxWorldDpvsPlanes dpvsPlanes;
 		GfxCellTransientInfo PTR64 cellTransientInfos;
 		GfxCell PTR64 cells;
 		GfxWorldDraw draw;
-		char __pad0[3816]; // todo
+		GfxLightGrid lightGrid;
+		GfxFrustumLights PTR64 frustumLights;
+		GfxLightViewFrustum PTR64 lightViewFrustums;
+		int voxelTreeCount;
+		GfxVoxelTree PTR64 voxelTree;
+		int heightfieldCount;
+		GfxHeightfield PTR64 heightfields;
+		unk_1453E4B08 unk01; // something related to surfaces
+		int modelCount;
+		GfxBrushModel PTR64 models;
+		Bounds bounds;
+		unsigned int checksum;
+		int materialMemoryCount;
+		MaterialMemory PTR64 materialMemory;
+		sunflare_t sun;
+		float outdoorLookupMatrix[4][4];
+		GfxImage PTR64 outdoorImage;
+		Material PTR64 dustMaterial;
+		float materialLod0SizeThreshold;
+		unsigned int PTR64 cellCasterBits;
+		unsigned int PTR64 cellHasSunLitSurfsBits;
+		GfxSceneDynModel PTR64 sceneDynModel;
+		GfxSceneDynBrush PTR64 sceneDynBrush;
+		unsigned int primaryLightMotionDetectBitsEntries;
+		unsigned int PTR64 primaryLightMotionDetectBits;
+		unsigned int entityMotionBitsEntries;
+		unsigned int PTR64 entityMotionBits;
+		unsigned int staticSpotOmniPrimaryLightCountAligned;
+		unsigned int numPrimaryLightEntityShadowVisEntries;
+		unsigned int PTR64 primaryLightEntityShadowVis;
+		unsigned int dynEntMotionBitsEntries[2];
+		unsigned int PTR64 dynEntMotionBits[2];
+		unsigned int numPrimaryLightDynEntShadowVisEntries[2];
+		unsigned int PTR64 primaryLightDynEntShadowVis[2];
+		GfxShadowGeometry PTR64 shadowGeomOptimized;
+		GfxLightRegion PTR64 lightRegion;
+		GfxLightAABB lightAABB;
+		GfxWorldDpvsStatic dpvs;
+		GfxWorldDpvsDynamic dpvsDyn;
+		unsigned int mapVtxChecksum;
+		unsigned int heroOnlyLightCount;
+		GfxHeroOnlyLight PTR64 heroOnlyLights;
+		unsigned int numUmbraGates;
+		UmbraGate PTR64 umbraGates;
+		unsigned int umbraTomeSize;
+		char PTR64 umbraTomeData;
+		umbraTomePtr_t umbraTomePtr;
+		unsigned int numUmbraGates2;
+		UmbraGate2 PTR64 umbraGates2;
+		unsigned int umbraTomeSize2;
+		char PTR64 umbraTomeData2;
+		umbraTomePtr_t umbraTomePtr2;
+		unsigned int umbraUnkSize;
+		char PTR64 umbraUnkData;
 	}; assert_sizeof(GfxWorld, 0x11A8);
 	assert_offsetof(GfxWorld, dpvsPlanes, 120);
+	assert_offsetof(GfxWorld, voxelTreeCount, 2472);
+	assert_offsetof(GfxWorld, models, 2560);
+	assert_offsetof(GfxWorld, materialMemory, 2600);
+	assert_offsetof(GfxWorld, outdoorImage, 2784);
+	assert_offsetof(GfxWorld, cellHasSunLitSurfsBits, 2816);
+	assert_offsetof(GfxWorld, sceneDynModel, 2824);
+	assert_offsetof(GfxWorld, shadowGeomOptimized, 2936);
+	assert_offsetof(GfxWorld, lightAABB, 2952);
+	assert_offsetof(GfxWorld, heroOnlyLights, 4416);
+	assert_offsetof(GfxWorld, numUmbraGates, 4424);
+	assert_offsetof(GfxWorld, numUmbraGates2, 4464);
+	assert_offsetof(GfxWorld, umbraUnkData, 4512);
 
 	struct GfxWorldVertex
 	{
@@ -3950,11 +5078,11 @@ namespace ZoneTool::IW7
 	struct GfxAabbTree
 	{
 		Bounds bounds;
-		unsigned __int16 childCount;
-		unsigned __int16 surfaceCount;
+		unsigned short childCount;
+		unsigned short surfaceCount;
 		unsigned int startSurfIndex;
-		unsigned __int16 smodelIndexCount;
-		unsigned __int16 PTR64 smodelIndexes;
+		unsigned short smodelIndexCount;
+		unsigned short PTR64 smodelIndexes;
 		int childrenOffset;
 	}; assert_sizeof(GfxAabbTree, 56);
 
@@ -3980,7 +5108,11 @@ namespace ZoneTool::IW7
 	{
 		const char PTR64 name;
 		const char PTR64 iesProfile;
-		char __pad0[24];
+		unsigned int unk0;
+		unsigned int unk1;
+		float coordOffset;
+		float coordScale;
+		int unk2[2];
 	}; assert_sizeof(GfxLightDef, 0x28);
 
 	struct AnimationEntry
@@ -4031,8 +5163,8 @@ namespace ZoneTool::IW7
 	struct AnimationStateMachine
 	{
 		scr_string_t name;
-		unsigned __int16 stateCount;
-		unsigned __int16 aimSetCount;
+		unsigned short stateCount;
+		unsigned short aimSetCount;
 		AnimationState PTR64 states;
 		AnimationAimSet PTR64 aimSets;
 	};
@@ -4052,8 +5184,8 @@ namespace ZoneTool::IW7
 		AnimationController animCtrl;
 		scr_string_t animTree;
 		ScriptableDef PTR64 scriptable;
-		unsigned __int16 soundCount;
-		unsigned __int16 effectCount;
+		unsigned short soundCount;
+		unsigned short effectCount;
 		scr_string_t PTR64 soundNotes;
 		scr_string_t PTR64 soundNames;
 		scr_string_t PTR64 soundOptions;
@@ -4087,9 +5219,9 @@ namespace ZoneTool::IW7
 
 	struct PlayerAnimScriptCommand
 	{
-		unsigned __int16 bodyPart;
-		unsigned __int16 animIndex;
-		unsigned __int16 animDuration;
+		unsigned short bodyPart;
+		unsigned short animIndex;
+		unsigned short animDuration;
 	};
 
 	struct PlayerAnimScriptItem
@@ -4168,33 +5300,33 @@ namespace ZoneTool::IW7
 
 	struct PlayerAnimScriptIdleTurn
 	{
-		unsigned __int16 turnleft;
-		unsigned __int16 turnright;
+		unsigned short turnleft;
+		unsigned short turnright;
 	};
 
 	struct PlayerAnimScriptIdleTwitch
 	{
 		unsigned int twitchCount;
 		float cycleLength;
-		unsigned __int16 PTR64 twitches;
+		unsigned short PTR64 twitches;
 	};
 
 	struct PlayerAnimScriptAimSet
 	{
-		unsigned __int16 aim_1;
-		unsigned __int16 aim_2;
-		unsigned __int16 aim_3;
-		unsigned __int16 aim_4;
-		unsigned __int16 aim_6;
-		unsigned __int16 aim_7;
-		unsigned __int16 aim_8;
-		unsigned __int16 aim_9;
+		unsigned short aim_1;
+		unsigned short aim_2;
+		unsigned short aim_3;
+		unsigned short aim_4;
+		unsigned short aim_6;
+		unsigned short aim_7;
+		unsigned short aim_8;
+		unsigned short aim_9;
 	};
 
 	struct PlayerAnimScriptLeanSet
 	{
-		unsigned __int16 lean_left;
-		unsigned __int16 lean_right;
+		unsigned short lean_left;
+		unsigned short lean_right;
 	};
 
 	struct unk_1453E3788
@@ -4225,12 +5357,12 @@ namespace ZoneTool::IW7
 		PlayerAnimScriptAimSet PTR64 scriptAimSets;
 		PlayerAnimScriptLeanSet PTR64 scriptLeanSets;
 		unk_1453E3788 PTR64 unk;
-		unsigned __int16 PTR64 torsoAnimPackMap;
-		unsigned __int16 PTR64 torsoAnimUnpackMap;
-		unsigned __int16 PTR64 legsAnimPackMap;
-		unsigned __int16 PTR64 legsAnimUnpackMap;
+		unsigned short PTR64 torsoAnimPackMap;
+		unsigned short PTR64 torsoAnimUnpackMap;
+		unsigned short PTR64 legsAnimPackMap;
+		unsigned short PTR64 legsAnimUnpackMap;
 		unsigned int xAnimCount;
-		XAnimParts PTR64  PTR64 xAnims;
+		XAnimParts PTR64 PTR64 xAnims;
 	}; assert_sizeof(PlayerAnimScript, 0xB0);
 
 	enum GestureType
@@ -4259,7 +5391,7 @@ namespace ZoneTool::IW7
 
 	struct GestureWeaponSettings
 	{
-		unsigned __int16 blendToStates;
+		unsigned short blendToStates;
 		bool hideReticle;
 		float fireDelay;
 		float sprintDelay;
@@ -4305,7 +5437,7 @@ namespace ZoneTool::IW7
 	{
 		float yawLerpIn;
 		float yawLerpOut;
-		unsigned __int16 walkTime;
+		unsigned short walkTime;
 		FootstepAnim walkFootStepAnim;
 	};
 
@@ -4338,7 +5470,7 @@ namespace ZoneTool::IW7
 		GestureType type;
 		GesturePriority priority;
 		bool looping;
-		XAnimParts PTR64  PTR64 anims; // array: 18
+		XAnimParts PTR64 PTR64 anims; // array: 18
 		GestureWeaponSettings weaponSettings;
 		GestureDirectionalSettings directionalSettings;
 		GestureLookAroundSettings lookAroundSettings;
@@ -4426,9 +5558,8 @@ namespace ZoneTool::IW7
 		WEAPON_FIRETYPE_SINGLESHOT = 0x1,
 		WEAPON_FIRETYPE_BURST = 0x2,
 		WEAPON_FIRETYPE_DOUBLEBARREL = 0x3,
-		WEAPON_FIRETYPE_DOUBLEBARREL_DUALTRIGGER = 0x4,
-		WEAPON_FIRETYPE_BEAM = 0x5,
-		WEAPON_FIRETYPECOUNT = 0x6,
+		WEAPON_FIRETYPE_BEAM = 0x4,
+		WEAPON_FIRETYPECOUNT = 0x5,
 	};
 
 	enum ImpactType : std::int32_t
@@ -4902,11 +6033,233 @@ namespace ZoneTool::IW7
 		WEAP_ANIM_GESTURE_IK_TARGET_2 = 3,
 		WEAP_ANIM_GESTURE_IK_TARGET_3 = 4,
 		WEAP_ANIM_GESTURE_IK_TARGET_4 = 5,
+		WEAP_ANIM_IK_NODE = 6,
+		WEAP_ANIM_PROC_NODE = 7,
+		WEAP_ANIM_IK_NODE_VOID = 8,
+		WEAP_ANIM_PROC_NODE_VOID = 9,
+		WEAP_ANIM_RELATIVE_ROOT = 10,
+		WEAP_ANIM_ADDITIVE_ADS_ROOT = 11,
+		WEAP_ANIM_ADDITIVE_ADS_UP = 12,
+		WEAP_ANIM_ADDITIVE_DRAG_LEFT_ROOT = 13,
+		WEAP_ANIM_ADDITIVE_DRAG_LEFT = 14,
+		WEAP_ANIM_ADDITIVE_DRAG_RIGHT_ROOT = 15,
+		WEAP_ANIM_ADDITIVE_DRAG_RIGHT = 16,
+		WEAP_ANIM_ADDITIVE_DRAG_UP_ROOT = 17,
+		WEAP_ANIM_ADDITIVE_DRAG_UP = 18,
+		WEAP_ANIM_ADDITIVE_DRAG_DOWN_ROOT = 19,
+		WEAP_ANIM_ADDITIVE_DRAG_DOWN = 20,
+		WEAP_ANIM_ADDITIVE_SWIM_FORWARD_ROOT = 21,
+		WEAP_ANIM_ADDITIVE_SWIM_FORWARD = 22,
+		WEAP_ANIM_ADDITIVE_SWIM_BACKWARD_ROOT = 23,
+		WEAP_ANIM_ADDITIVE_SWIM_BACKWARD = 24,
+		WEAP_ANIM_ADDITIVE_JUMP_ROOT = 25,
+		WEAP_ANIM_ADDITIVE_JUMP = 26,
+		WEAP_ANIM_ADDITIVE_JUMP_BOOST = 27,
+		WEAP_ANIM_ADDITIVE_JUMP_LAND_ROOT = 28,
+		WEAP_ANIM_ADDITIVE_JUMP_LAND = 29,
+		WEAP_ANIM_ADDITIVE_WALK_ROOT = 30,
 		WEAP_ANIM_ADDITIVE_WALK = 31,
-		WEAP_ANIM_RELOAD_ADS = 171,
-		WEAP_ANIM_RELOAD_EMPTY_ADS = 172,
-		WEAP_ANIM_FAST_RELOAD_ADS = 175,
-		WEAP_ANIM_FAST_RELOAD_EMPTY_ADS = 176,
+		WEAP_ANIM_ADDITIVE_WALK_GESTURE_1 = 32,
+		WEAP_ANIM_ADDITIVE_WALK_GESTURE_2 = 33,
+		WEAP_ANIM_ADDITIVE_SPRINT_ROOT = 34,
+		WEAP_ANIM_ADDITIVE_SPRINT_IN = 35,
+		WEAP_ANIM_ADDITIVE_SPRINT_LOOP = 36,
+		WEAP_ANIM_ADDITIVE_SUPER_SPRINT_LOOP = 37,
+		WEAP_ANIM_ADDITIVE_SPRINT_OUT = 38,
+		WEAP_ANIM_ADDITIVE_SPRINT_OFFSET_ROOT = 39,
+		WEAP_ANIM_ADDITIVE_SPRINT_OFFSET = 40,
+		WEAP_ANIM_ADDITIVE_CRAWL_IN_ROOT = 41,
+		WEAP_ANIM_ADDITIVE_CRAWL_IN = 42,
+		WEAP_ANIM_ADDITIVE_CRAWL_LOOP_ROOT = 43,
+		WEAP_ANIM_ADDITIVE_CRAWL_LOOP = 44,
+		WEAP_ANIM_ADDITIVE_CRAWL_LOOP_LEFT_ROOT = 45,
+		WEAP_ANIM_ADDITIVE_CRAWL_LOOP_LEFT = 46,
+		WEAP_ANIM_ADDITIVE_CRAWL_LOOP_RIGHT_ROOT = 47,
+		WEAP_ANIM_ADDITIVE_CRAWL_LOOP_RIGHT = 48,
+		WEAP_ANIM_ADDITIVE_PRONE_DROP_ROOT = 49,
+		WEAP_ANIM_ADDITIVE_PRONE_DROP = 50,
+		WEAP_ANIM_ADDITIVE_FINGER_POSE_LEFT_ROOT = 51,
+		WEAP_ANIM_ADDITIVE_FINGER_POSE_LEFT = 52,
+		WEAP_ANIM_ADDITIVE_FINGER_POSE_RIGHT_ROOT = 53,
+		WEAP_ANIM_ADDITIVE_FINGER_POSE_RIGHT = 54,
+		WEAP_ANIM_ADDITIVE_DEMEANOR_OFFSET_ROOT = 55,
+		WEAP_ANIM_ADDITIVE_DEMEANOR_OFFSET_SAFE = 56,
+		WEAP_ANIM_ADDITIVE_GESTURE_1 = 57,
+		WEAP_ANIM_ADDITIVE_GESTURE_2 = 58,
+		WEAP_ANIM_ADDITIVE_GESTURE_3 = 59,
+		WEAP_ANIM_ADDITIVE_GESTURE_4 = 60,
+		WEAP_ANIM_ADDITIVE_GESTURE_5 = 61,
+		WEAP_ANIM_ADDITIVE_GESTURE_6 = 62,
+		WEAP_ANIM_ADDITIVE_GESTURE_7 = 63,
+		WEAP_ANIM_ADDITIVE_GESTURE_8 = 64,
+		WEAP_ANIM_ADDITIVE_GESTURE_9 = 65,
+		WEAP_ANIM_ADDITIVE_GESTURE_10 = 66,
+		WEAP_ANIM_ADDITIVE_GESTURE_11 = 67,
+		WEAP_ANIM_ADDITIVE_GESTURE_12 = 68,
+		WEAP_ANIM_ADDITIVE_GESTURE_13 = 69,
+		WEAP_ANIM_ADDITIVE_GESTURE_14 = 70,
+		WEAP_ANIM_ADDITIVE_GESTURE_15 = 71,
+		WEAP_ANIM_ADDITIVE_GESTURE_16 = 72,
+		WEAP_ANIM_ADDITIVE_GESTURE_17 = 73,
+		WEAP_ANIM_ADDITIVE_GESTURE_18 = 74,
+		WEAP_ANIM_ADDITIVE_GESTURE_19 = 75,
+		WEAP_ANIM_ADDITIVE_GESTURE_20 = 76,
+		WEAP_ANIM_ADDITIVE_GESTURE_21 = 77,
+		WEAP_ANIM_ADDITIVE_GESTURE_22 = 78,
+		WEAP_ANIM_ADDITIVE_GESTURE_23 = 79,
+		WEAP_ANIM_ADDITIVE_GESTURE_24 = 80,
+		WEAP_ANIM_ADDITIVE_GESTURE_25 = 81,
+		WEAP_ANIM_ADDITIVE_GESTURE_26 = 82,
+		WEAP_ANIM_ADDITIVE_GESTURE_27 = 83,
+		WEAP_ANIM_ADDITIVE_GESTURE_28 = 84,
+		WEAP_ANIM_ADDITIVE_GESTURE_29 = 85,
+		WEAP_ANIM_ADDITIVE_GESTURE_30 = 86,
+		WEAP_ANIM_ADDITIVE_GESTURE_31 = 87,
+		WEAP_ANIM_ADDITIVE_GESTURE_32 = 88,
+		WEAP_ANIM_ADDITIVE_GESTURE_33 = 89,
+		WEAP_ANIM_ADDITIVE_GESTURE_34 = 90,
+		WEAP_ANIM_ADDITIVE_GESTURE_35 = 91,
+		WEAP_ANIM_ADDITIVE_GESTURE_36 = 92,
+		WEAP_ANIM_ADDITIVE_GESTURE_37 = 93,
+		WEAP_ANIM_ADDITIVE_GESTURE_38 = 94,
+		WEAP_ANIM_ADDITIVE_GESTURE_39 = 95,
+		WEAP_ANIM_ADDITIVE_GESTURE_40 = 96,
+		WEAP_ANIM_ADDITIVE_SETTLE_ROOT = 97,
+		WEAP_ANIM_ADDITIVE_SETTLE_ADS = 98,
+		WEAP_ANIM_ADDITIVE_REGENERATE_ROOT = 99,
+		WEAP_ANIM_ADDITIVE_REGENERATE = 100,
+		WEAP_ANIM_ADDITIVE_MAGAZINE_BULLETS_ROOT = 101,
+		WEAP_ANIM_ADDITIVE_MAGAZINE_BULLETS = 102,
+		WEAP_ANIM_ADDITIVE_RECOIL_ROOT = 103,
+		WEAP_ANIM_ADDITIVE_RECOIL = 104,
+		WEAP_ANIM_ADDITIVE_EMPTY_ROOT = 105,
+		WEAP_ANIM_ADDITIVE_EMPTY = 106,
+		WEAP_ANIM_IDLE = 107,
+		WEAP_ANIM_EMPTY_IDLE = 108,
+		WEAP_ANIM_FIRE = 109,
+		WEAP_ANIM_HOLD_FIRE = 110,
+		WEAP_ANIM_LASTSHOT = 111,
+		WEAP_ANIM_RECHAMBER = 112,
+		WEAP_ANIM_GRENADE_PRIME = 113,
+		WEAP_ANIM_GRENADE_PRIME_READY_TO_THROW = 114,
+		WEAP_ANIM_MELEE_FATAL = 115,
+		WEAP_ANIM_MELEE_HIT = 116,
+		WEAP_ANIM_MELEE_MISS = 117,
+		WEAP_ANIM_MELEE_SWIPE = 118,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_FATAL = 119,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_HIT = 120,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_MISS = 121,
+		WEAP_ANIM_MELEE_FATAL_2 = 122,
+		WEAP_ANIM_MELEE_HIT_2 = 123,
+		WEAP_ANIM_MELEE_MISS_2 = 124,
+		WEAP_ANIM_MELEE_SWIPE_2 = 125,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_FATAL_2 = 126,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_HIT_2 = 127,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_MISS_2 = 128,
+		WEAP_ANIM_MELEE_FATAL_3 = 129,
+		WEAP_ANIM_MELEE_HIT_3 = 130,
+		WEAP_ANIM_MELEE_MISS_3 = 131,
+		WEAP_ANIM_MELEE_SWIPE_3 = 132,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_FATAL_3 = 133,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_HIT_3 = 134,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_MISS_3 = 135,
+		WEAP_ANIM_MELEE_FATAL_4 = 136,
+		WEAP_ANIM_MELEE_HIT_4 = 137,
+		WEAP_ANIM_MELEE_MISS_4 = 138,
+		WEAP_ANIM_MELEE_SWIPE_4 = 139,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_FATAL_4 = 140,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_HIT_4 = 141,
+		WEAP_ANIM_MELEE_VICTIM_CROUCHING_MISS_4 = 142,
+		WEAP_ANIM_ALT_MELEE_FATAL = 143,
+		WEAP_ANIM_ALT_MELEE_HIT = 144,
+		WEAP_ANIM_ALT_MELEE_MISS = 145,
+		WEAP_ANIM_ALT_MELEE_SWIPE = 146,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_FATAL = 147,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_HIT = 148,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_MISS = 149,
+		WEAP_ANIM_ALT_MELEE_FATAL_2 = 150,
+		WEAP_ANIM_ALT_MELEE_HIT_2 = 151,
+		WEAP_ANIM_ALT_MELEE_MISS_2 = 152,
+		WEAP_ANIM_ALT_MELEE_SWIPE_2 = 153,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_FATAL_2 = 154,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_HIT_2 = 155,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_MISS_2 = 156,
+		WEAP_ANIM_ALT_MELEE_FATAL_3 = 157,
+		WEAP_ANIM_ALT_MELEE_HIT_3 = 158,
+		WEAP_ANIM_ALT_MELEE_MISS_3 = 159,
+		WEAP_ANIM_ALT_MELEE_SWIPE_3 = 160,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_FATAL_3 = 161,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_HIT_3 = 162,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_MISS_3 = 163,
+		WEAP_ANIM_ALT_MELEE_FATAL_4 = 164,
+		WEAP_ANIM_ALT_MELEE_HIT_4 = 165,
+		WEAP_ANIM_ALT_MELEE_MISS_4 = 166,
+		WEAP_ANIM_ALT_MELEE_SWIPE_4 = 167,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_FATAL_4 = 168,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_HIT_4 = 169,
+		WEAP_ANIM_ALT_MELEE_VICTIM_CROUCHING_MISS_4 = 170,
+		WEAP_ANIM_RELOAD = 171,
+		WEAP_ANIM_RELOAD_EMPTY = 172,
+		WEAP_ANIM_RELOAD_START = 173,
+		WEAP_ANIM_RELOAD_END = 174,
+		WEAP_ANIM_FAST_RELOAD = 175,
+		WEAP_ANIM_FAST_RELOAD_EMPTY = 176,
+		WEAP_ANIM_FAST_RELOAD_START = 177,
+		WEAP_ANIM_FAST_RELOAD_END = 178,
+		WEAP_ANIM_RAISE = 179,
+		WEAP_ANIM_FIRST_RAISE = 180,
+		WEAP_ANIM_BREACH_RAISE = 181,
+		WEAP_ANIM_DROP = 182,
+		WEAP_ANIM_ALT_RAISE = 183,
+		WEAP_ANIM_ALT_RAISE_ADS = 184,
+		WEAP_ANIM_ALT_RAISE_AKIMBO = 185,
+		WEAP_ANIM_ALT_DROP = 186,
+		WEAP_ANIM_ALT_DROP_ADS = 187,
+		WEAP_ANIM_ALT_DROP_AKIMBO = 188,
+		WEAP_ANIM_ALT_OVERRIDE = 189,
+		WEAP_ANIM_TOGGLE_OVERRIDE = 190,
+		WEAP_ANIM_SCOPE_TOGGLE_ON = 191,
+		WEAP_ANIM_SCOPE_TOGGLE_OFF = 192,
+		WEAP_ANIM_QUICK_RAISE = 193,
+		WEAP_ANIM_QUICK_DROP = 194,
+		WEAP_ANIM_EMPTY_RAISE = 195,
+		WEAP_ANIM_EMPTY_DROP = 196,
+		WEAP_ANIM_SPRINT_IN = 197,
+		WEAP_ANIM_SPRINT_IN_CANCEL = 198,
+		WEAP_ANIM_SPRINT_LOOP = 199,
+		WEAP_ANIM_SPRINT_OUT = 200,
+		WEAP_ANIM_STUNNED_START = 201,
+		WEAP_ANIM_STUNNED_LOOP = 202,
+		WEAP_ANIM_STUNNED_END = 203,
+		WEAP_ANIM_DETONATE = 204,
+		WEAP_ANIM_NIGHTVISION_WEAR = 205,
+		WEAP_ANIM_NIGHTVISION_REMOVE = 206,
+		WEAP_ANIM_ADS_FIRE = 207,
+		WEAP_ANIM_ADS_LASTSHOT = 208,
+		WEAP_ANIM_ADS_RECHAMBER = 209,
+		WEAP_ANIM_BLAST_FRONT = 210,
+		WEAP_ANIM_BLAST_RIGHT = 211,
+		WEAP_ANIM_BLAST_BACK = 212,
+		WEAP_ANIM_BLAST_LEFT = 213,
+		WEAP_ANIM_DODGE_GROUND_BACK = 214,
+		WEAP_ANIM_DODGE_GROUND_LEFT = 215,
+		WEAP_ANIM_DODGE_GROUND_RIGHT = 216,
+		WEAP_ANIM_DODGE_AIR_FORWARD = 217,
+		WEAP_ANIM_DODGE_AIR_BACK = 218,
+		WEAP_ANIM_DODGE_AIR_LEFT = 219,
+		WEAP_ANIM_DODGE_AIR_RIGHT = 220,
+		WEAP_ANIM_LEAP_IN = 221,
+		WEAP_ANIM_LEAP_LOOP = 222,
+		WEAP_ANIM_LEAP_CANCEL = 223,
+		WEAP_ANIM_LEAP_OUT = 224,
+		WEAP_ANIM_CHARGE_IN = 225,
+		WEAP_ANIM_CHARGE_LOOP = 226,
+		WEAP_ANIM_CHARGE_OUT = 227,
+		WEAP_ANIM_ADS_CHARGE_IN = 228,
+		WEAP_ANIM_ADS_CHARGE_LOOP = 229,
+		WEAP_ANIM_ADS_CHARGE_OUT = 230,
+		WEAP_ANIM_RECOIL_SETTLE = 231,
+		WEAP_ANIM_SWIM_LOOP = 232,
 		WEAP_ANIM_RELOAD_MULTIPLE_1 = 233,
 		WEAP_ANIM_RELOAD_MULTIPLE_2 = 234,
 		WEAP_ANIM_RELOAD_MULTIPLE_3 = 235,
@@ -4923,7 +6276,18 @@ namespace ZoneTool::IW7
 		WEAP_ANIM_RELOAD_MULTIPLE_FAST_6 = 246,
 		WEAP_ANIM_RELOAD_MULTIPLE_FAST_7 = 247,
 		WEAP_ANIM_RELOAD_MULTIPLE_FAST_8 = 248,
-		NUM_WEAP_ANIMS = 9999,
+		WEAP_ANIM_ADS_UP = 249,
+		WEAP_ANIM_ADS_DOWN = 250,
+		WEAP_ANIM_SHIELD_UP = 251,
+		WEAP_ANIM_SHIELD_IDLE = 252,
+		WEAP_ANIM_SHIELD_DOWN = 253,
+		WEAP_ANIM_RECOIL = 254,
+		WEAP_ALT_ANIM_ADJUST = 255,
+		WEAP_ANIM_UNUSED = 256,
+		WEAP_ANIM_3P_FINGER_POSE_LEFT = 257,
+		WEAP_ANIM_3P_FINGER_POSE_RIGHT = 258,
+		WEAP_ANIM_3P_ADDITIVE_ALT_OVERRIDE = 259,
+		NUM_WEAP_ANIMS = 260,
 	};
 
 	struct AttAmmoGeneral
@@ -5322,9 +6686,9 @@ namespace ZoneTool::IW7
 		weapProjExposion_t projExplosionType;
 		FxCombinedDef projExplosionEffect;
 		bool projExplosionEffectForceNormalUp;
-		const char PTR64 projExplosionSound;
+		SndAliasLookup projExplosionSound;
 		FxCombinedDef projDudEffect;
-		const char PTR64 projDudSound;
+		SndAliasLookup projDudSound;
 		bool projImpactExplode;
 		bool disableProjectileCrumpleCheck;
 		float destabilizationRateTime;
@@ -5335,7 +6699,7 @@ namespace ZoneTool::IW7
 		FxCombinedDef projBeaconEffect;
 		int projIgnitionDelay;
 		FxCombinedDef projIgnitionEffect;
-		const char PTR64 projIgnitionSound;
+		SndAliasLookup projIgnitionSound;
 		WeapStickinessType stickiness;
 		int fuseTime;
 		int aiFuseTime;
@@ -5367,16 +6731,16 @@ namespace ZoneTool::IW7
 		float chargeFireAtMaxDamageMultiplier;
 		int chargeMeterEffectBoneCount;
 		FxCombinedDef chargeMeterEffect;
-		const char PTR64 chargeUpSound;
-		const char PTR64 chargeDownSound;
-		const char PTR64 chargeDownToUpSound;
-		const char PTR64 chargeUpToDownSound;
-		const char PTR64 chargeMaxSound;
-		const char PTR64 chargeUpSoundPlayer;
-		const char PTR64 chargeDownSoundPlayer;
-		const char PTR64 chargeDownToUpSoundPlayer;
-		const char PTR64 chargeUpToDownSoundPlayer;
-		const char PTR64 chargeMaxSoundPlayer;
+		SndAliasLookup chargeUpSound;
+		SndAliasLookup chargeDownSound;
+		SndAliasLookup chargeDownToUpSound;
+		SndAliasLookup chargeUpToDownSound;
+		SndAliasLookup chargeMaxSound;
+		SndAliasLookup chargeUpSoundPlayer;
+		SndAliasLookup chargeDownSoundPlayer;
+		SndAliasLookup chargeDownToUpSoundPlayer;
+		SndAliasLookup chargeUpToDownSoundPlayer;
+		SndAliasLookup chargeMaxSoundPlayer;
 		bool chargeHudReveal;
 		RumbleInfo PTR64 chargeRumble;
 	}; assert_sizeof(AttCharged, 0x90);
@@ -5434,16 +6798,16 @@ namespace ZoneTool::IW7
 		int unk;
 		XModel PTR64 worldModelCamo;
 		XModel PTR64 viewModelCamo;
-		XModel PTR64  PTR64 worldModelVariations;
-		XModel PTR64  PTR64 viewModelVariations;
+		XModel PTR64 PTR64 worldModelVariations;
+		XModel PTR64 PTR64 viewModelVariations;
 		unsigned int numModelVariations;
-		Material PTR64  PTR64 worldModelCamoMaterials;
-		Material PTR64  PTR64 viewModelCamoMaterials;
+		Material PTR64 PTR64 worldModelCamoMaterials;
+		Material PTR64 PTR64 viewModelCamoMaterials;
 		unsigned int numWorldModelCamoMaterials;
 		unsigned int numViewModelCamoMaterials;
 		scr_string_t attachPoint;
-		ReticleDef PTR64  PTR64 reticles;
-		ReticleDef PTR64  PTR64 altReticles;
+		ReticleDef PTR64 PTR64 reticles;
+		ReticleDef PTR64 PTR64 altReticles;
 		AttAmmoGeneral PTR64 ammogeneral;
 		AttAmmoTracer PTR64 tracer;
 		AttPenetration PTR64 penetration;
@@ -5477,7 +6841,7 @@ namespace ZoneTool::IW7
 		AttRegeneration PTR64 regeneration;
 		AttMovement PTR64 movement;
 		AttBurst PTR64 burst;
-		float PTR64 locationDamage;
+		float PTR64 locationDamage; // arr: 22
 		float ammunitionScale;
 		float damageScale;
 		float stateTimersScale;
@@ -5581,12 +6945,12 @@ namespace ZoneTool::IW7
 		XModel PTR64 playerShadowModelLeftHand;
 		XModel PTR64 playerShadowModelRightHand;
 		XModel PTR64 handXModel;
-		XModel PTR64  PTR64 complexWorldModel;
-		XModel PTR64  PTR64 complexWorldModelLeftHand;
-		XModel PTR64  PTR64 complexWorldModelRightHand;
-		XModel PTR64  PTR64 complexGunXModel;
-		XModel PTR64  PTR64 complexGunXModelLeftHand;
-		XModel PTR64  PTR64 complexGunXModelRightHand;
+		XModel PTR64 PTR64 complexWorldModel;
+		XModel PTR64 PTR64 complexWorldModelLeftHand;
+		XModel PTR64 PTR64 complexWorldModelRightHand;
+		XModel PTR64 PTR64 complexGunXModel;
+		XModel PTR64 PTR64 complexGunXModelLeftHand;
+		XModel PTR64 PTR64 complexGunXModelRightHand;
 		unsigned int numComplexModels;
 		int pad; // padding
 		Material PTR64 camoWorldModelMaterialOverride[16];
@@ -5748,11 +7112,11 @@ namespace ZoneTool::IW7
 		int iPerkStartAmmo;
 		int iPerkMaxAmmo;
 		const char PTR64 szAmmoName;
-		int iAmmoIndex;
+		int iAmmoIndex; // runtime data
 		int iMaxAmmo;
 		int shotCount;
 		const char PTR64 szSharedAmmoCapName;
-		int iSharedAmmoCapIndex;
+		int iSharedAmmoCapIndex; // runtime data
 		int iSharedAmmoCap;
 		int iAmmoUsedPerShot;
 		bool requireAmmoUsedPerShot;
@@ -5944,7 +7308,7 @@ namespace ZoneTool::IW7
 		float maxDist;
 		const char PTR64 accuracyGraphName[2];
 		vec2_t PTR64 originalAccuracyGraphKnots[2];
-		unsigned __int16 originalAccuracyGraphKnotCount[2];
+		unsigned short originalAccuracyGraphKnotCount[2];
 		int iPositionReloadTransTime;
 		float leftArc;
 		float rightArc;
@@ -5965,8 +7329,8 @@ namespace ZoneTool::IW7
 		float fPlayerPositionDist;
 		const char PTR64 szUseHintString;
 		const char PTR64 dropHintString;
-		unsigned int iUseHintStringIndex;
-		unsigned int dropHintStringIndex;
+		unsigned int iUseHintStringIndex; // runtime data
+		unsigned int dropHintStringIndex; // runtime data
 		float horizViewJitter;
 		float vertViewJitter;
 		float scanSpeed;
@@ -5996,9 +7360,10 @@ namespace ZoneTool::IW7
 		float robotechVariancePitch;
 		float robotechVarianceYaw;
 		float robotechVarianceFrequency;
-		float PTR64 locationDamageMultipliers;
-		char PTR64 hitLocPriorityMap;
-		float unittypeMultipliers[10];
+		float PTR64 locationDamageMultipliers; // arr: 22
+		unsigned char PTR64 hitLocPriorityMap; // arr: 22
+		float unittypeMultipliers[9];
+		float pad30;
 		RumbleInfo PTR64 fireRumble;
 		RumbleInfo PTR64 meleeImpactRumble;
 		tracerStyle_t tracerStyle;
@@ -6016,17 +7381,17 @@ namespace ZoneTool::IW7
 		float turretOverheatUpRate;
 		float turretOverheatDownRate;
 		float turretOverheatPenalty;
-		const char PTR64 turretOverheatSound;
+		SndAliasLookup turretOverheatSound;
 		FxCombinedDef turretOverheatEffect;
 		RumbleInfo PTR64 turretBarrelSpinRumble;
 		float turretBarrelSpinSpeed;
 		float turretBarrelSpinUpTime;
 		float turretBarrelSpinDownTime;
-		const char PTR64 turretBarrelSpinMaxSnd;
-		const char PTR64 turretBarrelSpinUpSnd[4];
-		const char PTR64 turretBarrelSpinDownSnd[4];
-		const char PTR64 missileConeSoundAlias;
-		const char PTR64 missileConeSoundAliasAtBase;
+		SndAliasLookup turretBarrelSpinMaxSnd;
+		SndAliasLookup turretBarrelSpinUpSnd[4];
+		SndAliasLookup turretBarrelSpinDownSnd[4];
+		SndAliasLookup missileConeSoundAlias;
+		SndAliasLookup missileConeSoundAliasAtBase;
 		float missileConeSoundRadiusAtTop;
 		float missileConeSoundRadiusAtBase;
 		float missileConeSoundHeight;
@@ -6240,16 +7605,16 @@ namespace ZoneTool::IW7
 		float chargeFireAtMaxDamageMultiplier;
 		int chargeMeterEffectBoneCount;
 		FxCombinedDef chargeMeterEffect;
-		const char PTR64 chargeUpSound;
-		const char PTR64 chargeDownSound;
-		const char PTR64 chargeUpSoundPlayer;
-		const char PTR64 chargeDownSoundPlayer;
-		const char PTR64 chargeDownToUpSound;
-		const char PTR64 chargeDownToUpSoundPlayer;
-		const char PTR64 chargeUpToDownSound;
-		const char PTR64 chargeUpToDownSoundPlayer;
-		const char PTR64 chargeMaxSound;
-		const char PTR64 chargeMaxSoundPlayer;
+		SndAliasLookup chargeUpSound;
+		SndAliasLookup chargeDownSound;
+		SndAliasLookup chargeUpSoundPlayer;
+		SndAliasLookup chargeDownSoundPlayer;
+		SndAliasLookup chargeDownToUpSound;
+		SndAliasLookup chargeDownToUpSoundPlayer;
+		SndAliasLookup chargeUpToDownSound;
+		SndAliasLookup chargeUpToDownSoundPlayer;
+		SndAliasLookup chargeMaxSound;
+		SndAliasLookup chargeMaxSoundPlayer;
 		bool chargeHudReveal;
 		RumbleInfo PTR64 chargeRumble;
 		scr_string_t stowTag;
@@ -6367,7 +7732,7 @@ namespace ZoneTool::IW7
 		WeaponDef PTR64 weapDef;
 		const char PTR64 szDisplayName;
 		const char PTR64 szLootTable;
-		scr_string_t PTR64 hideTags;
+		scr_string_t PTR64 hideTags; // arr: 32
 		unsigned int numAttachments;
 		unsigned int numAttachments2;
 		unsigned int numAttachments3; // underbarrel
@@ -6376,12 +7741,12 @@ namespace ZoneTool::IW7
 		unsigned int numAttachments6;
 		int numLootVariants; // runtime data
 		int pad; // padding
-		WeaponAttachment PTR64  PTR64 attachments;
-		WeaponAttachment PTR64  PTR64 attachments2;
-		WeaponAttachment PTR64  PTR64 attachments3;
-		WeaponAttachment PTR64  PTR64 attachments4;
-		WeaponAttachment PTR64  PTR64 attachments5;
-		WeaponAttachment PTR64  PTR64 attachments6;
+		WeaponAttachment PTR64 PTR64 attachments;
+		WeaponAttachment PTR64 PTR64 attachments2;
+		WeaponAttachment PTR64 PTR64 attachments3;
+		WeaponAttachment PTR64 PTR64 attachments4;
+		WeaponAttachment PTR64 PTR64 attachments5;
+		WeaponAttachment PTR64 PTR64 attachments6;
 		unsigned int numNotetrackSoundMappings;
 		int pad2; // padding
 		scr_string_t PTR64 notetrackSoundMapKeys;
@@ -6401,8 +7766,8 @@ namespace ZoneTool::IW7
 		float fAdsViewKickCenterSpeed;
 		float fHipViewKickCenterSpeed;
 		const char PTR64 szAltWeaponName;
-		Material PTR64 killIconMat;
-		Material PTR64 dpadIconMat;
+		Material PTR64 killIcon;
+		Material PTR64 dpadIcon;
 		int ammoDropStockMax;
 		float adsDofStart;
 		float adsDofEnd;
@@ -6417,27 +7782,8 @@ namespace ZoneTool::IW7
 		const char PTR64 szLUIWeaponInfoWidgetTag;
 		const char PTR64 szLUICrosshairWidget;
 	}; assert_sizeof(WeaponCompleteDef, 0x138);
-	assert_offsetof(WeaponCompleteDef, attachments, 72);
-	assert_offsetof(WeaponCompleteDef, notetrackSuitEntries, 168);
-	assert_offsetof(WeaponCompleteDef, killIconMat, 224);
-	assert_offsetof(WeaponCompleteDef, notetrackSuitEntries, 168);
-	assert_offsetof(WeaponCompleteDef, accuracyGraphKnotCount, 252);
-	assert_offsetof(WeaponCompleteDef, accuracyGraphKnots, 256);
-	assert_offsetof(WeaponCompleteDef, szAdsrBaseSetting, 280);
 
-	enum PARTICLE_FLAG
-	{
-		PARTICLE_FLAG_KILL = 0x1,
-		PARTICLE_FLAG_PENDING_DEFERRED_PHYSICS = 0x2,
-		PARTICLE_FLAG_IMPACT = 0x4,
-		PARTICLE_FLAG_IMPACT_WITH_RAYCAST = 0x8,
-		PARTICLE_FLAG_AT_REST = 0x10,
-		PARTICLE_FLAG_SENT_FIRST_RAY_CAST = 0x20,
-		PARTICLE_FLAG_PENDING_DEFERRED_PHYSICS_UPDATE = 0x40,
-		PARTICLE_FLAG_HAS_SOUND = 0x80,
-	};
-
-	enum PARTICLE_MODULE_FLAG
+	enum PARTICLE_MODULE_FLAG : std::uint32_t
 	{
 		PARTICLE_MODULE_FLAG_DISABLED = 0x1,
 		PARTICLE_MODULE_FLAG_HAS_CURVES = 0x2,
@@ -6460,7 +7806,63 @@ namespace ZoneTool::IW7
 		PARTICLE_MODULE_FLAGS_ALL = 0xFFFFFFFF,
 	};
 
-	enum PARTICLE_EMITTER_DEF_FLAG
+	enum PARTICLE_STATE_DEF_FLAG : std::uint64_t
+	{
+		PARTICLE_STATE_DEF_FLAG_DISABLED = 0x1,
+		PARTICLE_STATE_DEF_FLAG_HAS_CAMERA_OFFSET = 0x2,
+		PARTICLE_STATE_DEF_FLAG_HAS_SPAWN_SHAPE = 0x4,
+		PARTICLE_STATE_DEF_FLAG_HAS_POSITION_CURVE = 0x8,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D_CURVE = 0x10,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D_CURVE = 0x20,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D_INIT = 0x40,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D_INIT = 0x80, // c
+		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_LOCAL1 = 0x100,
+		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_WORLD1 = 0x200,
+		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_LOCAL2 = 0x400,
+		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_WORLD2 = 0x800,
+		PARTICLE_STATE_DEF_FLAG_USE_PHYSICS = 0x1000, // c
+		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY = 0x2000, // c
+		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY_RANDOM = 0x4000, // c
+		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_VERTICALLY = 0x8000, // c
+		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_VERTICALLY_RANDOM = 0x10000, // c
+		PARTICLE_STATE_DEF_FLAG_SORT_PARTICLES = 0x20000,
+		PARTICLE_STATE_DEF_FLAG_HANDLE_ON_IMPACT = 0x40000,
+		PARTICLE_STATE_DEF_FLAG_PLAYER_FACING = 0x80000, // c
+		PARTICLE_STATE_DEF_FLAG_PLAYER_FACING_LOCK_UP_VECTOR = 0x100000, // c
+		PARTICLE_STATE_DEF_FLAG_USE_OCCLUSION_QUERY = 0x200000, // c
+		PARTICLE_STATE_DEF_FLAG_HAS_COLOR = 0x400000,
+		PARTICLE_STATE_DEF_FLAG_HAS_RAY_CAST_PHYSICS = 0x800000,
+		PARTICLE_STATE_DEF_FLAG_HAS_EMISSIVE_CURVE = 0x1000000,
+		PARTICLE_STATE_DEF_FLAG_HAS_INTENSITY_CURVE = 0x2000000,
+		PARTICLE_STATE_DEF_FLAG_USE_VECTOR_FIELDS = 0x4000000,
+		PARTICLE_STATE_DEF_FLAG_INHERIT_PARENT_VELOCITY = 0x8000000,
+		PARTICLE_STATE_DEF_FLAG_DRAW_WITH_VIEW_MODEL = 0x10000000,
+		PARTICLE_STATE_DEF_FLAG_PLAY_SOUNDS = 0x20000000,
+		PARTICLE_STATE_DEF_FLAG_HAS_CAMERA_OFFSET_POSITION_ONLY = 0x40000000, // c
+		PARTICLE_STATE_DEF_FLAG_ON_IMPACT_USE_SURFACE_TYPE = 0x80000000,
+		PARTICLE_STATE_DEF_FLAG_IS_SPRITE = 0x100000000, // c
+		PARTICLE_STATE_DEF_FLAG_HAS_TRANS_SHADOWS = 0x200000000, // c
+		PARTICLE_STATE_DEF_FLAG_HAS_CHILD_EFFECTS = 0x400000000,
+		PARTICLE_STATE_DEF_FLAG_BLOCKS_SIGHT = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HANDLE_TIME_IN_STATE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_SCALE_BY_DISTANCE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_VECTOR_FIELD_CURVE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_USE_LOCAL_VECTOR_FIELDS_ONLY = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_SHADER_CURVE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_SIZE_CURVE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_SIZE_LERP = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_TEMPERATURE_CURVE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_LIGHTING_FRACTION_CURVE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_CURVE = 0x30,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D = 0x50,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D = 0xA0,
+		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION = 0xF0,
+		PARTICLE_STATE_DEF_FLAG_HAS_MIRROR_TEXTURE = 0x1E000, // c
+		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE = 0x300,
+		PARTICLE_STATE_DEF_FLAG_REQUIRES_WORLD_COLLISION = 0x801000,
+	};
+
+	enum PARTICLE_EMITTER_DEF_FLAG : std::uint32_t
 	{
 		PARTICLE_EMITTER_DEF_FLAG_DISABLED = 0x1,
 		PARTICLE_EMITTER_DEF_FLAG_USE_BURST_MODE = 0x2,
@@ -6490,79 +7892,7 @@ namespace ZoneTool::IW7
 		PARTICLE_EMITTER_DEF_FLAG_IGNORE_FOV_SCALE = 0x2000000,
 	};
 
-	enum PARTICLE_ELEMENT_TYPE
-	{
-		PARTICLE_ELEMENT_TYPE_BILLBOARD_SPRITE = 0x0,
-		PARTICLE_ELEMENT_TYPE_BEAM = 0x1,
-		PARTICLE_ELEMENT_TYPE_DECAL = 0x2,
-		PARTICLE_ELEMENT_TYPE_FLARE = 0x3,
-		PARTICLE_ELEMENT_TYPE_GEO_TRAIL = 0x4,
-		PARTICLE_ELEMENT_TYPE_LIGHT_OMNI = 0x5,
-		PARTICLE_ELEMENT_TYPE_LIGHT_SPOT = 0x6,
-		PARTICLE_ELEMENT_TYPE_MODEL = 0x7,
-		PARTICLE_ELEMENT_TYPE_ORIENTED_SPRITE = 0x8,
-		PARTICLE_ELEMENT_TYPE_RUNNER = 0x9,
-		PARTICLE_ELEMENT_TYPE_TAIL = 0xA,
-		PARTICLE_ELEMENT_TYPE_VECTOR_FIELD = 0xB,
-		PARTICLE_ELEMENT_TYPE_VOLUMETRIC = 0xC,
-		PARTICLE_ELEMENT_TYPE_DISMEMBER = 0xD,
-	};
-
-	enum PARTICLE_STATE_DEF_FLAG
-	{
-		PARTICLE_STATE_DEF_FLAG_DISABLED = 0x1,
-		PARTICLE_STATE_DEF_FLAG_HAS_CAMERA_OFFSET = 0x2,
-		PARTICLE_STATE_DEF_FLAG_HAS_SPAWN_SHAPE = 0x4,
-		PARTICLE_STATE_DEF_FLAG_HAS_POSITION_CURVE = 0x8,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D_CURVE = 0x10,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D_CURVE = 0x20,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D_INIT = 0x40,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D_INIT = 0x80,
-		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_LOCAL = 0x100,
-		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_WORLD = 0x200,
-		PARTICLE_STATE_DEF_FLAG_USE_PHYSICS = 0x400,
-		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY = 0x800,
-		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY_RANDOM = 0x1000,
-		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_VERTICALLY = 0x2000,
-		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_VERTICALLY_RANDOM = 0x4000,
-		PARTICLE_STATE_DEF_FLAG_SORT_PARTICLES = 0x8000,
-		PARTICLE_STATE_DEF_FLAG_HANDLE_ON_IMPACT = 0x10000,
-		PARTICLE_STATE_DEF_FLAG_PLAYER_FACING = 0x20000,
-		PARTICLE_STATE_DEF_FLAG_PLAYER_FACING_LOCK_UP_VECTOR = 0x40000,
-		PARTICLE_STATE_DEF_FLAG_USE_OCCLUSION_QUERY = 0x80000,
-		PARTICLE_STATE_DEF_FLAG_HAS_COLOR = 0x100000,
-		PARTICLE_STATE_DEF_FLAG_HAS_RAY_CAST_PHYSICS = 0x200000,
-		PARTICLE_STATE_DEF_FLAG_HAS_EMISSIVE_CURVE = 0x400000,
-		PARTICLE_STATE_DEF_FLAG_HAS_INTENSITY_CURVE = 0x800000,
-		PARTICLE_STATE_DEF_FLAG_USE_VECTOR_FIELDS = 0x1000000,
-		PARTICLE_STATE_DEF_FLAG_INHERIT_PARENT_VELOCITY = 0x2000000,
-		PARTICLE_STATE_DEF_FLAG_DRAW_WITH_VIEW_MODEL = 0x4000000,
-		PARTICLE_STATE_DEF_FLAG_PLAY_SOUNDS = 0x8000000,
-		PARTICLE_STATE_DEF_FLAG_HAS_CAMERA_OFFSET_POSITION_ONLY = 0x10000000,
-		PARTICLE_STATE_DEF_FLAG_ON_IMPACT_USE_SURFACE_TYPE = 0x20000000,
-		PARTICLE_STATE_DEF_FLAG_IS_SPRITE = 0x40000000,
-		PARTICLE_STATE_DEF_FLAG_HAS_TRANS_SHADOWS = 0x80000000,
-		PARTICLE_STATE_DEF_FLAG_HAS_CHILD_EFFECTS = 0x0,
-		PARTICLE_STATE_DEF_FLAG_BLOCKS_SIGHT = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HANDLE_TIME_IN_STATE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_SCALE_BY_DISTANCE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_VECTOR_FIELD_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_USE_LOCAL_VECTOR_FIELDS_ONLY = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_SHADER_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_SIZE_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_SIZE_LERP = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_TEMPERATURE_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_LIGHTING_FRACTION_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_CURVE = 0x30,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D = 0x50,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D = 0xA0,
-		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION = 0xF0,
-		PARTICLE_STATE_DEF_FLAG_HAS_MIRROR_TEXTURE = 0x7800,
-		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE = 0x300,
-		PARTICLE_STATE_DEF_FLAG_REQUIRES_WORLD_COLLISION = 0x200400,
-	};
-
-	enum PARTICLE_SYSTEM_DEF_FLAG
+	enum PARTICLE_SYSTEM_DEF_FLAG : std::uint32_t
 	{
 		PARTICLE_SYSTEM_DEF_FLAG_HAS_SPRITES = 0x1,
 		PARTICLE_SYSTEM_DEF_FLAG_HAS_NON_SPRITES = 0x2,
@@ -6570,7 +7900,7 @@ namespace ZoneTool::IW7
 		PARTICLE_SYSTEM_DEF_FLAG_HAS_PHYSICS_HEAVY = 0x8,
 		PARTICLE_SYSTEM_DEF_FLAG_HAS_PHYSICS_LIGHT = 0x10,
 		PARTICLE_SYSTEM_DEF_FLAG_HAS_SCRIPTED_INPUTS = 0x20,
-		PARTICLE_SYSTEM_DEF_FLAG_USE_OCCLUSION_QUERY = 0x40,
+		PARTICLE_SYSTEM_DEF_FLAG_USE_OCCLUSION_QUERY = 0x40, // c
 		PARTICLE_SYSTEM_DEF_FLAG_USE_OCCLUSION_QUERY_OVERRIDE_POS = 0x80,
 		PARTICLE_SYSTEM_DEF_FLAG_KILL_ON_OWNER_ENTITY_DEATH = 0x100,
 		PARTICLE_SYSTEM_DEF_FLAG_HAS_TRANS_SHADOWS = 0x200,
@@ -6635,7 +7965,7 @@ namespace ZoneTool::IW7
 		PARTICLE_MODULE_FORCE = 0x24,
 		PARTICLE_MODULE_GRAVITY = 0x25,
 		PARTICLE_MODULE_INTENSITY_GRAPH = 0x26,
-		PARTICLE_MODULE_TEMPERATURE_GRAPH = 0x27,
+		PARTICLE_MODULE_PARENT_VELOCITY_GRAPH = 0x27,
 		PARTICLE_MODULE_PHYSICS_LIGHT = 0x28,
 		PARTICLE_MODULE_PHYSICS_RAY_CAST = 0x29,
 		PARTICLE_MODULE_POSITION_GRAPH = 0x2A,
@@ -6644,14 +7974,33 @@ namespace ZoneTool::IW7
 		PARTICLE_MODULE_SIZE_GRAPH = 0x2D,
 		PARTICLE_MODULE_SIZE_LERP = 0x2E,
 		PARTICLE_MODULE_VELOCITY_GRAPH = 0x2F,
-		PARTICLE_MODULE_TEST_BIRTH = 0x30,
-		PARTICLE_MODULE_TEST_DEATH = 0x31,
-		PARTICLE_MODULE_TEST_GRAVITY = 0x32,
-		PARTICLE_MODULE_TEST_IMPACT = 0x33,
-		PARTICLE_MODULE_TEST_POS = 0x34,
-		PARTICLE_MODULE_TEST_TIME_IN_STATE = 0x35,
+		PARTICLE_MODULE_TEST_AGE = 0x30,
+		PARTICLE_MODULE_TEST_BIRTH = 0x31,
+		PARTICLE_MODULE_TEST_DEATH = 0x32,
+		PARTICLE_MODULE_TEST_GRAVITY = 0x33,
+		PARTICLE_MODULE_TEST_IMPACT = 0x34,
+		PARTICLE_MODULE_TEST_POS = 0x35,
 		PARTICLE_MODULE_COUNT = 0x36,
 		PARTICLE_MODULE_INVALID = 0xFF,
+	};
+
+	enum PARTICLE_ELEMENT_TYPE : std::uint32_t
+	{
+		PARTICLE_ELEMENT_TYPE_BILLBOARD_SPRITE = 0,
+		PARTICLE_ELEMENT_TYPE_BEAM = 1,
+		PARTICLE_ELEMENT_TYPE_CLOUD = 2,
+		PARTICLE_ELEMENT_TYPE_SPARK_CLOUD = 3,
+		PARTICLE_ELEMENT_TYPE_DECAL = 4,
+		PARTICLE_ELEMENT_TYPE_FLARE = 5,
+		PARTICLE_ELEMENT_TYPE_GEO_TRAIL = 6,
+		PARTICLE_ELEMENT_TYPE_LIGHT_OMNI = 7,
+		PARTICLE_ELEMENT_TYPE_LIGHT_SPOT = 8,
+		PARTICLE_ELEMENT_TYPE_MODEL = 9,
+		PARTICLE_ELEMENT_TYPE_ORIENTED_SPRITE = 10,
+		PARTICLE_ELEMENT_TYPE_RUNNER = 11,
+		PARTICLE_ELEMENT_TYPE_TAIL = 12,
+		PARTICLE_ELEMENT_TYPE_VECTOR_FIELD = 13,
+		PARTICLE_ELEMENT_TYPE_VOLUMETRIC = 14,
 	};
 
 	struct float4
@@ -6719,10 +8068,9 @@ namespace ZoneTool::IW7
 
 	struct ParticleModuleInitAtlas : ParticleModule
 	{
+		int m_playRate;
 		int m_startFrame;
 		int m_loopCount;
-		bool m_randomIndex;
-		bool m_playOverLife;
 	}; assert_sizeof(ParticleModuleInitAtlas, 20);
 
 	struct ParticleModuleInitAttributes : ParticleModule
@@ -6779,10 +8127,10 @@ namespace ZoneTool::IW7
 
 	struct ParticleModuleInitDecal : ParticleModule
 	{
-		unsigned __int16 m_fadeInTime;
-		unsigned __int16 m_fadeOutTime;
-		unsigned __int16 m_stoppableFadeOutTime;
-		unsigned __int16 m_lerpWaitTime;
+		unsigned short m_fadeInTime;
+		unsigned short m_fadeOutTime;
+		unsigned short m_stoppableFadeOutTime;
+		unsigned short m_lerpWaitTime;
 		float4 m_lerpColor;
 		ParticleLinkedAssetListDef m_linkedAssetList;
 	}; assert_sizeof(ParticleModuleInitDecal, 48);
@@ -6828,14 +8176,14 @@ namespace ZoneTool::IW7
 	struct ParticleModuleInitLightOmni : ParticleModule
 	{
 		ParticleLinkedAssetListDef m_linkedAssetList;
-		float m_fovOuter;
-		float m_fovInner;
-		float m_bulbRadius;
-		float m_bulbLength;
+		float m_tonemappingScaleFactor;
+		float m_intensityIR;
 		bool m_disableVolumetric;
-		bool m_disableShadowMap;
-		bool m_disableDynamicShadows;
-		bool m_scriptScale;
+		unsigned char m_exponent;
+		char __pad0[2];
+		float m_shadowSoftness;
+		float m_shadowBias;
+		float m_shadowArea;
 	}; assert_sizeof(ParticleModuleInitLightOmni, 48);
 
 	struct ParticleModuleInitLightSpot : ParticleModule
@@ -6844,21 +8192,19 @@ namespace ZoneTool::IW7
 		float m_fovInner;
 		float m_bulbRadius;
 		float m_bulbLength;
-		float m_distanceFalloff;
-		//float m_fovCollimation;
 		float m_brightness;
+		float unk1;
 		float m_intensityUV;
 		float m_intensityIR;
-		//float m_intensityHeat;
+		float m_shadowNearPlane;
+		float m_toneMappingScaleFactor;
 		float m_shadowSoftness;
 		float m_shadowBias;
 		float m_shadowArea;
-		float m_shadowNearPlane;
-		float m_toneMappingScaleFactor;
 		bool m_disableVolumetric;
 		bool m_disableShadowMap;
 		bool m_disableDynamicShadows;
-		bool m_scriptScale;
+		bool m_exponent;
 		ParticleLinkedAssetListDef m_linkedAssetList;
 	}; assert_sizeof(ParticleModuleInitLightSpot, 80);
 	assert_offsetof(ParticleModuleInitLightSpot, m_linkedAssetList, 64);
@@ -6969,12 +8315,37 @@ namespace ZoneTool::IW7
 		ParticleCurveDef m_curves[1];
 	}; assert_sizeof(ParticleModuleInitSpawn, 32);
 
+	enum ParticleModuleAxesFlags
+	{
+		PARTICLE_MODULE_AXES_FLAG_POS_X = 0x1,
+		PARTICLE_MODULE_AXES_FLAG_NEG_X = 0x2,
+		PARTICLE_MODULE_AXES_FLAG_POS_Y = 0x4,
+		PARTICLE_MODULE_AXES_FLAG_NEG_Y = 0x8,
+		PARTICLE_MODULE_AXES_FLAG_POS_Z = 0x10,
+		PARTICLE_MODULE_AXES_FLAG_NEG_Z = 0x20,
+		PARTICLE_MODULE_AXES_FLAG_ALL_X = 0x3,
+		PARTICLE_MODULE_AXES_FLAG_ALL_Y = 0xC,
+		PARTICLE_MODULE_AXES_FLAG_ALL_Z = 0x30,
+		PARTICLE_MODULE_AXES_FLAG_ALL_POS = 0x15,
+		PARTICLE_MODULE_AXES_FLAG_ALL_NEG = 0x2A,
+		PARTICLE_MODULE_AXES_FLAG_ALL = 0x3F,
+	};
+
+	enum ParticleSpawnFlags
+	{
+		PARTICLE_SPAWN_ONLY_ON_SURFACE = 0x1,
+		PARTICLE_SPAWN_USE_CURVE_VALUES = 0x2,
+		PARTICLE_SPAWN_USE_MODIFIER_SCALE = 0x4,
+		PARTICLE_SPAWN_IS_DETERMINISTIC = 0x8,
+		PARTICLE_SPAWN_UNIFORM = 0x10,
+	};
+
 	struct ParticleModuleInitSpawnShape : ParticleModule
 	{
-		char m_axisFlags[1];
-		char m_spawnFlags[1];
-		char m_normalAxis[1];
-		char m_spawnType[1];
+		char m_axisFlags;
+		char m_spawnFlags;
+		char m_normalAxis;
+		char m_spawnType;
 		float m_volumeCubeRoot;
 		//float4 m_calculationOffset;
 		float4 m_offset;
@@ -6994,8 +8365,8 @@ namespace ZoneTool::IW7
 		bool m_rotateCalculatedOffset;
 		float m_halfHeight;
 		ParticleFloatRange m_radius;
+		float4 unk;
 		float4 m_directionQuat;
-		unsigned int m_pad[4];
 	}; assert_sizeof(ParticleModuleInitSpawnShapeCylinder, 80);
 
 	struct ParticleModuleInitSpawnShapeEllipsoid : ParticleModuleInitSpawnShape
@@ -7017,7 +8388,7 @@ namespace ZoneTool::IW7
 		unsigned int m_numMeshAssets;
 		ParticleLinkedAssetListDef m_linkedAssetList;
 		ParticleSpawnMeshAssetDef PTR64 m_meshAssetData;
-		unsigned int m_pad[3];
+		unsigned int m_pad[4];
 	}; assert_sizeof(ParticleModuleInitSpawnShapeMesh, 80);
 	assert_offsetof(ParticleModuleInitSpawnShapeMesh, m_numMeshAssets, 32);
 
@@ -7025,13 +8396,13 @@ namespace ZoneTool::IW7
 	{
 		unsigned int m_pad[2];
 		ParticleFloatRange m_radius;
-		unsigned int m_pad2[4];
+		float4 m_offset2;
 	}; assert_sizeof(ParticleModuleInitSpawnShapeSphere, 64);
 
 	struct ParticleModuleInitTail : ParticleModule
 	{
-		unsigned __int16 m_averagePastVelocities;
-		unsigned __int16 m_maxParentSpeed;
+		unsigned short m_averagePastVelocities;
+		unsigned short m_maxParentSpeed;
 		bool m_tailLeading;
 		bool m_scaleWithVelocity;
 		bool m_rotateAroundPivot;
@@ -7109,12 +8480,11 @@ namespace ZoneTool::IW7
 		ParticleCurveDef m_curves[2];
 	}; assert_sizeof(ParticleModuleIntensityGraph, 48);
 
-	struct ParticleModuleTemperatureGraph : ParticleModule
+	struct ParticleModuleParentVelocityGraph : ParticleModule
 	{
-		bool firstCurve;
-		char m_pad[7];
+		unsigned int m_pad[2];
 		ParticleCurveDef m_curves[2];
-	}; assert_sizeof(ParticleModuleTemperatureGraph, 48);
+	}; assert_sizeof(ParticleModuleParentVelocityGraph, 48);
 
 	struct ParticleModulePhysicsLight : ParticleModule
 	{
@@ -7187,15 +8557,48 @@ namespace ZoneTool::IW7
 		unsigned int m_pad[1];
 	};
 
+	enum ParticleUseOrientationOptions
+	{
+		PARTICLE_USE_ORIENTATION_OPTION_IDENTITY = 0x0,
+		PARTICLE_USE_ORIENTATION_OPTION_ROTATION = 0x1,
+		PARTICLE_USE_ORIENTATION_OPTION_RELATIVE_ROTATION = 0x2,
+		PARTICLE_USE_ORIENTATION_OPTION_VELOCITY_Y = 0x3,
+		PARTICLE_USE_ORIENTATION_OPTION_VELOCITY_X = 0x4,
+		PARTICLE_USE_ORIENTATION_OPTION_VELOCITY_Z = 0x5,
+		PARTICLE_USE_ORIENTATION_OPTION_RELATIVE = 0x6,
+		PARTICLE_USE_ORIENTATION_OPTION_COUNT = 0x7,
+	};
+
+	enum ParticleUseScaleOptions
+	{
+		PARTICLE_USE_SCALE_OPTION_NONE = 0x0,
+		PARTICLE_USE_SCALE_OPTION_MULT = 0x1,
+		PARTICLE_USE_SCALE_OPTION_OVERRIDE = 0x2,
+		PARTICLE_USE_SCALE_OPTION_COUNT = 0x3,
+	};
+
+	enum ParticleUseVelocityOptions
+	{
+		PARTICLE_USE_VELOCITY_OPTION_NONE = 0x0,
+		PARTICLE_USE_VELOCITY_OPTION_MULT = 0x1,
+		PARTICLE_USE_VELOCITY_OPTION_OVERRIDE = 0x2,
+		PARTICLE_USE_VELOCITY_OPTION_COUNT = 0x3,
+	};
+
 	struct ParticleModuleTest : ParticleModule
 	{
-		unsigned __int16 m_moduleIndex;
+		unsigned short m_moduleIndex;
 		char m_useOrientationOptions[1];
 		char m_useScaleOptions[1];
 		char m_useVelocityOptions[1];
 		ParticleModuleTestEventHandlerData m_eventHandlerData;
 	}; assert_sizeof(ParticleModuleTest, 48);
 	assert_offsetof(ParticleModuleTest, m_eventHandlerData, 16);
+
+	struct ParticleModuleTestAge : ParticleModuleTest
+	{
+		float m_age;
+	};
 
 	struct ParticleModuleTestBirth : ParticleModuleTest
 	{
@@ -7214,10 +8617,6 @@ namespace ZoneTool::IW7
 	};
 
 	struct ParticleModuleTestPos : ParticleModuleTest
-	{
-	};
-
-	struct ParticleModuleTestTimeInState : ParticleModuleTest
 	{
 	};
 
@@ -7263,7 +8662,7 @@ namespace ZoneTool::IW7
 		ParticleModuleForce force;
 		ParticleModuleGravity gravity;
 		ParticleModuleIntensityGraph intensityGraph;
-		ParticleModuleTemperatureGraph temperatureGraph;
+		ParticleModuleParentVelocityGraph parentVelocityGraph;
 		ParticleModulePhysicsLight physicsLight;
 		ParticleModulePhysicsRayCast physicsRayCast;
 		ParticleModulePositionGraph positionGraph;
@@ -7272,17 +8671,17 @@ namespace ZoneTool::IW7
 		ParticleModuleSizeGraph sizeGraph;
 		ParticleModuleSizeLerp sizeLerp;
 		ParticleModuleVelocityGraph velocityGraph;
+		ParticleModuleTestAge testAge;
 		ParticleModuleTestBirth testBirth;
 		ParticleModuleTestDeath testDeath;
 		ParticleModuleTestGravity testGravity;
 		ParticleModuleTestImpact testImpact;
 		ParticleModuleTestPos testPos;
-		ParticleModuleTestTimeInState testTimeInState;
 	};
 
 	struct ParticleModuleDef
 	{
-		ParticleModuleType type;
+		ParticleModuleType moduleType;
 		unsigned int m_pad[3];
 		ParticleModuleTypeDef moduleData;
 	}; assert_sizeof(ParticleModuleDef, 160);
@@ -7295,48 +8694,12 @@ namespace ZoneTool::IW7
 		PARTICLE_GRAVITY_OPTION_COUNT = 0x3,
 	};
 
-	enum ParticleInstancePoolAction
+	enum ParticleModuleGroup
 	{
-		PARTICLE_INSTANCE_POOL_ACTION_NO_SPAWN = 0x0,
-		PARTICLE_INSTANCE_POOL_ACTION_KILL_OLDEST_AND_SPAWN = 0x1,
-		PARTICLE_INSTANCE_POOL_ACTION_COUNT = 0x2,
-	};
-
-	enum ParticleDataFlags
-	{
-		USE_NONE = 0x0,
-		USE_POSITION = 0x1,
-		USE_VELOCITY = 0x2,
-		USE_COLOR = 0x4,
-		USE_ROTATION_ANGLE = 0x8,
-		USE_ROTATION_RATE = 0x10,
-		USE_SPAWN_POS = 0x20,
-		USE_SPAWN_QUAT = 0x40,
-		USE_SIZE = 0x80,
-		USE_EMISSIVE = 0x100,
-		USE_PARENT_VELOCITY = 0x200,
-		USE_CHILD_SYSTEM = 0x400,
-		USE_SPAWN_TIME = 0x800,
-		USE_LIFE = 0x1000,
-		USE_STATE = 0x2000,
-		USE_RANDOM_SEED = 0x4000,
-		USE_FLAGS = 0x8000,
-		USE_MODULE_TESTS = 0x10000,
-		USE_HANDLE = 0x20000,
-		USE_INTENSITY = 0x40000,
-		USE_TEMPERATURE = 0x80000,
-		USE_CAMERA_DISTANCE = 0x100000,
-		USE_INHERIT_PERCENTAGE = 0x200000,
-		USE_RAY_CAST_HANDLE = 0x400000,
-		USE_ATLAS_INDEX = 0x800000,
-		USE_VECTOR_FIELD_SCALE = 0x1000000,
-		USE_LIGHTING_FRAC = 0x2000000,
-		USE_PREV_PLACEMENT = 0x4000000,
-		USE_SHADER_PARAMS = 0x8000000,
-		CHECK_FIELD_COUNT = 0x8000001,
-		USE_ALL = 0xFFFFFFF,
-		USE_BASE = 0x192F8FF,
-		USE_EMISSIVE_CURVES = 0x2040100,
+		PARTICLE_MODULE_GROUP_INIT = 0x0,
+		PARTICLE_MODULE_GROUP_UPDATE = 0x1,
+		PARTICLE_MODULE_GROUP_TEST = 0x2,
+		PARTICLE_MODULE_GROUP_COUNT = 0x3,
 	};
 
 	struct ParticleModuleGroupDef
@@ -7356,7 +8719,7 @@ namespace ZoneTool::IW7
 
 	struct ParticleEmitterDef
 	{
-		ParticleStateDef PTR64 stateDefs;
+		ParticleStateDef* stateDefs;
 		int numStates;
 		ParticleFloatRange particleSpawnRate;
 		ParticleFloatRange particleLife;
@@ -7372,12 +8735,9 @@ namespace ZoneTool::IW7
 		float spawnFrustumCullRadius;
 		unsigned int flags;
 		ParticleGravityOptions gravityOptions;
-		//int groupIDs[4];
-		ParticleFloatRange emitByDistanceDensity;
-		unsigned int instancePool;
-		unsigned int soloInstanceMax;
-		ParticleInstancePoolAction instanceAction;
-		ParticleDataFlags m_dataFlags;
+		int groupIDs[4];
+		float unk1;
+		float unk2;
 		ParticleFloatRange particleSpawnShapeRange;
 		unsigned int pad[1];
 	}; assert_sizeof(ParticleEmitterDef, 144);
@@ -7490,11 +8850,22 @@ namespace ZoneTool::IW7
 		FxSpawnDefOneShot oneShot;
 	};
 
+	enum FXElemAtlasBehavior : std::uint8_t
+	{
+		FX_ATLAS_START_FIXED = 0x0,
+		FX_ATLAS_START_RANDOM = 0x1,
+		FX_ATLAS_START_INDEXED = 0x2,
+		FX_ATLAS_START_MASK = 0x3,
+		FX_ATLAS_PLAY_OVER_LIFE = 0x4,
+		FX_ATLAS_LOOP_ONLY_N_TIMES = 0x8,
+	};
+
 	struct FxElemAtlas
 	{
 		unsigned char behavior;
 		unsigned char index;
 		unsigned char fps;
+		unsigned char unk;
 		unsigned char loopCount;
 		unsigned char colIndexBits;
 		unsigned char rowIndexBits;
@@ -7632,29 +9003,30 @@ namespace ZoneTool::IW7
 		FxSparkFountainDef PTR64 sparkFountainDef;
 		FxSpotLightDef PTR64 spotLightDef;
 		FxFlareDef PTR64 flareDef;
-		void PTR64 unknownDef;
+		char PTR64 unknownDef;
 	};
 
 	enum FxElemType : std::uint8_t
 	{
 		FX_ELEM_TYPE_SPRITE_BILLBOARD = 0,
 		FX_ELEM_TYPE_SPRITE_ORIENTED = 1,
-		FX_ELEM_TYPE_SPRITE_ROTATED = 2,
-		FX_ELEM_TYPE_TAIL = 3,
-		FX_ELEM_TYPE_LINE = 4,
-		FX_ELEM_TYPE_TRAIL = 5,
-		FX_ELEM_TYPE_FLARE = 6,
-		FX_ELEM_TYPE_PARTICLE_SIM_ANIMATION = 7,
-		FX_ELEM_TYPE_CLOUD = 8,
-		FX_ELEM_TYPE_SPARK_CLOUD = 9,
-		FX_ELEM_TYPE_SPARK_FOUNTAIN = 10,
-		FX_ELEM_TYPE_MODEL = 11,
-		FX_ELEM_TYPE_OMNI_LIGHT = 12,
-		FX_ELEM_TYPE_SPOT_LIGHT = 13,
-		FX_ELEM_TYPE_SOUND = 14,
-		FX_ELEM_TYPE_DECAL = 15,
-		FX_ELEM_TYPE_RUNNER = 16,
-		FX_ELEM_TYPE_VECTORFIELD = 17,
+		FX_ELEM_TYPE_TAIL = 2,
+		FX_ELEM_TYPE_TRAIL = 3,
+		FX_ELEM_TYPE_FLARE = 4,
+		FX_ELEM_TYPE_PARTICLE_SIM_ANIMATION = 5,
+		FX_ELEM_TYPE_CLOUD = 6,
+		FX_ELEM_TYPE_SPARK_CLOUD = 7,
+		FX_ELEM_TYPE_SPARK_FOUNTAIN = 8,
+		FX_ELEM_TYPE_MODEL = 9,
+		FX_ELEM_TYPE_OMNI_LIGHT = 10,
+		FX_ELEM_TYPE_SPOT_LIGHT = 11,
+		FX_ELEM_TYPE_SOUND = 12,
+		FX_ELEM_TYPE_DECAL = 13,
+		FX_ELEM_TYPE_RUNNER = 14,
+		FX_ELEM_TYPE_VECTORFIELD = 15,
+		FX_ELEM_TYPE_COUNT = 16,
+		FX_ELEM_TYPE_LAST_SPRITE = FX_ELEM_TYPE_PARTICLE_SIM_ANIMATION,
+		FX_ELEM_TYPE_LAST_DRAWN = FX_ELEM_TYPE_SPOT_LIGHT,
 	};
 
 	enum FxElemDefFlags : std::uint32_t
@@ -7727,7 +9099,6 @@ namespace ZoneTool::IW7
 		FxFloatRange gravity;
 		FxFloatRange reflectionFactor;
 		FxElemAtlas atlas;
-		char unk[2];
 		unsigned char elemType;
 		unsigned char visualCount;
 		unsigned char velIntervalCount;
@@ -7747,8 +9118,8 @@ namespace ZoneTool::IW7
 		unsigned char useItemClip;
 		unsigned char fadeInfo;
 		int randomSeed;
-		float litMaxColorChangePerSec;
-		float litUnlitBlendFactor;
+		float litUnlitBlendFactor; // FX_EvaluateVisualState_DoLighting
+		float pad;
 	}; assert_sizeof(FxElemDef, 304);
 	assert_offsetof(FxElemDef, elemType, 182);
 	assert_offsetof(FxElemDef, visualCount, 183);
@@ -8010,6 +9381,32 @@ namespace ZoneTool::IW7
 		StructuredDataDef PTR64 defs;
 	};
 
+	enum DDLFLags : std::uint8_t
+	{
+		DDL_FLAG_DIRTY = 0x0,
+		DDL_FLAG_CHECKSUM = 0x1,
+		DDL_FLAG_CODE_VERSION = 0x2,
+		DDL_FLAG_USER_FLAGS = 0x4,
+		DDL_FLAG_NO_PADDING = 0x8,
+		DDL_FLAG_RESERVE = 0x10,
+		DDL_FLAG_DDL_CHECKSUM = 0x20,
+	};
+
+	enum DDLType : std::int32_t
+	{
+		DDL_BYTE_TYPE = 0x0,
+		DDL_SHORT_TYPE = 0x1,
+		DDL_BOOL_TYPE = 0x2,
+		DDL_INT_TYPE = 0x3,
+		DDL_UINT64_TYPE = 0x4,
+		DDL_FLOAT_TYPE = 0x5,
+		DDL_FIXEDPOINT_TYPE = 0x6,
+		DDL_STRING_TYPE = 0x7,
+		DDL_STRUCT_TYPE = 0x8,
+		DDL_ENUM_TYPE = 0x9,
+		DDL_PAD_TYPE = 0xA,
+	};
+
 	struct DDLMember
 	{
 		const char PTR64 name;
@@ -8055,7 +9452,7 @@ namespace ZoneTool::IW7
 	{
 		const char PTR64 name;
 		int memberCount;
-		const char PTR64  PTR64 members;
+		const char PTR64 PTR64 members;
 		DDLHashTable hashTable;
 	};
 
@@ -8090,8 +9487,8 @@ namespace ZoneTool::IW7
 		const char PTR64 name;
 		Material PTR64 material;
 		unsigned int drawInterval;
-		int unk1;
-		float unk2;
+		bool fadeOverTime;
+		float fadeTime;
 		float speed;
 		float beamLength;
 		float beamWidth;
@@ -8414,43 +9811,43 @@ namespace ZoneTool::IW7
 		RumbleInfo PTR64 ssSmallRumble;
 		RumbleInfo PTR64 ssMedRumble;
 		RumbleInfo PTR64 ssLargeRumble;
-		const char PTR64 rattleLoop;
+		SndAliasLookup rattleLoop;
 		float rattleLoopMinVolume;
 		float rattleLoopMaxVolume;
-		const char PTR64 airLoop;
+		SndAliasLookup airLoop;
 		float airLoopMinVolume;
 		float airLoopMaxVolume;
-		const char PTR64 engineLoop;
+		SndAliasLookup engineLoop;
 		float engineLoopMinVolume;
 		float engineLoopMaxVolume;
 		float engineLoopMinPitch;
 		float engineLoopMaxPitch;
-		const char PTR64 hoverLoop;
+		SndAliasLookup hoverLoop;
 		float hoverLoopMinVolume;
 		float hoverLoopMaxVolume;
 		float hoverLoopMinPitch;
 		float hoverLoopMaxPitch;
-		const char PTR64 boostLoop;
+		SndAliasLookup boostLoop;
 		float boostLoopMaxVolume;
 		float boostLoopMaxPitch;
-		const char PTR64 ssThrustLoop;
+		SndAliasLookup ssThrustLoop;
 		float ssThrustLoopMaxVolume;
 		float ssThrustLoopMaxPitch;
-		const char PTR64 boostStart;
-		const char PTR64 boostStop;
-		const char PTR64 boostDepleted;
-		const char PTR64 boostUnavailable;
-		const char PTR64 jukeLeft;
-		const char PTR64 jukeRight;
-		const char PTR64 jukeUpDown;
-		const char PTR64 jukeBack;
-		const char PTR64 jukeFront;
-		const char PTR64 flightOn;
-		const char PTR64 flightOff;
+		SndAliasLookup boostStart;
+		SndAliasLookup boostStop;
+		SndAliasLookup boostDepleted;
+		SndAliasLookup boostUnavailable;
+		SndAliasLookup jukeLeft;
+		SndAliasLookup jukeRight;
+		SndAliasLookup jukeUpDown;
+		SndAliasLookup jukeBack;
+		SndAliasLookup jukeFront;
+		SndAliasLookup flightOn;
+		SndAliasLookup flightOff;
 		float flightOnTimer;
 		float flightOffTimer;
-		const char PTR64 hardCollision;
-		const char PTR64 softCollision;
+		SndAliasLookup hardCollision;
+		SndAliasLookup softCollision;
 		int camLookEnabled;
 		int camRelativeControl;
 		int camRemoteDrive;
@@ -8507,8 +9904,8 @@ namespace ZoneTool::IW7
 		float turretVertResistDown;
 		float turretRotRate;
 		VehicleTurretFireType turretFireType;
-		const char PTR64 turretSpinSnd;
-		const char PTR64 turretStopSnd;
+		SndAliasLookup turretSpinSnd;
+		SndAliasLookup turretStopSnd;
 		int trophyEnabled;
 		float trophyRadius;
 		float trophyInactiveRadius;
@@ -8523,30 +9920,30 @@ namespace ZoneTool::IW7
 		Material PTR64 compassEnemyAltIcon;
 		int compassIconWidth;
 		int compassIconHeight;
-		const char PTR64 idleLowSnd;
-		const char PTR64 idleHighSnd;
-		const char PTR64 engineLowSnd;
-		const char PTR64 engineHighSnd;
+		SndAliasLookup idleLowSnd;
+		SndAliasLookup idleHighSnd;
+		SndAliasLookup engineLowSnd;
+		SndAliasLookup engineHighSnd;
 		float engineSndSpeed;
 		scr_string_t audioOriginTag;
-		const char PTR64 engineStartUpSnd;
+		SndAliasLookup engineStartUpSnd;
 		int engineStartUpLength;
-		const char PTR64 engineShutdownSnd;
-		const char PTR64 engineIdleSnd;
-		const char PTR64 engineSustainSnd;
-		const char PTR64 engineRampUpSnd;
+		SndAliasLookup engineShutdownSnd;
+		SndAliasLookup engineIdleSnd;
+		SndAliasLookup engineSustainSnd;
+		SndAliasLookup engineRampUpSnd;
 		int engineRampUpLength;
-		const char PTR64 engineRampDownSnd;
+		SndAliasLookup engineRampDownSnd;
 		int engineRampDownLength;
-		const char PTR64 suspensionSoftSnd;
+		SndAliasLookup suspensionSoftSnd;
 		float suspensionSoftCompression;
-		const char PTR64 suspensionHardSnd;
+		SndAliasLookup suspensionHardSnd;
 		float suspensionHardCompression;
-		const char PTR64 collisionSnd;
+		SndAliasLookup collisionSnd;
 		float collisionBlendSpeed;
-		const char PTR64 speedSnd;
+		SndAliasLookup speedSnd;
 		float speedSndBlendSpeed;
-		const char PTR64 surfaceSndName;
+		SndAliasLookup surfaceSndName;
 		float surfaceSndBlendSpeed;
 		float slideVolume;
 		float slideBlendSpeed;
@@ -8573,7 +9970,7 @@ namespace ZoneTool::IW7
 		ClipInfo PTR64 info;
 		unsigned int numSubModels;
 		cmodel_t PTR64 cmodels;
-		void PTR64 models; //GfxBrushModel PTR64 models;
+		GfxBrushModel PTR64 models;
 	}; assert_sizeof(AddonMapEnts, 0x88);
 
 	enum NetConstStringType
@@ -8621,7 +10018,7 @@ namespace ZoneTool::IW7
 		NetConstStringSource sourceType;
 		unsigned int flags;
 		unsigned int entryCount;
-		const char PTR64  PTR64 stringList;
+		const char PTR64 PTR64 stringList;
 	}; assert_sizeof(NetConstStrings, 0x20);
 
 	struct LuaFile
@@ -8746,8 +10143,8 @@ namespace ZoneTool::IW7
 		ScriptableEventBaseDef PTR64 base;
 		float delayMin;
 		float delayMax;
-		unsigned __int16 eventStreamBufferOffsetServer;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetServer;
+		unsigned short eventStreamBufferOffsetClient;
 	}; assert_sizeof(ScriptableEventWaitDef, 24);
 
 	struct ScriptableEventRandomDef
@@ -8758,8 +10155,8 @@ namespace ZoneTool::IW7
 		ScriptableEventDef PTR64 eventsA;
 		unsigned int eventBCount;
 		ScriptableEventDef PTR64 eventsB;
-		unsigned __int16 eventStreamBufferOffsetServer;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetServer;
+		unsigned short eventStreamBufferOffsetClient;
 	}; assert_sizeof(ScriptableEventRandomDef, 48);
 
 	struct ScriptableEventScriptDef
@@ -8797,8 +10194,8 @@ namespace ZoneTool::IW7
 
 	struct $6CB7272563F4458FB40A4A5E123C4ABA
 	{
-		unsigned __int16 index;
-		unsigned __int16 tree;
+		unsigned short index;
+		unsigned short tree;
 	};
 
 	union $754892263A8270AD7855E320C3BF2A51
@@ -8828,8 +10225,8 @@ namespace ZoneTool::IW7
 		float blendTime;
 		unsigned int eventAtEndCount;
 		ScriptableEventDef PTR64 eventsAtEnd;
-		unsigned __int16 eventStreamBufferOffsetClient;
-		unsigned __int16 eventStreamBufferOffsetServer;
+		unsigned short eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetServer;
 		scr_anim_t animationIndex[2];
 	}; assert_sizeof(ScriptableEventAnimationDef, 80);
 
@@ -8883,7 +10280,7 @@ namespace ZoneTool::IW7
 		bool randomRangeAngVel;
 		vec3_t launchLinVel;
 		vec3_t launchAngVel;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 		bool allowMissingTag;
 		bool useRootOnMissingTag;
 	}; assert_sizeof(ScriptableEventSpawnDynentDef, 72);
@@ -8901,7 +10298,7 @@ namespace ZoneTool::IW7
 		FxCombinedDef effectDef;
 		float loopRate;
 		bool oneshotLooping;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 		bool allowMissingTag;
 		bool useRootOnMissingTag;
 		bool allowNearestVehicleVelocity;
@@ -8956,7 +10353,7 @@ namespace ZoneTool::IW7
 		bool useStateTransitionTime;
 		float transitionMin;
 		float transitionMax;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 	}; assert_sizeof(ScriptableEventLightDef, 72);
 
 	struct ScriptableEventSunDef
@@ -9020,8 +10417,8 @@ namespace ZoneTool::IW7
 		//bool destroy;
 		float amountDoT;
 		float intervalDoT;
-		unsigned __int16 eventStreamBufferOffsetServer;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetServer;
+		unsigned short eventStreamBufferOffsetClient;
 		ScriptablePartDef PTR64 part;
 	}; assert_sizeof(ScriptableEventPartDamageDef, 80);
 
@@ -9029,7 +10426,7 @@ namespace ZoneTool::IW7
 	{
 		ScriptableEventBaseDef PTR64 base;
 		MayhemData PTR64 mayhem;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 	}; assert_sizeof(ScriptableEventSetMayhemDef, 24);
 
 	enum Scriptable_MayhemAction
@@ -9043,7 +10440,7 @@ namespace ZoneTool::IW7
 	{
 		ScriptableEventBaseDef PTR64 base;
 		Scriptable_MayhemAction action;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 	}; assert_sizeof(ScriptableEventPlayMayhemDef, 16);
 
 	enum Scriptable_ShaderParamType
@@ -9075,7 +10472,7 @@ namespace ZoneTool::IW7
 		float placeHolderValue3;
 		float placeHolderValue4;
 		float transitionTime;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 	}; assert_sizeof(ScriptableEventViewmodelShaderParamDef, 40);
 
 	enum Scriptable_ImageId
@@ -9098,7 +10495,7 @@ namespace ZoneTool::IW7
 		ScriptableEventDef PTR64 events1p;
 		unsigned int event3pCount;
 		ScriptableEventDef PTR64 events3p;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 	}; assert_sizeof(ScriptableEventClientViewSelectorDef, 48);
 
 	enum Scriptable_TeamFilter
@@ -9128,8 +10525,8 @@ namespace ZoneTool::IW7
 		ScriptableEventDef PTR64 eventsPass;
 		unsigned int eventFailCount;
 		ScriptableEventDef PTR64 eventsFail;
-		unsigned __int16 eventStreamBufferOffsetClient;
-		unsigned __int16 eventStreamBufferOffsetServer;
+		unsigned short eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetServer;
 	}; assert_sizeof(ScriptableEventTeamSelectorDef, 56);
 
 	struct ScriptableEventAddModelDef
@@ -9185,7 +10582,7 @@ namespace ZoneTool::IW7
 		Material PTR64 material;
 		int transitionTime;
 		char finalValue;
-		unsigned __int16 eventStreamBufferOffsetClient;
+		unsigned short eventStreamBufferOffsetClient;
 		char __pad1[8];
 	}; assert_sizeof(ScriptableEventMaterialOverrideDef, 40);
 
@@ -9314,9 +10711,9 @@ namespace ZoneTool::IW7
 		ScriptablePartDef PTR64 childParts;
 		unsigned int numDamageTagOverrides;
 		ScriptableDamageTagOverride PTR64 damageTagOverrides;
-		unsigned __int16 eventStreamBufferOffsetServer;
-		unsigned __int16 eventStreamBufferOffsetClient;
-		unsigned __int16 eventStreamSize;
+		unsigned short eventStreamBufferOffsetServer;
+		unsigned short eventStreamBufferOffsetClient;
+		unsigned short eventStreamSize;
 	}; assert_sizeof(ScriptablePartDef, 104);
 
 	struct ScriptableDef // unchecked
@@ -9333,14 +10730,14 @@ namespace ZoneTool::IW7
 		unsigned int serverControlledPartCount;
 		unsigned int maxNumDynEntPartsBase;
 		unsigned int maxNumDynEntPartsForSpawning;
-		unsigned __int16 eventStreamSizeRequiredServer;
-		unsigned __int16 eventStreamSizeRequiredClient;
-		unsigned __int16 eventStreamSize;
+		unsigned short eventStreamSizeRequiredServer;
+		unsigned short eventStreamSizeRequiredClient;
+		unsigned short eventStreamSize;
 		unsigned int ffMemCost;
 		scr_string_t animationTreeName;
 		void PTR64 animationTreeDef[2];
 		unsigned int numXModels;
-		XModel PTR64  PTR64 models;
+		XModel PTR64 PTR64 models;
 	}; assert_sizeof(ScriptableDef, 0x70);
 
 	struct EquipmentClothData
@@ -9471,30 +10868,30 @@ namespace ZoneTool::IW7
 
 	struct FxParticleSimAnimationParticleData
 	{
-		unsigned __int16 xNormalizedPos;
-		unsigned __int16 yNormalizedPos;
-		unsigned __int16 zNormalizedPos;
-		unsigned __int16 xNormalizedWidth;
-		unsigned __int16 yNormalizedHeight;
-		unsigned __int16 orientation;
-		unsigned __int16 lifetime;
-		unsigned __int16 particleID;
-		unsigned __int16 xNormalizedPosNextFrame;
-		unsigned __int16 yNormalizedPosNextFrame;
-		unsigned __int16 zNormalizedPosNextFrame;
-		unsigned __int16 xNormalizedWidthNextFrame;
-		unsigned __int16 yNormalizedHeightNextFrame;
-		__int16 orientationDelta;
-		unsigned __int16 colorTableIndex;
-		unsigned __int16 nextColorTableIndex;
+		unsigned short xNormalizedPos;
+		unsigned short yNormalizedPos;
+		unsigned short zNormalizedPos;
+		unsigned short xNormalizedWidth;
+		unsigned short yNormalizedHeight;
+		unsigned short orientation;
+		unsigned short lifetime;
+		unsigned short particleID;
+		unsigned short xNormalizedPosNextFrame;
+		unsigned short yNormalizedPosNextFrame;
+		unsigned short zNormalizedPosNextFrame;
+		unsigned short xNormalizedWidthNextFrame;
+		unsigned short yNormalizedHeightNextFrame;
+		short orientationDelta;
+		unsigned short colorTableIndex;
+		unsigned short nextColorTableIndex;
 	};
 
 	struct FxParticleSimAnimationParticleDataOrientation3D
 	{
-		unsigned __int16 yOrientation;
-		unsigned __int16 zOrientation;
-		__int16 yOrientationDelta;
-		__int16 zOrientationDelta;
+		unsigned short yOrientation;
+		unsigned short zOrientation;
+		short yOrientationDelta;
+		short zOrientationDelta;
 	};
 
 	struct FxParticleSimAnimationParticleDataIndex
@@ -9524,13 +10921,13 @@ namespace ZoneTool::IW7
 	struct AlwaysloadedFlags
 	{
 		unsigned int imageCount;
-		GfxImage PTR64  PTR64 images;
+		GfxImage PTR64 PTR64 images;
 		unsigned int PTR64 imageFlags;
 		unsigned int stringCount;
-		const char PTR64  PTR64 strings;
+		const char PTR64 PTR64 strings;
 		unsigned int PTR64 stringFlags;
 		unsigned int materialCount;
-		Material PTR64  PTR64 materials;
+		Material PTR64 PTR64 materials;
 		unsigned int PTR64 materialFlags;
 	}; assert_sizeof(AlwaysloadedFlags, 72);
 
@@ -9562,7 +10959,7 @@ namespace ZoneTool::IW7
 	struct TransientSets
 	{
 		unsigned int count;
-		const char PTR64  PTR64 names;
+		const char PTR64 PTR64 names;
 		unsigned int PTR64 masks;
 	};
 
@@ -9581,7 +10978,7 @@ namespace ZoneTool::IW7
 		unsigned int transientAssetCount;
 		TransientAssetReference PTR64 transientAssets;
 		unsigned int stringCount;
-		const char PTR64  PTR64 strings;
+		const char PTR64 PTR64 strings;
 		TransientSets transientSets;
 	}; assert_sizeof(StreamingInfo, 0xC0);
 	assert_offsetof(StreamingInfo, modelCount, 92);
@@ -9592,19 +10989,17 @@ namespace ZoneTool::IW7
 		Material PTR64 laserMaterial;
 		Material PTR64 laserLightMaterial;
 		bool ownerOnly;
-		bool nightvisionOnly;
+		char pad1[3];
 		float range;
 		float radius;
 		float endOffsetViewmodel;
-		float endOffsetOther;
 		float flarePct;
 		FxCombinedDef beamEffect;
 		FxCombinedDef laserEndEffect;
-		bool clientCollision;
 		vec4_t color;
 		vec4_t hdrColorScale;
 		bool laserLight;
-		bool laserLightNvgOnly;
+		char pad2[3];
 		float laserLightRadius;
 		float laserLightBeginOffset;
 		float laserLightEndOffset;
@@ -9673,10 +11068,10 @@ namespace ZoneTool::IW7
 		float doubleJump_oneOverEaseInTime;
 		float doubleJump_oneOverEaseOutTimeMs;
 		bool doubleJump_alwaysDipView;
-		const char PTR64 doubleJump_sound;
-		const char PTR64 doubleJump_soundPlayer;
-		const char PTR64 doubleJump_releaseSound;
-		const char PTR64 doubleJump_releaseSoundPlayer;
+		SndAliasLookup doubleJump_sound;
+		SndAliasLookup doubleJump_soundPlayer;
+		SndAliasLookup doubleJump_releaseSound;
+		SndAliasLookup doubleJump_releaseSoundPlayer;
 		int slide_sprint_penalty_ms;
 		bool slide_allow_firing;
 		bool slide_allow_ads;
@@ -9760,11 +11155,11 @@ namespace ZoneTool::IW7
 		float radialMotionBlur_dodgeMinStrength;
 		float radialMotionBlur_dodgeMaxStrength;
 		RumbleInfo PTR64 groundPound_activationRumble;
-		const char PTR64 groundPound_activationSound;
-		const char PTR64 groundPound_activationSoundPlayer;
+		SndAliasLookup groundPound_activationSound;
+		SndAliasLookup groundPound_activationSoundPlayer;
 		RumbleInfo PTR64 groundPound_landingRumble;
-		const char PTR64 groundPound_landingSound;
-		const char PTR64 groundPound_landingSoundPlayer;
+		SndAliasLookup groundPound_landingSound;
+		SndAliasLookup groundPound_landingSoundPlayer;
 		RumbleInfo PTR64 landing_rumbleLowHeight;
 		RumbleInfo PTR64 landing_rumbleMediumHeight;
 		RumbleInfo PTR64 landing_rumbleHighHeight;
@@ -9923,110 +11318,110 @@ namespace ZoneTool::IW7
 
 	struct WeaponAnimPackageStateTimers
 	{
-		unsigned __int16 iFireDelay;
-		unsigned __int16 iMeleeDelay;
-		unsigned __int16 iDetonateDelay;
-		unsigned __int16 iFirstRaiseTime;
-		unsigned __int16 iAltRaiseTime;
-		unsigned __int16 iAltRaiseADSTime;
-		unsigned __int16 iAltRaiseAkimboTime;
-		unsigned __int16 iRechamberTime;
-		unsigned __int16 rechamberTimeOneHanded;
-		unsigned __int16 iRechamberBoltTime;
-		unsigned __int16 iHoldFireTime;
-		unsigned __int16 iHoldPrimeTime;
-		unsigned __int16 iDetonateTime;
-		unsigned __int16 iMeleeTime;
-		unsigned __int16 meleeChargeTime;
-		unsigned __int16 meleeUnkTime;
-		unsigned __int16 altMeleeTime;
-		unsigned __int16 altMeleeChargeTime;
-		unsigned __int16 altMeleeUnkTime;
-		unsigned __int16 iReloadTime;
-		unsigned __int16 iFastReloadTime;
-		unsigned __int16 reloadShowRocketTime;
-		unsigned __int16 iReloadEmptyTime;
-		unsigned __int16 iFastReloadEmptyTime;
-		unsigned __int16 iReloadAddTime;
-		unsigned __int16 iFastReloadAddTime;
-		unsigned __int16 iReloadEmptyAddTime;
-		unsigned __int16 iFastReloadEmptyAddTime;
-		unsigned __int16 iReloadStartTime;
-		unsigned __int16 iAltOverride3PInTime;
-		unsigned __int16 iAltOverride3POutTime;
-		unsigned __int16 iReloadStartAddTime;
-		unsigned __int16 iFastReloadStartAddTime;
-		unsigned __int16 iReloadEndTime;
-		unsigned __int16 iFastReloadEndTime;
-		unsigned __int16 iDropTime;
-		unsigned __int16 iRaiseTime;
-		unsigned __int16 iAltDropTime;
-		unsigned __int16 iAltDropADSTime;
-		unsigned __int16 iAltDropAkimboTime;
-		unsigned __int16 quickDropTime;
-		unsigned __int16 quickRaiseTime;
-		unsigned __int16 iBreachRaiseTime;
-		unsigned __int16 iEmptyRaiseTime;
-		unsigned __int16 iEmptyDropTime;
-		unsigned __int16 sprintInTime;
-		unsigned __int16 sprintLoopTime;
-		unsigned __int16 sprintOutTime;
-		unsigned __int16 walkTime;
-		unsigned __int16 gungHoTime;
-		unsigned __int16 crawlTime;
-		unsigned __int16 stunnedTimeBegin;
-		unsigned __int16 stunnedTimeLoop;
-		unsigned __int16 stunnedTimeEnd;
-		unsigned __int16 nightVisionWearTime;
-		unsigned __int16 nightVisionWearTimeFadeOutEnd;
-		unsigned __int16 nightVisionWearTimePowerUp;
-		unsigned __int16 nightVisionRemoveTime;
-		unsigned __int16 nightVisionRemoveTimePowerDown;
-		unsigned __int16 nightVisionRemoveTimeFadeInStart;
-		unsigned __int16 primeTime;
+		unsigned short iFireDelay;
+		unsigned short iMeleeDelay;
+		unsigned short iDetonateDelay;
+		unsigned short iFirstRaiseTime;
+		unsigned short iAltRaiseTime;
+		unsigned short iAltRaiseADSTime;
+		unsigned short iAltRaiseAkimboTime;
+		unsigned short iRechamberTime;
+		unsigned short rechamberTimeOneHanded;
+		unsigned short iRechamberBoltTime;
+		unsigned short iHoldFireTime;
+		unsigned short iHoldPrimeTime;
+		unsigned short iDetonateTime;
+		unsigned short iMeleeTime;
+		unsigned short meleeChargeTime;
+		unsigned short meleeUnkTime;
+		unsigned short altMeleeTime;
+		unsigned short altMeleeChargeTime;
+		unsigned short altMeleeUnkTime;
+		unsigned short iReloadTime;
+		unsigned short iFastReloadTime;
+		unsigned short reloadShowRocketTime;
+		unsigned short iReloadEmptyTime;
+		unsigned short iFastReloadEmptyTime;
+		unsigned short iReloadAddTime;
+		unsigned short iFastReloadAddTime;
+		unsigned short iReloadEmptyAddTime;
+		unsigned short iFastReloadEmptyAddTime;
+		unsigned short iReloadStartTime;
+		unsigned short iAltOverride3PInTime;
+		unsigned short iAltOverride3POutTime;
+		unsigned short iReloadStartAddTime;
+		unsigned short iFastReloadStartAddTime;
+		unsigned short iReloadEndTime;
+		unsigned short iFastReloadEndTime;
+		unsigned short iDropTime;
+		unsigned short iRaiseTime;
+		unsigned short iAltDropTime;
+		unsigned short iAltDropADSTime;
+		unsigned short iAltDropAkimboTime;
+		unsigned short quickDropTime;
+		unsigned short quickRaiseTime;
+		unsigned short iBreachRaiseTime;
+		unsigned short iEmptyRaiseTime;
+		unsigned short iEmptyDropTime;
+		unsigned short sprintInTime;
+		unsigned short sprintLoopTime;
+		unsigned short sprintOutTime;
+		unsigned short walkTime;
+		unsigned short gungHoTime;
+		unsigned short crawlTime;
+		unsigned short stunnedTimeBegin;
+		unsigned short stunnedTimeLoop;
+		unsigned short stunnedTimeEnd;
+		unsigned short nightVisionWearTime;
+		unsigned short nightVisionWearTimeFadeOutEnd;
+		unsigned short nightVisionWearTimePowerUp;
+		unsigned short nightVisionRemoveTime;
+		unsigned short nightVisionRemoveTimePowerDown;
+		unsigned short nightVisionRemoveTimeFadeInStart;
+		unsigned short primeTime;
 		bool bHoldFullPrime;
 		bool bAltOverride3PADSOnly;
-		unsigned __int16 blastFrontTime;
-		unsigned __int16 blastRightTime;
-		unsigned __int16 blastBackTime;
-		unsigned __int16 blastLeftTime;
-		unsigned __int16 slideInTime;
-		unsigned __int16 slideLoopTime;
-		unsigned __int16 slideOutTime;
-		unsigned __int16 dodgeTime;
-		unsigned __int16 wallRunInTime;
-		unsigned __int16 wallRunOutTime;
-		unsigned __int16 leapInTime;
-		unsigned __int16 leapLoopTime;
-		unsigned __int16 leapOutTime;
-		unsigned __int16 leapCancelTime;
-		unsigned __int16 chargeInTime;
-		unsigned __int16 chargeLoopTime;
-		unsigned __int16 chargeOutTime;
-		unsigned __int16 iRegenerationTime;
-		unsigned __int16 iRegenerationAddTime;
-		unsigned __int16 iReloadInterruptTime;
-		unsigned __int16 iReloadEmptyInterruptTime;
-		unsigned __int16 iReloadEndInterruptTime;
-		unsigned __int16 iReloadMultiple1InterruptTime;
-		unsigned __int16 iReloadMultiple2InterruptTime;
-		unsigned __int16 iReloadMultiple3InterruptTime;
-		unsigned __int16 iReloadMultiple4InterruptTime;
-		unsigned __int16 iReloadMultiple5InterruptTime;
-		unsigned __int16 iReloadMultiple6InterruptTime;
-		unsigned __int16 iReloadMultiple7InterruptTime;
-		unsigned __int16 iReloadMultiple8InterruptTime;
-		unsigned __int16 iFastReloadInterruptTime;
-		unsigned __int16 iFastReloadEmptyInterruptTime;
-		unsigned __int16 iFastReloadEndInterruptTime;
-		unsigned __int16 iFastReloadMultiple1InterruptTime;
-		unsigned __int16 iFastReloadMultiple2InterruptTime;
-		unsigned __int16 iFastReloadMultiple3InterruptTime;
-		unsigned __int16 iFastReloadMultiple4InterruptTime;
-		unsigned __int16 iFastReloadMultiple5InterruptTime;
-		unsigned __int16 iFastReloadMultiple6InterruptTime;
-		unsigned __int16 iFastReloadMultiple7InterruptTime;
-		unsigned __int16 iFastReloadMultiple8InterruptTime;
+		unsigned short blastFrontTime;
+		unsigned short blastRightTime;
+		unsigned short blastBackTime;
+		unsigned short blastLeftTime;
+		unsigned short slideInTime;
+		unsigned short slideLoopTime;
+		unsigned short slideOutTime;
+		unsigned short dodgeTime;
+		unsigned short wallRunInTime;
+		unsigned short wallRunOutTime;
+		unsigned short leapInTime;
+		unsigned short leapLoopTime;
+		unsigned short leapOutTime;
+		unsigned short leapCancelTime;
+		unsigned short chargeInTime;
+		unsigned short chargeLoopTime;
+		unsigned short chargeOutTime;
+		unsigned short iRegenerationTime;
+		unsigned short iRegenerationAddTime;
+		unsigned short iReloadInterruptTime;
+		unsigned short iReloadEmptyInterruptTime;
+		unsigned short iReloadEndInterruptTime;
+		unsigned short iReloadMultiple1InterruptTime;
+		unsigned short iReloadMultiple2InterruptTime;
+		unsigned short iReloadMultiple3InterruptTime;
+		unsigned short iReloadMultiple4InterruptTime;
+		unsigned short iReloadMultiple5InterruptTime;
+		unsigned short iReloadMultiple6InterruptTime;
+		unsigned short iReloadMultiple7InterruptTime;
+		unsigned short iReloadMultiple8InterruptTime;
+		unsigned short iFastReloadInterruptTime;
+		unsigned short iFastReloadEmptyInterruptTime;
+		unsigned short iFastReloadEndInterruptTime;
+		unsigned short iFastReloadMultiple1InterruptTime;
+		unsigned short iFastReloadMultiple2InterruptTime;
+		unsigned short iFastReloadMultiple3InterruptTime;
+		unsigned short iFastReloadMultiple4InterruptTime;
+		unsigned short iFastReloadMultiple5InterruptTime;
+		unsigned short iFastReloadMultiple6InterruptTime;
+		unsigned short iFastReloadMultiple7InterruptTime;
+		unsigned short iFastReloadMultiple8InterruptTime;
 	}; assert_sizeof(WeaponAnimPackageStateTimers, 206);
 
 	struct FootstepAnims
@@ -10037,7 +11432,7 @@ namespace ZoneTool::IW7
 	struct WeaponAnimPackage
 	{
 		const char PTR64 name;
-		XAnimParts PTR64  PTR64 anims; // array: 260
+		XAnimParts PTR64 PTR64 anims; // array: 260
 		WeaponAnimPackageStateTimers PTR64 timers;
 		int meleeAnimType;
 		int meleeAnimPrimaryCount;
@@ -10051,67 +11446,67 @@ namespace ZoneTool::IW7
 	struct WeaponSFXPackageSounds
 	{
 		const char PTR64 name;
-		const char PTR64 pickupSound;
-		const char PTR64 pickupSoundPlayer;
-		const char PTR64 ammoPickupSound;
-		const char PTR64 ammoPickupSoundPlayer;
-		const char PTR64 projectileSound;
-		const char PTR64 pullbackSound;
-		const char PTR64 pullbackSoundPlayer;
-		const char PTR64 pullbackSoundQuick;
-		const char PTR64 pullbackSoundQuickPlayer;
-		const char PTR64 fireSound;
-		const char PTR64 fireSoundPlayer;
-		const char PTR64 fireSoundPlayerAkimbo;
-		const char PTR64 fireSoundPlayerAkimboRight;
-		const char PTR64 fireStartSound;
-		const char PTR64 fireStartSoundPlayer;
-		const char PTR64 fireLoopSound;
-		const char PTR64 fireLoopSoundPlayer;
-		const char PTR64 fireStopSound;
-		const char PTR64 fireStopSoundPlayer;
-		const char PTR64 fireLastSound;
-		const char PTR64 fireLastSoundPlayer;
-		const char PTR64 fireLastSoundPlayerAkimbo;
-		const char PTR64 fireLastSoundPlayerAkimboRight;
-		const char PTR64 regenerateSound;
-		const char PTR64 regenerateSoundPlayer;
-		const char PTR64 emptyFireSound;
-		const char PTR64 emptyFireSoundPlayer;
-		const char PTR64 emptyRegenFireSound;
-		const char PTR64 emptyRegenFireSoundPlayer;
-		const char PTR64 rechamberSound;
-		const char PTR64 rechamberSoundPlayer;
-		const char PTR64 reloadSound;
-		const char PTR64 reloadSoundPlayer;
-		const char PTR64 reloadEmptySound;
-		const char PTR64 reloadEmptySoundPlayer;
-		const char PTR64 reloadStartSound;
-		const char PTR64 reloadStartSoundPlayer;
-		const char PTR64 reloadEndSound;
-		const char PTR64 reloadEndSoundPlayer;
-		const char PTR64 detonateSound;
-		const char PTR64 detonateSoundPlayer;
-		const char PTR64 nightVisionWearSound;
-		const char PTR64 nightVisionWearSoundPlayer;
-		const char PTR64 nightVisionRemoveSound;
-		const char PTR64 nightVisionRemoveSoundPlayer;
-		const char PTR64 altSwitchSound;
-		const char PTR64 altSwitchSoundPlayer;
-		const char PTR64 raiseSound;
-		const char PTR64 raiseSoundPlayer;
-		const char PTR64 firstRaiseSound;
-		const char PTR64 firstRaiseSoundPlayer;
-		const char PTR64 putawaySound;
-		const char PTR64 putawaySoundPlayer;
-		const char PTR64 enterAdsSoundPlayer;
-		const char PTR64 leaveAdsSoundPlayer;
-		const char PTR64 bulletRicochetImpact;
-		const char PTR64 projExplosionSound;
-		const char PTR64 projDudSound;
-		const char PTR64 projIgnitionSound;
-		const char PTR64 bounceSound;
-		const char PTR64 rollingSound;
+		SndAliasLookup pickupSound;
+		SndAliasLookup pickupSoundPlayer;
+		SndAliasLookup ammoPickupSound;
+		SndAliasLookup ammoPickupSoundPlayer;
+		SndAliasLookup projectileSound;
+		SndAliasLookup pullbackSound;
+		SndAliasLookup pullbackSoundPlayer;
+		SndAliasLookup pullbackSoundQuick;
+		SndAliasLookup pullbackSoundQuickPlayer;
+		SndAliasLookup fireSound;
+		SndAliasLookup fireSoundPlayer;
+		SndAliasLookup fireSoundPlayerAkimbo;
+		SndAliasLookup fireSoundPlayerAkimboRight;
+		SndAliasLookup fireStartSound;
+		SndAliasLookup fireStartSoundPlayer;
+		SndAliasLookup fireLoopSound;
+		SndAliasLookup fireLoopSoundPlayer;
+		SndAliasLookup fireStopSound;
+		SndAliasLookup fireStopSoundPlayer;
+		SndAliasLookup fireLastSound;
+		SndAliasLookup fireLastSoundPlayer;
+		SndAliasLookup fireLastSoundPlayerAkimbo;
+		SndAliasLookup fireLastSoundPlayerAkimboRight;
+		SndAliasLookup regenerateSound;
+		SndAliasLookup regenerateSoundPlayer;
+		SndAliasLookup emptyFireSound;
+		SndAliasLookup emptyFireSoundPlayer;
+		SndAliasLookup emptyRegenFireSound;
+		SndAliasLookup emptyRegenFireSoundPlayer;
+		SndAliasLookup rechamberSound;
+		SndAliasLookup rechamberSoundPlayer;
+		SndAliasLookup reloadSound;
+		SndAliasLookup reloadSoundPlayer;
+		SndAliasLookup reloadEmptySound;
+		SndAliasLookup reloadEmptySoundPlayer;
+		SndAliasLookup reloadStartSound;
+		SndAliasLookup reloadStartSoundPlayer;
+		SndAliasLookup reloadEndSound;
+		SndAliasLookup reloadEndSoundPlayer;
+		SndAliasLookup detonateSound;
+		SndAliasLookup detonateSoundPlayer;
+		SndAliasLookup nightVisionWearSound;
+		SndAliasLookup nightVisionWearSoundPlayer;
+		SndAliasLookup nightVisionRemoveSound;
+		SndAliasLookup nightVisionRemoveSoundPlayer;
+		SndAliasLookup altSwitchSound;
+		SndAliasLookup altSwitchSoundPlayer;
+		SndAliasLookup raiseSound;
+		SndAliasLookup raiseSoundPlayer;
+		SndAliasLookup firstRaiseSound;
+		SndAliasLookup firstRaiseSoundPlayer;
+		SndAliasLookup putawaySound;
+		SndAliasLookup putawaySoundPlayer;
+		SndAliasLookup enterAdsSoundPlayer;
+		SndAliasLookup leaveAdsSoundPlayer;
+		SndAliasLookup bulletRicochetImpact;
+		SndAliasLookup projExplosionSound;
+		SndAliasLookup projDudSound;
+		SndAliasLookup projIgnitionSound;
+		SndAliasLookup bounceSound;
+		SndAliasLookup rollingSound;
 	}; assert_sizeof(WeaponSFXPackageSounds, 0x1F0);
 
 	struct WeaponSFXPackage
@@ -10383,7 +11778,7 @@ namespace ZoneTool::IW7
 	struct ScriptStringList
 	{
 		int count;
-		const char PTR64  PTR64 strings;
+		const char PTR64 PTR64 strings;
 	};
 
 	union GfxZoneTableEntry
@@ -10459,7 +11854,9 @@ namespace ZoneTool::IW7
 		void PTR64 handle_dcache;
 		char __pad1[22];
 		bool isSecure;
-		char __pad2[49];
+		char __pad2[1];
+		int some_check;
+		char __pad3[44];
 	}; assert_sizeof(DBFile, 0xA8);
 	assert_offsetof(DBFile, isSecure, 118);
 
@@ -10478,9 +11875,9 @@ namespace ZoneTool::IW7
 		unsigned int total_out;
 		char PTR64 msg;
 		db_internal_state PTR64 state;
-		unsigned __int8 PTR64 (__fastcall PTR64 zalloc)(unsigned __int8 PTR64 , unsigned int, unsigned int);
-		void(__fastcall PTR64 zfree)(unsigned __int8 PTR64 , unsigned __int8 PTR64 );
-		unsigned __int8 PTR64 opaque;
+		unsigned char PTR64 (__fastcall PTR64 zalloc)(unsigned char PTR64 , unsigned int, unsigned int);
+		void(__fastcall PTR64 zfree)(unsigned char PTR64 , unsigned char PTR64);
+		unsigned char PTR64 opaque;
 		int data_type;
 		unsigned long adler;
 		unsigned long reserved;
@@ -10528,6 +11925,12 @@ namespace ZoneTool::IW7
 		int unk11;
 	}; assert_sizeof(DB_LoadData, 0xA8);
 
+	struct DB_Zone
+	{
+		char name[64];
+		char __pad0[1080];
+	}; assert_sizeof(DB_Zone, 1144);
+
 	enum XFileBlock
 	{
 		XFILE_BLOCK_TEMP = 0x0,
@@ -10560,10 +11963,11 @@ namespace ZoneTool::IW7
 	struct XZoneMemory
 	{
 		XBlock blocks[MAX_XFILE_COUNT];
-		char __pad0[112];
-		void PTR64 shared_ff_data;
+		unsigned __int64 callbackPos;
+		char __pad0[104];
+		XStreamFile PTR64 shared_ff_data;
 		unsigned int shared_ff_count;
-		int padding1;
+		unsigned int shared_ff_count2;
 		void PTR64 unknown; // always 0
 		XStreamFile PTR64 streamed_images;
 		unsigned int streamed_image_count;
@@ -10628,8 +12032,8 @@ namespace ZoneTool::IW7
 		char magic[8];
 		std::uint32_t version;
 		std::uint8_t unused; // (unused)
-		std::uint8_t has_no_image_fastfile;
-		std::uint8_t has_no_shared_fastfile;
+		std::uint8_t has_no_image_fastfile; // .ffi
+		std::uint8_t has_no_shared_fastfile; // .ffs
 		std::uint8_t unk1;
 		std::uint32_t fileTimeHigh; // (unused)
 		std::uint32_t fileTimeLow; // (unused)
@@ -10662,8 +12066,8 @@ namespace ZoneTool::IW7
 
 	struct XBlockCompressionBlockSizeAndCompressionType
 	{
-		unsigned __int32 blockSize : 24;
-		unsigned __int32 compressionType : 8;
+		unsigned int blockSize : 24;
+		unsigned int compressionType : 8;
 	};
 
 	struct XBlockCompressionDataHeader
@@ -10702,6 +12106,24 @@ namespace ZoneTool::IW7
 	}; assert_sizeof(XFileReadData, 224);
 
 	// SoundAssetBank
+
+	enum snd_asset_format : std::int32_t
+	{
+		SND_ASSET_FORMAT_PCMS16 = 0x0,
+		SND_ASSET_FORMAT_PCMS24 = 0x1,
+		SND_ASSET_FORMAT_PCMS32 = 0x2,
+		SND_ASSET_FORMAT_IEEE = 0x3,
+		SND_ASSET_FORMAT_XMA4 = 0x4,
+		SND_ASSET_FORMAT_MP3 = 0x5,
+		SND_ASSET_FORMAT_MSADPCM = 0x6,
+		SND_ASSET_FORMAT_WMA = 0x7,
+		SND_ASSET_FORMAT_FLAC = 0x8,
+		SND_ASSET_FORMAT_WIIUADPCM = 0x9,
+		SND_ASSET_FORMAT_MPC = 0xA,
+		SND_ASSET_FORMAT_COUNT = 0xB,
+	};
+
+#pragma pack(push, 1)
 	struct SndAssetBankHeader
 	{
 		unsigned int magic;
@@ -10739,14 +12161,15 @@ namespace ZoneTool::IW7
 		char channelCount;
 		char looping;
 		char format;
-		unsigned __int16 EnvelopeTime1;
-		unsigned __int16 EnvelopeTime2;
+		unsigned short EnvelopeTime1;
+		unsigned short EnvelopeTime2;
 		char EnvelopeLoudness0;
 		char EnvelopeLoudness1;
 		char EnvelopeLoudness2;
 		char EnvelopeLoudness3;
 		char BlocksizeKB;
-	};
+	}; static_assert(sizeof(SndAssetBankEntry) == 44);
+#pragma pack(pop)
 }
 
 #pragma pop()

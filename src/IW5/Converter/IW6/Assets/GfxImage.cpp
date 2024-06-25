@@ -119,6 +119,19 @@ namespace ZoneTool::IW5
 			return offset;
 		}
 
+		unsigned int Image_CountMipmaps(unsigned int imageFlags, unsigned int width, unsigned int height, unsigned int depth)
+		{
+			unsigned int mipRes;
+			unsigned int mipCount;
+
+			if ((imageFlags & 2) != 0)
+				return 1;
+			mipCount = 1;
+			for (mipRes = 1; mipRes < width || mipRes < height || mipRes < depth; mipRes *= 2)
+				++mipCount;
+			return mipCount;
+		}
+
 		IW6::GfxImage* GenerateIW6GfxImage(GfxImage* asset, allocator& mem)
 		{
 			// allocate IW6 GfxImage structure
@@ -135,8 +148,8 @@ namespace ZoneTool::IW5
 			iw6_asset->width = asset->width;
 			iw6_asset->height = asset->height;
 			iw6_asset->depth = asset->depth;
-			iw6_asset->numElements = asset->mapType == 5 ? 6 : 1;
-			iw6_asset->levelCount = asset->mapType == 5 ? 7 : 1;
+			iw6_asset->numElements = asset->mapType == 1;
+			iw6_asset->levelCount = Image_CountMipmaps(asset->texture.loadDef->flags, asset->width, asset->height, asset->depth);
 			iw6_asset->streamed = false;
 			iw6_asset->pixelData = reinterpret_cast<unsigned char*>(&asset->texture.loadDef->data);
 

@@ -6,16 +6,13 @@ namespace ZoneTool
 {
 	namespace IW3
 	{
-		IW4::XSurface* GenerateIW4Surface(XSurface* asset, allocator& mem)
+		IW4::XSurface* GenerateIW4Surface(XSurface* asset, IW4::XSurface* xsurface, allocator& mem)
 		{
-			// allocate IW4 XSurface structure
-			const auto xsurface = mem.allocate<IW4::XSurface>();
-
 			xsurface->tileMode = asset->tileMode;
 			xsurface->deformed = asset->deformed;
 			xsurface->vertCount = asset->vertCount;
 			xsurface->triCount = asset->triCount;
-			xsurface->zoneHandle = asset->zoneHandle;
+			xsurface->zoneHandle = 0;
 			xsurface->baseTriIndex = asset->baseTriIndex;
 			xsurface->baseVertIndex = asset->baseVertIndex;
 			xsurface->triIndices = reinterpret_cast<IW4::Face*>(asset->triIndices);
@@ -77,18 +74,10 @@ namespace ZoneTool
 				xmodel->lods[i].surfaces->surfs = mem.allocate<IW4::XSurface>(xmodel->lods[i].numSurfacesInLod);
 
 				// loop through surfaces in current Level-of-Detail
-				for (int surf = xmodel->lods[i].surfIndex; surf <
-					xmodel->lods[i].surfIndex + xmodel->lods[i].numSurfacesInLod; surf++)
+				for (int surf = 0; surf < xmodel->lods[i].numSurfacesInLod; surf++)
 				{
 					// generate iw4 surface
-					const auto surface = GenerateIW4Surface(&asset->surfs[surf], mem);
-
-					// copy XSurface into iw4 structure
-					memcpy(
-						&xmodel->lods[i].surfaces->surfs[surf - xmodel->lods[i].surfIndex],
-						surface,
-						sizeof IW4::XSurface
-					);
+					const auto surface = GenerateIW4Surface(&asset->surfs[surf], &xmodel->lods[i].surfaces->surfs[surf], mem);
 				}
 			}
 

@@ -3444,6 +3444,16 @@ namespace ZoneTool
 			float amplitude;
 		};
 
+		enum FxElemAtlasBehavior : std::uint8_t
+		{
+			FX_ATLAS_START_FIXED = 0x0,
+			FX_ATLAS_START_RANDOM = 0x1,
+			FX_ATLAS_START_INDEXED = 0x2,
+			FX_ATLAS_START_MASK = 0x3,
+			FX_ATLAS_PLAY_OVER_LIFE = 0x4,
+			FX_ATLAS_LOOP_ONLY_N_TIMES = 0x8,
+		};
+
 		struct FxElemAtlas
 		{
 			unsigned char behavior;
@@ -3466,7 +3476,6 @@ namespace ZoneTool
 			FxElemVec3Range velocity;
 			FxElemVec3Range totalDelta;
 		};
-
 
 		struct FxElemVelStateSample
 		{

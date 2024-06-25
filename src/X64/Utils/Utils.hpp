@@ -1,5 +1,10 @@
 #pragma once
 
+namespace Byte4
+{
+	void Byte4UnpackRgba(float* result, unsigned char* arr);
+}
+
 namespace PackedVec
 {
 	uint32_t Vec2PackTexCoords(float* in);

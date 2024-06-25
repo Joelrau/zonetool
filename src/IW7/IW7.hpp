@@ -14,7 +14,9 @@ using namespace zonetool;
 
 #include "Structs.hpp"
 
+#include "Assets/FxEffectDef.hpp"
 #include "Assets/GfxImage.hpp"
+#include "Assets/ParticleSystem.hpp"
 #include "Assets/RawFile.hpp"
 #include "Assets/XAnimParts.hpp"
 #include "Assets/XModel.hpp"

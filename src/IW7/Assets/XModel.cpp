@@ -17,7 +17,7 @@ namespace ZoneTool::IW7
 		dump.dump_string(asset->name);
 
 		// tags
-		for (unsigned int i = 0; i < asset->numBones + asset->numClientBones; i++)
+		for (auto i = 0; i < asset->numBones + asset->numClientBones; i++)
 		{
 			dump.dump_string(SL_ConvertToString(asset->boneNames[i]));
 		}
@@ -48,15 +48,15 @@ namespace ZoneTool::IW7
 		}
 
 		// physics
-		dump.dump_asset(asset->physAsset);
-		dump.dump_asset(asset->physFxShape);
+		dump.dump_asset(asset->physicsAsset);
+		dump.dump_asset(asset->physicsFXShape);
 
 		// unknown
-		dump.dump_array(asset->unknown02, asset->unknown02Count);
+		dump.dump_array(asset->physicsLODData, asset->physicsLODDataSize);
 
-		for (unsigned int i = 0; i < asset->unknownNamesCount; i++)
+		for (unsigned int i = 0; i < asset->physicsLODDataNameCount; i++)
 		{
-			dump.dump_string(SL_ConvertToString(asset->unknownNames[i]));
+			dump.dump_string(SL_ConvertToString(asset->physicsLODDataNames[i]));
 		}
 
 		dump.dump_asset(asset->scriptableMoverDef);

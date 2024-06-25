@@ -245,6 +245,82 @@ namespace ZoneTool
 		{
 			printf(data);
 		}
+
+		void fs_file_close(int handle)
+		{
+			static DWORD func = 0x55B3B0;
+
+			__asm
+			{
+				mov eax, handle
+				call func
+			}
+		}
+
+		int fs_fopen_file_read_for_thread(const char* filename, int* file, int thread)
+		{
+			static DWORD func = 0x55B960;
+			int result{};
+
+			__asm
+			{
+				pushad
+
+				mov edx, filename
+				push thread
+				push file
+				call func
+				add esp, 0x8
+				mov result, eax
+
+				popad
+			}
+
+			return result;
+		}
+
+		int FS_FOpenFileReadForThread(const char* filename, int* file, int thread)
+		{
+			return fs_fopen_file_read_for_thread(filename, file, thread);
+		}
+
+		void FS_FileClose(int h)
+		{
+			fs_file_close(h);
+		}
+
+		FS_Read_t FS_Read = FS_Read_t(0x55C120);
+
+		std::string filesystem_read_big_file(const char* filename)
+		{
+			std::string file_buffer{};
+
+			int handle = -1;
+			FS_FOpenFileReadForThread(filename, &handle, 0);
+
+			if (handle > 0)
+			{
+				constexpr unsigned int BUFF_SIZE = 1024;
+
+				while (true)
+				{
+					char buffer[BUFF_SIZE];
+					auto size_read = FS_Read(buffer, BUFF_SIZE, handle);
+
+					file_buffer.append(buffer, size_read);
+
+					if (size_read < BUFF_SIZE)
+					{
+						// We're done!
+						break;
+					}
+				}
+
+				FS_FileClose(handle);
+			}
+
+			return file_buffer;
+		}
 		
 		void Linker::startup()
 		{
@@ -385,6 +461,11 @@ namespace ZoneTool
 			isDumping = true;
 			currentDumpingZone = name;
 			load_zone(name);
+
+			while (isDumping)
+			{
+				Sleep(1);
+			}
 		}
 
 		void Linker::verify_zone(const std::string& name)

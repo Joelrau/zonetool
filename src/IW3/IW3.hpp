@@ -30,17 +30,6 @@ using ordered_json = nlohmann::ordered_json;
 
 namespace bounds
 {
-	static auto compute(float* mins, float* maxs)
-	{
-		float bounds[2][3]{ 0 };
-		for (int i = 0; i < 3; ++i)
-		{
-			bounds[1][i] = (maxs[i] - mins[i]) / 2;
-			bounds[0][i] = bounds[1][i] + mins[i];
-		}
-		return bounds;
-	}
-
 	static void compute(float* mins, float* maxs, float(*dest)[3])
 	{
 		for (int i = 0; i < 3; ++i)
@@ -73,6 +62,11 @@ namespace ZoneTool
 {
 	namespace IW3
 	{
+		typedef int (*FS_Read_t)(void* buffer, int len, int handle);
+		extern FS_Read_t FS_Read;
+
+		extern std::string filesystem_read_big_file(const char* filename);
+
 		struct XAsset
 		{
 			XAssetType type;
