@@ -631,11 +631,7 @@ namespace ZoneTool::IW5
 						mem2.jump(ret_true);
 
 						Memory gfxworld_mem(SELECT_VALUE(0x5CB539C, 0x66DEE94));
-						gfxworld_mem.write(
-							reinterpret_cast<int*>(SELECT_VALUE(0x1294AC8, 0x112A7F4)),
-							static_cast<std::size_t>(1),
-							static_cast<std::size_t>(SELECT_VALUE(0x280, 0x274))
-						);
+						gfxworld_mem.set(SELECT_VALUE(reinterpret_cast<int*>(asset), *reinterpret_cast<int**>(0x112A7F4)));
 
 						const auto sample_pos = asset->dpvs.smodelInsts[i].lightingOrigin;
 
