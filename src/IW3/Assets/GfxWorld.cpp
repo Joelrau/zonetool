@@ -196,7 +196,7 @@ namespace ZoneTool
 								{
 									auto* inst = &asset->dpvs.smodelDrawInsts[iw3Index];
 									inst->model = asset->dpvs.smodelDrawInsts[iw3Index - 1].model;
-									//Components::ZONETOOL_INFO("Swapping %s with %s model and putting its scale to zero because it is incompatible with iw4\n", xmodel->name, inst->model->name);
+									//ZONETOOL_INFO("Swapping %s with %s model and putting its scale to zero because it is incompatible with iw4\n", xmodel->name, inst->model->name);
 									inst->placement.origin[0] = std::numeric_limits<float>().min();
 									inst->placement.origin[1] = std::numeric_limits<float>().min();
 									inst->placement.origin[2] = std::numeric_limits<float>().min();
@@ -211,12 +211,12 @@ namespace ZoneTool
 								else
 								{
 									// We could do better than this
-									//Components::Logger::Error("Please use another 'fix incompatible models' method. Swapping is not supported for this map.");
+									//ZONETOOL_ERROR("Please use another 'fix incompatible models' method. Swapping is not supported for this map.");
 								}
 							}
 							else
 							{
-								//Components::ZONETOOL_INFO("Moving %s to entities because its model is incompatible with iw4\n", xmodel->name);
+								//ZONETOOL_INFO("Moving %s to entities because its model is incompatible with iw4\n", xmodel->name);
 							}
 
 
@@ -231,7 +231,7 @@ namespace ZoneTool
 				// It works well on some maps (mp_bloc)
 				// But it breaks visdata on other maps (mp_zavod)
 				// I do not know why!
-				RemoveModels(asset, removedStaticModelIndices);
+				//RemoveModels(asset, removedStaticModelIndices);
 			}
 		}
 
@@ -290,7 +290,6 @@ namespace ZoneTool
 			// iw4_credits has 0x3
 			// Probably do not add IW4::FogTypes::FOG_DFOG here, cod4 doesn't support it !
 			map.fogTypesAllowed = 0x1;
-
 
 			// AABBTree data is stored as part of the cells.
 			// However, in IW4 it's not, so we have to extract the data
@@ -491,7 +490,6 @@ namespace ZoneTool
 				map.materialMemory[i].material = (IW4::Material*)world->materialMemory[i].material;
 			}
 
-
 			static_assert(sizeof map.sun == sizeof world->sun);
 			std::memcpy(&map.sun, &world->sun, sizeof map.sun);
 			if (map.sun.flareMaterial)
@@ -597,7 +595,7 @@ namespace ZoneTool
 					std::memcpy(map.dpvs.smodelDrawInsts[i].cacheId, world->dpvs.smodelDrawInsts[i].smodelCacheIndex, sizeof(map.dpvs.smodelDrawInsts[i].cacheId));
 
 					map.dpvs.smodelDrawInsts[i].placement.scale = world->dpvs.smodelDrawInsts[i].placement.scale;
-					map.dpvs.smodelDrawInsts[i].model = (IW4::XModel*)world->dpvs.smodelDrawInsts[i].model;
+					map.dpvs.smodelDrawInsts[i].model = IW3::GenerateIW4Model(world->dpvs.smodelDrawInsts[i].model, allocator);
 
 
 					float iw3CullDist = world->dpvs.smodelDrawInsts[i].cullDist;
