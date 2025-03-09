@@ -343,6 +343,28 @@ namespace ZoneTool
 
 			AddTriggersToMap(iw4_clipmap, allocator);
 
+			// dump .triggers
+			{
+				assert_sizeof(H1::TriggerModel, sizeof(IW4::TriggerModel));
+				assert_sizeof(H1::TriggerHull, sizeof(IW4::TriggerHull));
+				assert_sizeof(H1::TriggerSlab, sizeof(IW4::TriggerSlab));
+
+				assetmanager::dumper trigger_dumper;
+				if (trigger_dumper.open(iw4_clipmap->mapEnts->name + ".ents.triggers"s))
+				{
+					trigger_dumper.dump_int(iw4_clipmap->mapEnts->trigger.count);
+					trigger_dumper.dump_array<IW4::TriggerModel>(iw4_clipmap->mapEnts->trigger.models, iw4_clipmap->mapEnts->trigger.count);
+
+					trigger_dumper.dump_int(iw4_clipmap->mapEnts->trigger.hullCount);
+					trigger_dumper.dump_array<IW4::TriggerHull>(iw4_clipmap->mapEnts->trigger.hulls, iw4_clipmap->mapEnts->trigger.hullCount);
+
+					trigger_dumper.dump_int(iw4_clipmap->mapEnts->trigger.slabCount);
+					trigger_dumper.dump_array<IW4::TriggerSlab>(iw4_clipmap->mapEnts->trigger.slabs, iw4_clipmap->mapEnts->trigger.slabCount);
+
+					trigger_dumper.close();
+				}
+			}
+
 			static const auto addCarePackages = true;
 			if (addCarePackages) 
 			{
