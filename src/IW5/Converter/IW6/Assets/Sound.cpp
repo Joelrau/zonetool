@@ -218,7 +218,7 @@ namespace ZoneTool::IW5
 				}
 				else
 				{
-					ZONETOOL_INFO("manual convertion needed for file: %s\n", path.string().data());
+					ZONETOOL_INFO("manual conversion needed for file: %s", path.string().data());
 				}
 
 				iw6_alias->soundFile->u.loadSnd = mem.allocate<IW6::LoadedSound>();

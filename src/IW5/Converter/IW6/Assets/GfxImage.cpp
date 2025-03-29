@@ -167,7 +167,7 @@ namespace ZoneTool::IW5
 			}
 			else
 			{
-				//ZONETOOL_FATAL("No known convertion for image \"%s\"", asset->name);
+				//ZONETOOL_FATAL("No known conversion for image \"%s\"", asset->name);
 			}
 
 			return iw6_asset;
