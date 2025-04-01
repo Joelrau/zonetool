@@ -25,9 +25,9 @@ namespace ZoneTool
 			iw5_asset->stateFlags = asset->stateFlags;
 
 			iw5_asset->cameraRegion = asset->cameraRegion;
-			if (iw5_asset->cameraRegion >= 0x4)
+			if (iw5_asset->cameraRegion > CAMERA_REGION_NONE)
 			{
-				iw5_asset->cameraRegion = 0x4;
+				iw5_asset->cameraRegion = CAMERA_REGION_NONE;
 			}
 
 			iw5_asset->techniqueSet = reinterpret_cast<IW5::MaterialTechniqueSet*>(asset->techniqueSet);

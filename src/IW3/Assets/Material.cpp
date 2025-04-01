@@ -107,12 +107,9 @@ namespace ZoneTool::IW3
 		iw4_asset->stateFlags = asset->stateFlags;
 
 		iw4_asset->cameraRegion = asset->cameraRegion;
-		if (iw4_asset->cameraRegion == 0x3)
+		if (asset->cameraRegion >= IW3::CAMERA_REGION_NONE)
 		{
-			// 0x3 is NONE in iw3, but DEPTH_HACK in iw4
-			// In iw4 NONE is 0x4
-			//ZONETOOL_INFO("Swapped material % s camera region from 0x3 to 0x4 (NONE)\n", iw4_asset->name);
-			iw4_asset->cameraRegion = 0x4;
+			iw4_asset->cameraRegion = IW4::CAMERA_REGION_NONE;
 		}
 
 		iw4_asset->techniqueSet = reinterpret_cast<IW4::MaterialTechniqueSet*>(asset->techniqueSet);

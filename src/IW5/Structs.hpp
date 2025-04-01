@@ -1579,7 +1579,6 @@ namespace ZoneTool
 			STREAM_DST_COUNT = 0xD,
 		};
 
-
 		struct MaterialStreamRouting
 		{
 			MaterialStreamRoutingSource source;
@@ -1811,9 +1810,8 @@ namespace ZoneTool
 			CAMERA_REGION_LIT_TRANS = 0x1,
 			CAMERA_REGION_EMISSIVE = 0x2,
 			CAMERA_REGION_DEPTH_HACK = 0x3,
-			CAMERA_REGION_LIGHT_MAP_OPAQUE = 0x4,
-			CAMERA_REGION_COUNT = 0x5,
-			CAMERA_REGION_NONE = 0x5,
+			CAMERA_REGION_COUNT = 0x4,
+			CAMERA_REGION_NONE = 0x4,
 		};
 
 		struct Material

@@ -177,6 +177,8 @@ namespace ZoneTool
 			{"mc_l_sm_r0c0q0n0s0o0",					"mc_l_sm_lmpb_r0c0q0n0sd0om0_nfwpf"},
 			{"mc_l_sm_r0c0q0n0s0o0p0",					"mc_l_sm_lmpb_r0c0q0n0sd0om0_nfwpf"},
 
+			{"mc_l_sm_nofog_r0c0n0s0",						"mc_l_sm_r0c0n0sd0_nfwpf"},
+
 			{"mc_l_sm_ua_r0c0",							"m_l_sm_ua_r0c0sd0p0_nfwpf"},
 			{"mc_l_sm_ua_r0c0s0p0",						"m_l_sm_ua_r0c0sd0p0_nfwpf"},
 			{"mc_l_sm_ua_r0c0s0p0_nocast",				"m_l_sm_ua_r0c0sd0p0_nfwpf"},
@@ -195,6 +197,7 @@ namespace ZoneTool
 			{"mc_l_sm_du_dm_r0c0n0s0",					"m_l_sm_du_dm_r0c0n0sd0_nfwpf"},
 			{"mc_l_sm_du_dm_r0c0n0s0_nocast",			"m_l_sm_du_dm_r0c0n0sd0_nfwpf"},
 			{"mc_l_sm_du_dm_r0c0n0s0p0",				"m_l_sm_du_dm_r0c0n0sd0p0_nfwpf"},
+			{"mc_l_sm_du_dm_r0c0q0n0s0",				"m_l_sm_du_dm_r0c0q0n0sd0_nfwpf"},
 			{"mc_l_sm_du_dm_r0c0q0n0s0p0",				"m_l_sm_du_dm_r0c0q0n0sd0_nfwpf"},
 			{"mc_l_sm_du_dm_r0c0d0n0s0p0",				"m_l_sm_du_dm_r0c0n0sd0p0_nfwpf"},
 
@@ -238,6 +241,7 @@ namespace ZoneTool
 			{"mc_l_sm_heat_r0c0s0p0",					"m_l_sm_heat_r0c0sd0p0_cltrans"},
 			{"mc_l_sm_heat_r0c0n0s0",					"m_l_sm_heat_r0c0n0sd0_nfwpf"},
 			{"mc_l_sm_heat_r0c0n0s0p0",					"m_l_sm_heat_r0c0n0sd0p0_nfwpf"},
+			{"mc_l_sm_heat_b0c0",						"m_l_sm_heat_ndw_b0c0_cltrans"},
 			{"mc_l_sm_heat_b0c0s0",						"m_l_sm_heat_ndw_b0c0sd0_cltrans"},
 			{"mc_l_sm_heat_b0c0s0p0",					"m_l_sm_heat_ndw_b0c0sd0p0_cltrans"},
 			{"mc_l_sm_heat_b0c0n0s0",					"m_l_sm_heat_ndw_b0c0n0sd0p0_cltrans"},
@@ -285,8 +289,10 @@ namespace ZoneTool
 			{"mc_shadowcaster_atest",					"mc_shadowcaster_atest"},
 			{"mc_reflexsight",							"mc_reflexsight"},
 
-			{"mc_effect",								"effect_add_ndw"},
-			{"mc_effect_add_nofog",						"effect_add_nofog_ndw"},
+			{"mc_effect",								"m_effect_blend_ndw"},
+			{"mc_effect_nofog",							"m_effect_blend_nofog_ndw"},
+			{"mc_effect_replace_lin",					"m_effect_replace_lin"},
+			{"mc_effect_add_nofog",						"effect_add_nofog_ndw"}, // me_effect_add_nofog_ndw
 			{"mc_effect_add_eyeoffset",					"effect_add_eo"},
 			{"mc_effect_blend_nofog",					"mc_effect_blend_nofog_ndw"},
 			{"mc_effect_falloff_add_nofog",				"effect_falloff_add_nofog_ndw"},
@@ -323,9 +329,11 @@ namespace ZoneTool
 			{"effect_blend",							"effect_blend_ndw"},
 			{"effect_blend_nofog",						"effect_blend_nofog_ndw"},
 			{"effect_replace_lin",						"effect_blend_ndw"},
+			{"effect_falloff",							"effect_falloff_blend_ndw"},
 			{"effect_falloff_add",						"effect_falloff_add_ndw"},
 			{"effect_falloff_add_nofog",				"effect_falloff_add_nofog_ndw"},
 			{"effect_falloff_blend",					"effect_falloff_blend_ndw"},
+			//{"effect_falloff_screen_nofog",				"effect_falloff_add_nofog_ndw"},
 			{"effect_zfeather",							"effect_zf_blend_ndw"},
 			{"effect_zfeather_nofog",					"effect_zf_blend_nofog_ndw" },
 			{"effect_zfeather_add",						"effect_zf_add_ndw"},
@@ -373,6 +381,11 @@ namespace ZoneTool
 			{"grain_overlay_uvscale",					"grain_overlay_uvscale"},
 
 			{"splatter_alt",							"splatter_alt"},
+
+			{"post_light",								"post_light"},
+
+			{"unlit_add_lin",							"unlit_add_lin_ndw_cltrans"},
+			{"unlit_blend_lin",							"unlit_blend_lin_ndw_cltrans"},
 
 			{"tools",									"tools_r0c0ct0"},
 			{"tools_b0c0",								"tools_b0c0ct0"},
@@ -716,7 +729,7 @@ namespace ZoneTool
 				{30, 32},	// Blend 2
 				{31, 33},	// Blend 3
 				//{32, },	// ?
-				//{33, },	// ?
+				{33, 36},	// Gun blend?
 				{34, 38},	// Shadow Caster
 				//{35, 35},	// ?
 				//{36, },	// ?
@@ -770,7 +783,6 @@ namespace ZoneTool
 				{IW5::CAMERA_REGION_LIT_TRANS, H1::CAMERA_REGION_LIT_TRANS},
 				{IW5::CAMERA_REGION_EMISSIVE, H1::CAMERA_REGION_EMISSIVE},
 				{IW5::CAMERA_REGION_DEPTH_HACK, H1::CAMERA_REGION_DEPTH_HACK},
-				{IW5::CAMERA_REGION_LIGHT_MAP_OPAQUE, H1::CAMERA_REGION_LIT_OPAQUE},
 				{IW5::CAMERA_REGION_NONE, H1::CAMERA_REGION_NONE},
 			};
 
@@ -949,6 +961,16 @@ namespace ZoneTool
 				// hashIndex;
 
 				matdata["stateFlags"] = asset->stateFlags; // same
+				if (zonetool::dumping_source == dump_source::iw4 || zonetool::dumping_source == dump_source::iw5)
+				{
+					if ((asset->stateFlags & 0x2) != 0) // stateflag 0x2 is different for iw4 and iw5. it's not cull front
+					{
+						// fix stateflags, we could check if the material has front cull from loadbits but thats too much work, lets just use "none" if front is used...
+						auto stateflags = asset->stateFlags & ~0x2;
+						matdata["stateFlags"] = stateflags;
+					}
+				}
+				
 				matdata["cameraRegion"] = H1::get_h1_camera_region(asset->cameraRegion, asset->name, h1_techset);
 				matdata["materialType"] = H1::get_material_type_from_name(asset->name);
 				matdata["assetFlags"] = H1::MTL_ASSETFLAG_NONE;
