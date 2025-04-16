@@ -27,6 +27,7 @@ workspace "zonetool"
 	targetdir "%{wks.location}/bin"
 	targetname "%{prj.name}-%{cfg.platform}-%{cfg.buildcfg}"
 	warnings "Off"
+	defaultplatform "x86"
 
 	configurations {
 		"debug",
