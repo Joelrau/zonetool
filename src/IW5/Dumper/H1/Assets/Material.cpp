@@ -69,6 +69,7 @@ namespace ZoneTool
 			{"wc_l_sm_r0c0s0",							"wc_l_sm_r0c0sd0_nfwpf"},
 			{"wc_l_sm_r0c0s0_nocast",					"wc_l_sm_r0c0sd0_nfwpf"},
 			{"wc_l_sm_r0c0s0p0",						"wc_l_sm_r0c0sd0_nfwpf"},
+			{"wc_l_sm_r0c0s0o0p0",						"wc_l_sm_lmpb_r0c0sd0om0_nfwpf"},
 			{"wc_l_sm_r0c0p0",							"wc_l_sm_r0c0sd0_nfwpf"},
 			{"wc_l_sm_r0c0p0_nocast",					"wc_l_sm_r0c0sd0_nfwpf"},
 			{"wc_l_r0c0",								"wc_l_sm_r0c0_nfwpf"},
@@ -144,6 +145,7 @@ namespace ZoneTool
 			{"mc_l_sm_a0c0",							"m_l_sm_a0c0_nfwpf_frt_aat"},
 			{"mc_l_sm_a0c0_nocast",						"m_l_sm_a0c0_nfwpf_frt_aat"},
 			{"mc_l_sm_r0c0",							"mc_l_sm_r0c0_nfwpf"},
+			{"mc_l_sm_r0c0_fgcb",						"mc_l_sm_r0c0_nfwpf"}, // codo
 			{"mc_l_sm_r0c0_nocast",						"mc_l_sm_r0c0_nfwpf"},
 			{"mc_l_sm_r0c0d0",							"mc_l_sm_r0c0_nfwpf"},
 			{"mc_l_sm_r0c0d0s0",						"mc_l_sm_r0c0sd0_nfwpf"},
@@ -1091,6 +1093,11 @@ namespace ZoneTool
 				if (h1_techset.find("_cso_") != std::string::npos)
 				{
 					CONSTANT_TABLE_ADD_IF_NOT_FOUND("hdrColorParm", 3379990750, 1.0f, 0.0f, 0.0f, 0.0f);
+				}
+
+				if (h1_techset.find("_zf_") != std::string::npos)
+				{
+					CONSTANT_TABLE_ADD_IF_NOT_FOUND("featherParms", 1300144692, 0.025f, 40.0f, 0.0f, 0.0f);
 				}
 
 				if (h1_techset.find("shadowcaster") != std::string::npos)
