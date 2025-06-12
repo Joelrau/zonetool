@@ -386,10 +386,13 @@ namespace ZoneTool
 				Memory(0x507982).nop(5);
 
 				// Disable console window
-				Memory(0x0046CE55).nop(5);
+				Memory(0x46CE55).nop(5);
 
 				// Obtain console output from IW3
 				Memory(0x4FCC00).call(Com_PrintfHook);
+
+				// Don't create splash screen
+				Memory(0x57761C).nop(5);
 			}
 		}
 

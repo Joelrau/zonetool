@@ -124,6 +124,24 @@ namespace ZoneTool
 		MessageBoxA(nullptr, message.data(), "ZoneTool", MB_ICONERROR);
 		std::exit(0);
 	}
+
+	bool hasCommandLineFlag(const wchar_t* flag)
+	{
+		int argc = 0;
+		LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+		if (!argv)
+			return false;
+
+		for (int i = 0; i < argc; ++i) {
+			if (_wcsicmp(argv[i], flag) == 0) {
+				LocalFree(argv);
+				return true;
+			}
+		}
+
+		LocalFree(argv);
+		return false;
+	}
 	
 	void create_console()
 	{
@@ -136,15 +154,27 @@ namespace ZoneTool
 			// Catch exceptions
 			//AddVectoredExceptionHandler(TRUE, exception_handler);
 		}
-		
-		// Allocate console
-		AllocConsole();
-		freopen("CONIN$", "r", stdin);
-		freopen("CONOUT$", "w", stdout);
-		freopen("CONOUT$", "w", stderr);
 
-		// Set console name
-		SetConsoleTitleA("ZoneTool");
+		if (!hasCommandLineFlag(L"-silent")) {
+			// Allocate console
+			AllocConsole();
+
+			FILE* out = std::freopen("CONOUT$", "w", stdout);
+			FILE* err = std::freopen("CONOUT$", "w", stderr);
+			FILE* in = std::freopen("CONIN$", "r", stdin);
+
+			if (out) std::setvbuf(out, nullptr, _IONBF, 0);
+			if (err) std::setvbuf(err, nullptr, _IONBF, 0);
+			if (in)  std::setvbuf(in, nullptr, _IONBF, 0);
+
+			// Set console name
+			SetConsoleTitleA("ZoneTool");
+		}
+		else
+		{
+			std::setvbuf(stdout, nullptr, _IONBF, 0);
+			std::setvbuf(stderr, nullptr, _IONBF, 0);
+		}
 
 		// Spawn command thread
 		CreateThread(nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(command_thread), nullptr, 0, nullptr);
@@ -152,7 +182,7 @@ namespace ZoneTool
 		// Commands
 		register_command("quit"s, [](std::vector<std::string>)
 		{
-			ExitProcess(0);
+			std::exit(0);
 		});
 		register_command("buildzone"s, [](std::vector<std::string> args)
 		{
