@@ -57,11 +57,12 @@ namespace ZoneTool
 				memcpy(xmodel->lods[i].partBits, asset->lodInfo[i].partBits, sizeof(int[4]));
 				memcpy(&xmodel->lods[i].lod, &asset->lodInfo[i].lod, 3);
 
-				if (xmodel->lods[i].numSurfacesInLod > 16)
-				{
-					xmodel->lods[i].numSurfacesInLod = 16;
-					ZONETOOL_INFO("XModel %s has more than 16 surfaces in lod %d", asset->name, i);
-				}
+				// this is only necessary if the xmodel is used as a static model...
+				//if (xmodel->lods[i].numSurfacesInLod > 16)
+				//{
+				//	xmodel->lods[i].numSurfacesInLod = 16;
+				//	ZONETOOL_INFO("XModel %s has more than 16 surfaces in lod %d", asset->name, i);
+				//}
 
 				// generate ModelSurface object
 				xmodel->lods[i].surfaces = mem.allocate<IW4::XModelSurfs>();

@@ -124,7 +124,7 @@ namespace ZoneTool
 
 			if (repairedTotal > 0)
 			{
-				ZONETOOL_INFO("Successfully repaired %i nodes on clipmap\n", repairedTotal);
+				ZONETOOL_INFO("Successfully repaired %i nodes on clipmap", repairedTotal);
 			}
 		}
 
