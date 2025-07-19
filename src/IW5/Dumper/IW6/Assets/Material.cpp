@@ -312,7 +312,17 @@ namespace ZoneTool
 				matdata["surfaceTypeBits"] = asset->info.surfaceTypeBits; // convert
 				// hashIndex;
 
-				//matdata["stateFlags"] = asset->stateFlags; // convert
+				matdata["stateFlags"] = asset->stateFlags; // same
+				if (zonetool::dumping_source == dump_source::iw4 || zonetool::dumping_source == dump_source::iw5)
+				{
+					if ((asset->stateFlags & 0x2) != 0) // stateflag 0x2 is different for iw4 and iw5. it's not cull front
+					{
+						// fix stateflags, we could check if the material has front cull from loadbits but thats too much work, lets just use "none" if front is used...
+						auto stateflags = asset->stateFlags & ~0x2;
+						matdata["stateFlags"] = stateflags;
+					}
+				}
+
 				matdata["cameraRegion"] = IW6::get_iw6_camera_region(asset->cameraRegion, asset->name, iw6_techset);
 				matdata["materialType"] = IW6::get_material_type_from_name(asset->name);
 				matdata["assetFlags"] = IW6::MTL_ASSETFLAG_NONE;

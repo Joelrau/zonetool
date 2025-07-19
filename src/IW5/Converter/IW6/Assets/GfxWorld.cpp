@@ -340,7 +340,7 @@ namespace ZoneTool::IW5
 					REINTERPRET_CAST_SAFE(iw6_asset->shadowGeom[i].smodelIndex, asset->shadowGeom[i].smodelIndex);
 				}
 			}
-			iw6_asset->shadowGeomOptimized = iw6_asset->shadowGeom;
+			iw6_asset->shadowGeomOptimized = nullptr;
 
 			iw6_asset->lightRegion = mem.allocate<IW6::GfxLightRegion>(iw6_asset->primaryLightCount);
 			for (unsigned int i = 0; i < iw6_asset->primaryLightCount; i++)
@@ -407,12 +407,6 @@ namespace ZoneTool::IW5
 			iw6_asset->dpvs.tessellationCutoffVisData[0] = mem.allocate<unsigned int>(iw6_asset->dpvs.surfaceVisDataCount); // idk if correct?
 			iw6_asset->dpvs.tessellationCutoffVisData[1] = mem.allocate<unsigned int>(iw6_asset->dpvs.surfaceVisDataCount);
 			iw6_asset->dpvs.tessellationCutoffVisData[2] = mem.allocate<unsigned int>(iw6_asset->dpvs.surfaceVisDataCount);
-
-			iw6_asset->dpvs.sortedSurfIndex = mem.allocate<unsigned int>(iw6_asset->dpvs.staticSurfaceCount);
-			for (unsigned int i = 0; i < iw6_asset->dpvs.staticSurfaceCount; i++)
-			{
-				iw6_asset->dpvs.sortedSurfIndex[i] = asset->dpvs.sortedSurfIndex[i];
-			}
 
 			iw6_asset->dpvs.sortedSurfIndex = mem.allocate<unsigned int>(iw6_asset->dpvs.staticSurfaceCount);
 			for (unsigned int i = 0; i < iw6_asset->dpvs.staticSurfaceCount; i++)

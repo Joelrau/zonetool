@@ -20,6 +20,18 @@ namespace ZoneTool
 {
 	namespace IW7
 	{
+		enum techset_map_type_e
+		{
+			regular,
+			color_tint,
+			count,
+		};
+
+		struct techset_map_s
+		{
+			std::string techset[techset_map_type_e::count];
+		};
+
 		std::unordered_map<std::string, std::string> mapped_techsets =
 		{
 			{"mc_l_sm_r0c0",							"mo_l_sm_replace_i0c0"},
@@ -36,6 +48,11 @@ namespace ZoneTool
 
 			{"distortion_scale",						"eq_distortion_scale"},
 			{"distortion_scale_zfeather",				"eq_distortion_scale_zfeather"},
+		};
+
+		std::unordered_map<std::string, techset_map_s> mapped_techsets_ =
+		{
+			{"mc_unlit",								{"mo_unlit_replace_lin", "mo_unlit_replace_lin_ct"}},
 		};
 
 		std::unordered_map<std::string, std::string> mapped_techsets_effect_vertlit =
@@ -70,51 +87,48 @@ namespace ZoneTool
 			MTL_TYPE_EFFECT_QUAD,
 		};
 
-		std::string get_mapped_techset(const std::string& techset, bool effect_vertlit)
+		std::string get_mapped_techset(const std::string& techset, const bool effect_vertlit, const bool color_tint)
 		{
-			auto& map = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
-			if (map.find(techset) == map.end())
+			if (!effect_vertlit)
 			{
-				return "2d";
-			}
-			return map[techset];
-		}
-
-		std::unordered_map<std::string, std::string> prefix_cache;
-		std::string replace_material_prefix(const std::string& name, std::string techset, bool effect_vertlit)
-		{
-			auto& map = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
-
-			if (!techset.empty() && map.find(techset) != map.end())
-			{
-				std::string new_tech = map[techset];
-				for (auto& prefix : prefixes)
+				const auto it = mapped_techsets_.find(techset);
+				if (it != mapped_techsets_.end())
 				{
-					if (new_tech.starts_with(prefix + "_"))
-					{
-						auto offset_end = name.find("/");
-						if (offset_end == std::string::npos)
-						{
-							offset_end = 0;
-						}
-						else
-						{
-							offset_end += 1; // '/'
-						}
-
-						const auto replacement = prefix + "/";
-
-						std::string replaced = name;
-						replaced.replace(0, offset_end, replacement);
-						prefix_cache[name] = replaced;
-						return replaced;
-					}
+					auto tech = it->second.techset[color_tint ? techset_map_type_e::color_tint : techset_map_type_e::regular];
+					return tech.empty() ? it->second.techset[techset_map_type_e::regular] : tech;
 				}
 			}
 
+			const auto& map = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
+			const auto it = map.find(techset);
+			return (it != map.end()) ? it->second : "2d";
+		}
+
+		std::unordered_map<std::string, std::string> prefix_cache;
+
+		std::string replace_material_prefix(const std::string& name, const std::string& techset, const bool effect_vertlit, const bool color_tint)
+		{
 			if (prefix_cache.contains(name))
 			{
 				return prefix_cache[name];
+			}
+
+			std::string new_tech = get_mapped_techset(techset, effect_vertlit, color_tint);
+
+			for (const auto& prefix : prefixes)
+			{
+				if (new_tech.starts_with(prefix + "_"))
+				{
+					const auto slash_pos = name.find('/');
+					const size_t replace_len = (slash_pos == std::string::npos) ? 0 : slash_pos + 1;
+					const std::string replacement = prefix + "/";
+
+					std::string replaced = name;
+					replaced.replace(0, replace_len, replacement);
+
+					prefix_cache[name] = replaced;
+					return replaced;
+				}
 			}
 
 			return name;
@@ -163,9 +177,9 @@ namespace ZoneTool
 
 		namespace
 		{
-			std::string get_IW7_techset(std::string name, std::string matname, bool* result, bool effect_vertlit = false)
+			std::string get_IW7_techset(std::string name, std::string matname, bool* result, bool effect_vertlit = false, bool has_ct = false)
 			{
-				auto iw7_techset = get_mapped_techset(name, effect_vertlit);
+				auto iw7_techset = get_mapped_techset(name, effect_vertlit, has_ct);
 
 				*result = true;
 				if (name != "2d" && iw7_techset == "2d")
@@ -285,11 +299,29 @@ namespace ZoneTool
 			return new_name;
 		}
 
+		bool has_color_tint(const Material* asset)
+		{
+			static constexpr float identity[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+			for (int i = 0; i < asset->constantCount; ++i)
+			{
+				const auto& constant = asset->constantTable[i];
+				if (constant.nameHash == 3054254906u)
+				{
+					return !std::equal(std::begin(constant.literal), std::end(constant.literal), std::begin(identity));
+				}
+			}
+
+			return false;
+		}
+
 		void dump(Material* asset, bool geotrail)
 		{
 			if (asset)
 			{
-				auto new_name = IW7::replace_material_prefix(asset->name, asset->techniqueSet ? asset->techniqueSet->name : "", geotrail);
+				const auto has_ct = has_color_tint(asset);
+
+				auto new_name = IW7::replace_material_prefix(asset->name, asset->techniqueSet ? asset->techniqueSet->name : "", geotrail, has_ct);
 				auto c_name = clean_name(new_name);
 
 				const auto path = "materials\\"s + new_name + ".json"s;
@@ -306,7 +338,7 @@ namespace ZoneTool
 					techset = asset->techniqueSet->name;
 
 					bool result = false;
-					iw7_techset = IW7::get_IW7_techset(techset, asset->name, &result, geotrail);
+					iw7_techset = IW7::get_IW7_techset(techset, asset->name, &result, geotrail, has_ct);
 					if (!result)
 					{
 						matdata["techniqueSet->original"] = techset;

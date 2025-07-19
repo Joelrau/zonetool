@@ -385,7 +385,9 @@ namespace ZoneTool
 			{"splatter_alt",							"splatter_alt"},
 
 			{"post_light",								"post_light"},
+			{"laser",									"laser"},
 
+			{"unlit",									"unlit_blend_lin_ndw_cltrans"},
 			{"unlit_add_lin",							"unlit_add_lin_ndw_cltrans"},
 			{"unlit_blend_lin",							"unlit_blend_lin_ndw_cltrans"},
 
@@ -428,9 +430,9 @@ namespace ZoneTool
 		techset_map m_l_sm_b0c0q0n0s0 = { "m_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf", "m_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf_frt_aat", "mc_l_sm_ndw_b0c0n0sd0_nfwpf_frt_im_aat", "m_l_sm_lmpb_ndw_b0c0q0n0sd0_cltrans" };
 		techset_map m_l_sm_b0c0q0n0s0p0 = { "m_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf", "m_l_sm_lmpb_ndw_b0c0q0n0sd0_nfwpf_frt_aat", "mc_l_sm_ndw_b0c0n0sd0_nfwpf_frt_im_aat", "m_l_sm_ndw_b0c0q0n0sd0p0_cltrans" };
 
-		techset_map mc_l_sm_t0c0 = { "mc_l_sm_t0c0_nfwpf", "", "", "" };
-		techset_map mc_l_sm_t0c0_nocast = { "mc_l_sm_t0c0_nfwpf_nocast", "", "", "" };
-		techset_map mc_l_sm_t0c0s0 = { "mc_l_sm_t0c0sd0_nfwpf", "", "", "" };
+		techset_map mc_l_sm_t0c0 = { "mc_l_sm_t0c0_nfwpf", "mc_l_sm_t0c0n0sd0_nfwpf_frt_aat", "", "" };
+		techset_map mc_l_sm_t0c0_nocast = { "mc_l_sm_t0c0_nfwpf_nocast", "mc_l_sm_t0c0n0sd0_nfwpf_frt_aat", "", "" };
+		techset_map mc_l_sm_t0c0s0 = { "mc_l_sm_t0c0sd0_nfwpf", "mc_l_sm_t0c0n0sd0_nfwpf_frt_aat", "", "" };
 		techset_map mc_l_sm_t0c0s0p0 = { "mc_l_sm_t0c0sd0p0_nfwpf", "", "", "" };
 		techset_map mc_l_sm_t0c0n0 = { "m_l_sm_t0c0n0_nfwpf", "m_l_sm_t0c0n0_nfwpf_frt_aat", "", "m_l_sm_t0c0n0_cltrans" };
 		techset_map mc_l_sm_t0c0n0_nocast = { "m_l_sm_t0c0n0_nfwpf_nocast", "m_l_sm_t0c0n0_nfwpf_frt_aat", "", "m_l_sm_t0c0n0_cltrans" };
@@ -762,16 +764,63 @@ namespace ZoneTool
 				{"wc_shadowcaster", 38},
 			};
 
+			bool is_blend_sortkey(std::uint8_t h1_sortkey)
+			{
+				return (h1_sortkey >= 18 && h1_sortkey <= 33);
+			}
+
+			bool is_decal_sortkey(std::uint8_t h1_sortkey)
+			{
+				return (h1_sortkey >= 7 && h1_sortkey <= 17);
+			}
+
+			bool is_impact_decal_sortkey(std::uint8_t h1_sortkey)
+			{
+				return (h1_sortkey == 14);
+			}
+
+			bool is_opaque_sortkey(std::uint8_t h1_sortkey)
+			{
+				return (h1_sortkey >= 1 && h1_sortkey <= 2);
+			}
+
+			std::uint8_t fixup_h1_sortkey(std::uint8_t h1_sortkey, std::string h1_techset)
+			{
+				if (!is_opaque_sortkey(h1_sortkey) && !is_decal_sortkey(h1_sortkey) && !is_blend_sortkey(h1_sortkey))
+				{
+					return h1_sortkey;
+				}
+
+				if (h1_techset.contains("_cltrans") && !is_blend_sortkey(h1_sortkey))
+				{
+					return 31; // default blend sortkey
+				}
+				if ((h1_techset.contains("_nfwpf_frt_aat") || h1_techset.contains("_nfwpf_frt_im_aat")) && !is_decal_sortkey(h1_sortkey))
+				{
+					if (h1_techset.contains("_nfwpf_frt_im_aat"))
+					{
+						return 14; // impact decal sortkey
+					}
+					return 12; // default decal sortkey
+				}
+				if (h1_techset.contains("_nfwpf") && !is_opaque_sortkey(h1_sortkey))
+				{
+					return 2; // default opaque sortkey
+				}
+
+				return h1_sortkey;
+			}
+
 			std::uint8_t get_h1_sortkey(std::uint8_t sortkey, std::string matname, std::string h1_techset = "")
 			{
 				if (mapped_sortkeys_by_techset.find(h1_techset) != mapped_sortkeys_by_techset.end())
 				{
-					return mapped_sortkeys_by_techset[h1_techset];
+					return fixup_h1_sortkey(mapped_sortkeys_by_techset[h1_techset], h1_techset);
 				}
 
 				if (mapped_sortkeys.contains(sortkey))
 				{
-					return mapped_sortkeys[sortkey];
+					return fixup_h1_sortkey(mapped_sortkeys[sortkey], h1_techset);
 				}
 
 				ZONETOOL_ERROR("Could not find mapped H1 sortkey for sortkey: %d (material: %s)", sortkey, matname.data());
@@ -797,17 +846,17 @@ namespace ZoneTool
 
 			std::uint8_t get_h1_camera_region(std::uint8_t camera_region, std::string matname, std::string h1_techset = "")
 			{
-				if (h1_techset.find("_cltrans") != std::string::npos)
+				if (h1_techset.contains("_cltrans"))
 				{
 					return H1::CAMERA_REGION_LIT_TRANS;
 				}
 
-				if (h1_techset.find("_nfwpf_frt_aat") != std::string::npos || h1_techset.find("_nfwpf_frt_im_aat") != std::string::npos)
+				if (h1_techset.contains("_nfwpf_frt_aat") || h1_techset.contains("_nfwpf_frt_im_aat"))
 				{
 					return H1::CAMERA_REGION_LIT_DECAL;
 				}
 
-				if (h1_techset.find("_nfwpf") != std::string::npos)
+				if (h1_techset.contains("_nfwpf"))
 				{
 					return H1::CAMERA_REGION_LIT_OPAQUE;
 				}
@@ -991,7 +1040,7 @@ namespace ZoneTool
 
 					if (h1_techset.find("_ct_") == std::string::npos || h1_techset.find("ct0") == std::string::npos)
 					{
-						if (constant_name == "colorTint" &&
+						if (constant_hash == 3054254906 &&
 							asset->constantTable[i].literal[0] == 1.0f &&
 							asset->constantTable[i].literal[1] == 1.0f &&
 							asset->constantTable[i].literal[2] == 1.0f &&
