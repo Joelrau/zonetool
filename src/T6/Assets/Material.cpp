@@ -51,7 +51,7 @@ namespace ZoneTool
 				}
 				else if (prefix == "me")
 				{
-					return H1::MTL_TYPE_MODEL_GREY;
+					return H1::MTL_TYPE_MODEL_EFFECT;
 				}
 				else if (prefix == "mc")
 				{

@@ -48,6 +48,7 @@ using ordered_json = nlohmann::ordered_json;
 #include "Assets/ScriptFile.hpp"
 #include "Assets/Sound.hpp"
 #include "Assets/SoundCurve.hpp"
+#include "Assets/Weapon.hpp"
 #include "Assets/XAnimParts.hpp"
 #include "Assets/XModel.hpp"
 #include "Assets/XSurface.hpp"
