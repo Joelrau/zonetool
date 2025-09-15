@@ -32,6 +32,8 @@ using namespace zonetool;
 #include "Assets/RawFile.hpp"
 #include "Assets/Sound.hpp"
 #include "Assets/SoundCurve.hpp"
+#include "Assets/TracerDef.hpp"
+#include "Assets/WeaponAttachment.hpp"
 #include "Assets/WeaponDef.hpp"
 #include "Assets/XAnimParts.hpp"
 #include "Assets/XModel.hpp"

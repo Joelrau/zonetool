@@ -196,7 +196,7 @@ namespace ZoneTool::IW5
 
 		H1::OffhandClass convertOffhandClass(OffhandClass offhandClass)
 		{
-			static std::unordered_map< OffhandClass, ZoneTool::H1::OffhandClass> mapped_off =
+			static std::unordered_map< OffhandClass, ZoneTool::H1::OffhandClass> mapped =
 			{
 				{ OFFHAND_CLASS_NONE, H1::OFFHAND_CLASS_NONE },
 				{ OFFHAND_CLASS_FRAG_GRENADE, H1::OFFHAND_CLASS_FRAG_GRENADE },
@@ -206,9 +206,9 @@ namespace ZoneTool::IW5
 				{ OFFHAND_CLASS_OTHER, H1::OFFHAND_CLASS_OTHER },
 			};
 
-			if (mapped_off.contains(offhandClass))
+			if (mapped.contains(offhandClass))
 			{
-				return mapped_off[offhandClass];
+				return mapped[offhandClass];
 			}
 
 			__debugbreak();
@@ -328,6 +328,75 @@ namespace ZoneTool::IW5
 				return true;
 			}
 			return false;
+		}
+
+		void convertSurfaceSounds(H1::snd_alias_list_t PTR64 PTR64 h1_sounds, SndAliasCustom* sounds, allocator& mem)
+		{
+			static std::unordered_map<H1::materialSurfType_t, materialSurfType_t> mapped =
+			{
+				{ H1::SURF_TYPE_DEFAULT, SURF_TYPE_DEFAULT },
+				{ H1::SURF_TYPE_BARK, SURF_TYPE_BARK },
+				{ H1::SURF_TYPE_BRICK, SURF_TYPE_BRICK },
+				{ H1::SURF_TYPE_CARPET, SURF_TYPE_CARPET },
+				{ H1::SURF_TYPE_CLOTH, SURF_TYPE_CLOTH },
+				{ H1::SURF_TYPE_CONCRETE, SURF_TYPE_CONCRETE },
+				{ H1::SURF_TYPE_DIRT, SURF_TYPE_DIRT },
+				{ H1::SURF_TYPE_FLESH, SURF_TYPE_FLESH },
+				{ H1::SURF_TYPE_FOLIAGE_DEBRIS, SURF_TYPE_FOLIAGE },
+				{ H1::SURF_TYPE_GLASS, SURF_TYPE_GLASS },
+				{ H1::SURF_TYPE_GRASS, SURF_TYPE_GRASS },
+				{ H1::SURF_TYPE_GRAVEL, SURF_TYPE_GRAVEL },
+				{ H1::SURF_TYPE_ICE, SURF_TYPE_ICE },
+				{ H1::SURF_TYPE_METAL_SOLID, SURF_TYPE_METAL },
+				{ H1::SURF_TYPE_METAL_GRATE, SURF_TYPE_METAL },
+				{ H1::SURF_TYPE_MUD, SURF_TYPE_MUD },
+				{ H1::SURF_TYPE_PAPER, SURF_TYPE_PAPER },
+				{ H1::SURF_TYPE_PLASTER, SURF_TYPE_PLASTER },
+				{ H1::SURF_TYPE_ROCK, SURF_TYPE_ROCK },
+				{ H1::SURF_TYPE_SAND, SURF_TYPE_SAND },
+				{ H1::SURF_TYPE_SNOW, SURF_TYPE_SNOW },
+				{ H1::SURF_TYPE_WATER_WAIST, SURF_TYPE_WATER },
+				{ H1::SURF_TYPE_WOOD_SOLID, SURF_TYPE_WOOD },
+				{ H1::SURF_TYPE_ASPHALT, SURF_TYPE_ASPHALT },
+				{ H1::SURF_TYPE_CERAMIC, SURF_TYPE_CERAMIC },
+				{ H1::SURF_TYPE_PLASTIC_SOLID, SURF_TYPE_PLASTIC },
+				{ H1::SURF_TYPE_RUBBER, SURF_TYPE_RUBBER },
+				{ H1::SURF_TYPE_FRUIT, SURF_TYPE_FRUIT },
+				{ H1::SURF_TYPE_PAINTEDMETAL, SURF_TYPE_PAINTED_METAL },
+				{ H1::SURF_TYPE_RIOTSHIELD, SURF_TYPE_RIOT_SHIELD },
+				{ H1::SURF_TYPE_SLUSH, SURF_TYPE_SLUSH },
+				{ H1::SURF_TYPE_ASPHALT_WET, SURF_TYPE_ASPHALT },
+				{ H1::SURF_TYPE_ASPHALT_DEBRIS, SURF_TYPE_ASPHALT },
+				{ H1::SURF_TYPE_CONCRETE_WET, SURF_TYPE_CONCRETE },
+				{ H1::SURF_TYPE_CONCRETE_DEBRIS, SURF_TYPE_CONCRETE },
+				{ H1::SURF_TYPE_FOLIAGE_VEGETATION, SURF_TYPE_FOLIAGE },
+				{ H1::SURF_TYPE_FOLIAGE_LEAVES, SURF_TYPE_FOLIAGE },
+				{ H1::SURF_TYPE_GRASS_TALL, SURF_TYPE_GRASS },
+				{ H1::SURF_TYPE_METAL_HOLLOW, SURF_TYPE_METAL },
+				{ H1::SURF_TYPE_METAL_VEHICLE, SURF_TYPE_METAL },
+				{ H1::SURF_TYPE_METAL_THIN, SURF_TYPE_METAL },
+				{ H1::SURF_TYPE_METAL_WET, SURF_TYPE_METAL },
+				{ H1::SURF_TYPE_METAL_DEBRIS, SURF_TYPE_METAL },
+				{ H1::SURF_TYPE_PLASTIC_HOLLOW, SURF_TYPE_PLASTIC },
+				{ H1::SURF_TYPE_PLASTIC_TARP, SURF_TYPE_PLASTIC },
+				{ H1::SURF_TYPE_ROCK_WET, SURF_TYPE_ROCK },
+				{ H1::SURF_TYPE_ROCK_DEBRIS, SURF_TYPE_ROCK },
+				{ H1::SURF_TYPE_WATER_ANKLE, SURF_TYPE_WATER },
+				{ H1::SURF_TYPE_WATER_KNEE, SURF_TYPE_WATER },
+				{ H1::SURF_TYPE_WOOD_HOLLOW, SURF_TYPE_WOOD },
+				{ H1::SURF_TYPE_WOOD_WET, SURF_TYPE_WOOD },
+				{ H1::SURF_TYPE_WOOD_DEBRIS, SURF_TYPE_WOOD },
+				{ H1::SURF_TYPE_CUSHION, SURF_TYPE_CUSHION },
+			};
+
+			for (auto& [h1_type, iw5_type] : mapped)
+			{
+				if (sounds[iw5_type].sound)
+				{
+					h1_sounds[h1_type] = mem.manual_allocate<H1::snd_alias_list_t>(sizeof(const char PTR64));
+					h1_sounds[h1_type]->name = mem.duplicate_string(sounds[iw5_type].sound->aliasName);
+				}
+			}
 		}
 
 		H1::WeaponDef* GenerateWeaponDef(WeaponCompleteDef* asset, allocator& mem)
@@ -642,8 +711,18 @@ namespace ZoneTool::IW5
 			//REINTERPRET_CAST(adsUpSound, weapDef->adsUpSound.sound);
 			//REINTERPRET_CAST(adsDownSound, weapDef->adsDownSound.sound);
 			//REINTERPRET_CAST(adsCrosshairEnemySound, weapDef->adsCrosshairEnemySound.sound);
-			h1_asset->bounceSound = nullptr;
-			h1_asset->rollingSound = nullptr;
+
+			if (asset->weapDef->bounceSound)
+			{
+				h1_asset->bounceSound = mem.allocate<H1::snd_alias_list_t PTR64>(53);
+				convertSurfaceSounds(h1_asset->bounceSound, asset->weapDef->bounceSound, mem);
+			}
+			if (asset->weapDef->rollingSound)
+			{
+				h1_asset->rollingSound = mem.allocate<H1::snd_alias_list_t PTR64>(53);
+				convertSurfaceSounds(h1_asset->rollingSound, asset->weapDef->rollingSound, mem);
+			}
+
 			REINTERPRET_CAST(viewShellEjectEffect, weapDef->viewShellEjectEffect);
 			REINTERPRET_CAST(worldShellEjectEffect, weapDef->worldShellEjectEffect);
 			REINTERPRET_CAST(viewLastShotEjectEffect, weapDef->viewLastShotEjectEffect);
@@ -735,7 +814,7 @@ namespace ZoneTool::IW5
 			COPY_FIELD_CAST(hudIconRatio, weapDef->hudIconRatio); // same enum values
 			COPY_FIELD_CAST(pickupIconRatio, weapDef->pickupIconRatio); // ^
 			COPY_FIELD_CAST(ammoCounterIconRatio, weapDef->ammoCounterIconRatio); // ^
-			COPY_FIELD(ammoCounterClip, weapDef->ammoCounterClip);
+			COPY_FIELD_CAST(ammoCounterClip, weapDef->ammoCounterClip); // ^
 			COPY_FIELD(startAmmo, weapDef->iStartAmmo);
 			// iAmmoIndex (runtime)
 			// iClipIndex (runtime)
@@ -1304,8 +1383,6 @@ namespace ZoneTool::IW5
 			h1_asset->fU_3604[0] = 30.0f;
 			h1_asset->fU_3604[1] = 0.0f;
 			h1_asset->fU_3604[2] = 0.5899999737739563f;
-
-			// todo: copy all fields
 
 			return h1_asset;
 		}
