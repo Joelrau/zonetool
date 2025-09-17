@@ -604,8 +604,13 @@ namespace ZoneTool::IW5
 				h1_asset->notetrackOverrides[i].attachment = convertAttachmentValue(asset->notetrackOverrides[i].attachment);
 				h1_asset->notetrackOverrides[i].notetrackSoundMapKeys = mem.allocate<H1::scr_string_t>(36);
 				h1_asset->notetrackOverrides[i].notetrackSoundMapValues = mem.allocate<H1::scr_string_t>(36);
-				memcpy(h1_asset->notetrackOverrides[i].notetrackSoundMapKeys, asset->notetrackOverrides[i].notetrackSoundMapKeys, sizeof(scr_string_t) * 24);
-				memcpy(h1_asset->notetrackOverrides[i].notetrackSoundMapValues, asset->notetrackOverrides[i].notetrackSoundMapValues, sizeof(scr_string_t) * 24);
+				for (auto j = 0; j < 36; j++)
+				{
+					h1_asset->notetrackOverrides[i].notetrackSoundMapKeys[j] = asset->notetrackOverrides[i].notetrackSoundMapKeys[j];
+					h1_asset->notetrackOverrides[i].notetrackSoundMapValues[j] = asset->notetrackOverrides[i].notetrackSoundMapValues[j];
+				}
+				//memcpy(h1_asset->notetrackOverrides[i].notetrackSoundMapKeys, asset->notetrackOverrides[i].notetrackSoundMapKeys, sizeof(scr_string_t) * 24);
+				//memcpy(h1_asset->notetrackOverrides[i].notetrackSoundMapValues, asset->notetrackOverrides[i].notetrackSoundMapValues, sizeof(scr_string_t) * 24);
 			}
 
 			// animOverrides
@@ -615,12 +620,22 @@ namespace ZoneTool::IW5
 			// notetrackOverrides
 			h1_asset->notetrackSoundMapKeys = mem.allocate<H1::scr_string_t>(36);
 			h1_asset->notetrackSoundMapValues = mem.allocate<H1::scr_string_t>(36);
-			memcpy(h1_asset->notetrackSoundMapKeys, asset->weapDef->notetrackSoundMapKeys, sizeof(scr_string_t) * 24);
-			memcpy(h1_asset->notetrackSoundMapValues, asset->weapDef->notetrackSoundMapValues, sizeof(scr_string_t) * 24);
+			for (auto i = 0; i < 36; i++)
+			{
+				h1_asset->notetrackSoundMapKeys[i] = asset->weapDef->notetrackSoundMapKeys[i];
+				h1_asset->notetrackSoundMapValues[i] = asset->weapDef->notetrackSoundMapValues[i];
+			}
+			//memcpy(h1_asset->notetrackSoundMapKeys, asset->weapDef->notetrackSoundMapKeys, sizeof(scr_string_t) * 24);
+			//memcpy(h1_asset->notetrackSoundMapValues, asset->weapDef->notetrackSoundMapValues, sizeof(scr_string_t) * 24);
 			h1_asset->notetrackRumbleMapKeys = mem.allocate<H1::scr_string_t>(16);
 			h1_asset->notetrackRumbleMapValues = mem.allocate<H1::scr_string_t>(16);
-			memcpy(h1_asset->notetrackRumbleMapKeys, asset->weapDef->notetrackRumbleMapKeys, sizeof(scr_string_t) * 16);
-			memcpy(h1_asset->notetrackRumbleMapValues, asset->weapDef->notetrackRumbleMapValues, sizeof(scr_string_t) * 16);
+			for (auto i = 0; i < 16; i++)
+			{
+				h1_asset->notetrackRumbleMapKeys[i] = asset->weapDef->notetrackRumbleMapKeys[i];
+				h1_asset->notetrackRumbleMapValues[i] = asset->weapDef->notetrackRumbleMapValues[i];
+			}
+			//memcpy(h1_asset->notetrackRumbleMapKeys, asset->weapDef->notetrackRumbleMapKeys, sizeof(scr_string_t) * 16);
+			//memcpy(h1_asset->notetrackRumbleMapValues, asset->weapDef->notetrackRumbleMapValues, sizeof(scr_string_t) * 16);
 			// notetrackFXMapKeys
 			// notetrackFXMapValues
 			// notetrackFXMapTagValues
@@ -759,7 +774,11 @@ namespace ZoneTool::IW5
 			// locationDamageMultipliers
 			h1_asset->locationDamageMultipliers = mem.allocate<float>(22);
 			std::fill_n(h1_asset->locationDamageMultipliers, 22, 1.0f);
-			memcpy(h1_asset->locationDamageMultipliers, asset->weapDef->locationDamageMultipliers, sizeof(float) * 20);
+			for (auto i = 0; i < 20; i++)
+			{
+				h1_asset->locationDamageMultipliers[i] = asset->weapDef->locationDamageMultipliers[i];
+			}
+			//memcpy(h1_asset->locationDamageMultipliers, asset->weapDef->locationDamageMultipliers, sizeof(float) * 20);
 
 			REINTERPRET_CAST(fireRumble, weapDef->fireRumble);
 			// fireMedRumble
