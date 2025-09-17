@@ -783,7 +783,7 @@ namespace ZoneTool
 
 			bool is_blend_sortkey(std::uint8_t h1_sortkey)
 			{
-				return (h1_sortkey >= 18 && h1_sortkey <= 33);
+				return (h1_sortkey >= 18 && h1_sortkey <= 36);
 			}
 
 			bool is_decal_sortkey(std::uint8_t h1_sortkey)
@@ -823,6 +823,11 @@ namespace ZoneTool
 				if (h1_techset.contains("_nfwpf") && !is_opaque_sortkey(h1_sortkey))
 				{
 					return 2; // default opaque sortkey
+				}
+
+				if (h1_techset.contains("_effect") && h1_sortkey == 36)
+				{
+					return 59; // effect sortkey
 				}
 
 				return h1_sortkey;
