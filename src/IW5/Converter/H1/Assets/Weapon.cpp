@@ -617,8 +617,10 @@ namespace ZoneTool::IW5
 			h1_asset->notetrackSoundMapValues = mem.allocate<H1::scr_string_t>(36);
 			memcpy(h1_asset->notetrackSoundMapKeys, asset->weapDef->notetrackSoundMapKeys, sizeof(scr_string_t) * 24);
 			memcpy(h1_asset->notetrackSoundMapValues, asset->weapDef->notetrackSoundMapValues, sizeof(scr_string_t) * 24);
-			REINTERPRET_CAST(notetrackRumbleMapKeys, weapDef->notetrackRumbleMapKeys);
-			REINTERPRET_CAST(notetrackRumbleMapValues, weapDef->notetrackRumbleMapValues);
+			h1_asset->notetrackRumbleMapKeys = mem.allocate<H1::scr_string_t>(16);
+			h1_asset->notetrackRumbleMapValues = mem.allocate<H1::scr_string_t>(16);
+			memcpy(h1_asset->notetrackRumbleMapKeys, asset->weapDef->notetrackRumbleMapKeys, sizeof(scr_string_t) * 16);
+			memcpy(h1_asset->notetrackRumbleMapValues, asset->weapDef->notetrackRumbleMapValues, sizeof(scr_string_t) * 16);
 			// notetrackFXMapKeys
 			// notetrackFXMapValues
 			// notetrackFXMapTagValues
