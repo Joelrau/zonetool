@@ -1698,6 +1698,14 @@ namespace ZoneTool
 			const char* buffer;
 		};
 
+		struct StringTable
+		{
+			const char* name;
+			int columnCount;
+			int rowCount;
+			const char** values;
+		};
+
 		struct ComPrimaryLight
 		{
 			char type;
@@ -2188,7 +2196,8 @@ namespace ZoneTool
 			FxEffectDef* fx;
 			// 			FxImpactTable *impactFx;
 			RawFile* rawfile;
-			// 			StringTable *stringTable;
+			StringTable *stringTable;
+			StringTable* stringtable;
 		};
 	}
 }

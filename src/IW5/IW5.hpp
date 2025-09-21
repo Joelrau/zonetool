@@ -48,6 +48,7 @@ using ordered_json = nlohmann::ordered_json;
 #include "Assets/ScriptFile.hpp"
 #include "Assets/Sound.hpp"
 #include "Assets/SoundCurve.hpp"
+#include "Assets/StringTable.hpp"
 #include "Assets/Tracer.hpp"
 #include "Assets/WeaponAttachment.hpp"
 #include "Assets/Weapon.hpp"

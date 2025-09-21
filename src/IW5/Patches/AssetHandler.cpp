@@ -247,6 +247,7 @@ namespace ZoneTool
 						DUMPCASE(scriptfile, IScriptFile, ScriptFile);
 						DUMPCASE(sound, ISound, snd_alias_list_t);
 						DUMPCASE(sndcurve, ISoundCurve, SndCurve);
+						DUMPCASE(stringtable, IStringTable, StringTable);
 						DUMPCASE(tracer, ITracerDef, TracerDef);
 						DUMPCASE(weapon, IWeapon, WeaponCompleteDef);
 						DUMPCASE(attachment, IWeaponAttachment, WeaponAttachment);

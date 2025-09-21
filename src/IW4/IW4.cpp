@@ -303,6 +303,7 @@ char**>(0x00799278)[type]);
 						DECLARE_ASSET(sound, ISound);
 						DECLARE_ASSET(sndcurve, ISoundCurve);
 						DECLARE_ASSET(loaded_sound, ILoadedSound);
+						DECLARE_ASSET(stringtable, IStringTable);
 					}
 					catch (std::exception& ex)
 					{
