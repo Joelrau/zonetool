@@ -521,15 +521,15 @@ namespace ZoneTool::IW5
 
 				if (value.scope)
 				{
-					return value.scope - 1;
+					return value.scope;
 				}
 				else if (value.underBarrel)
 				{
-					return value.underBarrel - 1 + getNumScopes(asset);
+					return value.underBarrel + getNumScopes(asset);
 				}
 				else if (value.other)
 				{
-					return value.other - 1 + getNumScopes(asset) + getNumUnderBarrels(asset);
+					return value.other + getNumScopes(asset) + getNumUnderBarrels(asset);
 				}
 
 				__debugbreak();
@@ -1369,7 +1369,7 @@ namespace ZoneTool::IW5
 			h1_asset->reloadStopsAlt = false;
 			h1_asset->useScopeDrift = false;
 			h1_asset->alwaysShatterGlassOnImpact = false;
-			h1_asset->oldWeapon = true; // true or false? what does this even do?
+			h1_asset->oldWeapon = false; // true or false? what does this even do?
 			h1_asset->raiseToHold = false;
 			h1_asset->notifyOnPlayerImpact = false;
 			h1_asset->decreasingKick = false;

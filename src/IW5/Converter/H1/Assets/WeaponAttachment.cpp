@@ -605,6 +605,16 @@ namespace ZoneTool::IW5
 				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = viewCenterScale }, offsetof(H1::WeaponDef, hipViewKickCenterSpeed));
 			}
 
+			std::sort(fields.begin(), fields.end(), [](const auto a, const auto b)
+			{
+				if (a.offset == b.offset)
+				{
+					return a.field.index < b.field.index;
+				}
+
+				return a.offset < b.offset;
+			});
+
 			h1_asset->numFields = static_cast<unsigned int>(fields.size());
 			h1_asset->fields = mem.allocate<H1::WAField>(h1_asset->numFields);
 			h1_asset->fieldOffsets = mem.allocate<unsigned short>(h1_asset->numFields);
