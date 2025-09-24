@@ -39,7 +39,7 @@ jobs:
         uses: ammaraskar/msvc-problem-matcher@master
 
       - name: Build ${{matrix.configuration}} zonetool
-        run: msbuild /m /v:minimal /p:Configuration=${{matrix.configuration}} /p:Platform=Win32 build/iw4x.sln
+        run: msbuild /m /v:minimal /p:Configuration=${{matrix.configuration}} /p:Platform=Win32 build/zonetool.sln
 
       - name: Upload ${{matrix.configuration}} artifact
         uses: actions/upload-artifact@v4
