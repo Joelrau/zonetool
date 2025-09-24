@@ -22,119 +22,102 @@ dependencies = {
 -- Workspace
 -- ========================
 workspace "zonetool"
-	location "./build"
-	objdir "%{wks.location}/obj"
-	targetdir "%{wks.location}/bin"
-	targetname "%{prj.name}-%{cfg.platform}-%{cfg.buildcfg}"
-	warnings "Off"
-	defaultplatform "x86"
+startproject "zonetool"
+location "./build"
+objdir "%{wks.location}/obj"
+targetdir "%{wks.location}/bin/%{cfg.platform}/%{cfg.buildcfg}"
 
-	configurations {
-		"debug",
-		"release",
-	}
+configurations { "Debug", "Release" }
 
-	platforms {
-		"x86",
-		"x64"
-	}
+warnings "Off"
 
-	filter "platforms:x86"
-		architecture "x86"
-		defines "CPU_32BIT"
-	filter {}
+defaultplatform "x86"
+architecture "x86"
+platforms "Win32"
+defines "CPU_32BIT"
 
-	filter "platforms:x64"
-		architecture "x86_64"
-		defines "CPU_64BIT"
-	filter {}
+buildoptions "/std:c++latest"
+buildoptions "/Zc:strictStrings-"
+systemversion "latest"
+symbols "On"
+editandcontinue "Off"
 
-	buildoptions "/std:c++latest"
-	buildoptions "/Zc:strictStrings-"
-	systemversion "latest"
-	symbols "On"
-	editandcontinue "Off"
+flags {
+	"NoIncrementalLink",
+	"NoMinimalRebuild",
+	"MultiProcessorCompile",
+	"No64BitChecks"
+}
 
-	flags {
-		"NoIncrementalLink",
-		"NoMinimalRebuild",
-		"MultiProcessorCompile",
-		"No64BitChecks"
-	}
+filter "configurations:Debug"
+optimize "Debug"
+defines { "DEBUG", "_DEBUG" }
+filter {}
 
-	filter "configurations:debug"
-		optimize "Debug"
-		defines {
-			"DEBUG",
-			"_DEBUG",
-		}
-	filter {}
+filter "configurations:Release"
+optimize "Full"
+defines {
+	"NDEBUG",
+}
+flags {
+	"FatalCompileWarnings",
+	"FatalLinkWarnings"
+}
+filter {}
 
-	filter "configurations:release"
-		optimize "Full"
-		defines {
-			"NDEBUG",
-		}
-		flags {
-			"FatalCompileWarnings",
-		}
-	filter{}
+includedirs {
+	ProjectFolder()
+}
 
-	includedirs {
-		ProjectFolder()
-	}
+-- ========================
+-- Dependencies
+-- ========================
 
-	startproject "ZoneTool"
+include "dep/libtomcrypt.lua"
+include "dep/libtommath.lua"
+include "dep/steam_api.lua"
+include "dep/zlib.lua"
+include "dep/zstd.lua"
+include "dep/gsc-tool.lua"
 
-	-- ========================
-	-- Dependencies
-	-- ========================
+-- All projects here should be in the thirdparty folder
+group "thirdparty"
 
-	include "dep/libtomcrypt.lua"
-	include "dep/libtommath.lua"
-	include "dep/steam_api.lua"
-	include "dep/zlib.lua"
-	include "dep/zstd.lua"
-	include "dep/gsc-tool.lua"
+libtommath:project()
+libtomcrypt:project()
+zlib:project()
+zstd:project()
+gsc_tool:project()
 
-	-- All projects here should be in the thirdparty folder
-	group "thirdparty"
+-- Reset group
+group ""
 
-	libtommath:project()
-	libtomcrypt:project()
-	zlib:project()
-	zstd:project()
-	gsc_tool:project()
+-- ========================
+-- Projects
+-- ========================
 
-	-- Reset group
-	group ""
+include "src/X64.lua"
 
-	-- ========================
-	-- Projects
-	-- ========================
+include "src/ZoneTool.lua"
+include "src/ZoneUtils.lua"
+include "src/IW3.lua"
+include "src/IW4.lua"
+include "src/IW5.lua"
+include "src/IW6.lua"
+include "src/IW7.lua"
+include "src/T6.lua"
+include "src/H1.lua"
+include "src/S1.lua"
 
-	include "src/X64.lua"
+X64:project()
 
-	include "src/ZoneTool.lua"
-	include "src/ZoneUtils.lua"
-	include "src/IW3.lua"
-	include "src/IW4.lua"
-	include "src/IW5.lua"
-	include "src/IW6.lua"
-	include "src/IW7.lua"
-	include "src/T6.lua"
-	include "src/H1.lua"
-	include "src/S1.lua"
-	
-	X64:project()
-
-	ZoneTool:project()
-	ZoneUtils:project()
-	IW3:project()
-	IW4:project()
-	IW5:project()
-	IW6:project()
-	IW7:project()
-	T6:project()
-	H1:project()
-	S1:project()
+ZoneTool:project()
+ZoneUtils:project()
+IW3:project()
+IW4:project()
+IW5:project()
+IW6:project()
+IW7:project()
+T6:project()
+H1:project()
+S1:project()
