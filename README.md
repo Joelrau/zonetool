@@ -39,7 +39,7 @@ Every asset type but the following can be linked with ZoneTool.
 | Vehicle     | ❌    | ❌    |
 | AddonMapEnts | ❌    | ❌    |
 
-## 🙌 Credits
+## Credits
 Special thank you to everyone included for contributing to the development and research of ZoneTool:
 
 **Laupetin, NTAuthority, momo5502, TheApadayo, localhost, X3RX35, homura, Sofika, Gamecheat13, Joelrau, alice, mjkzy**
