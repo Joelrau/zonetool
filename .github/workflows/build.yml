@@ -92,6 +92,6 @@ jobs:
         run: |
           gh release create latest "Debug zonetool.zip" "Release zonetool.zip" \
             --title "Latest Build" \
-            --notes "This build was automated from ${{ github.sha }}. If you are unsure which zonetool to use, download `Release zonetool.zip`. If you are crashing and need to debug, use `Debug zonetool.zip`."
+            --notes "This build was automated from ${{ github.sha }}. If you are unsure which zonetool to use, download **Release zonetool.zip**. If you are crashing and need to debug, use **Debug zonetool.zip**."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
