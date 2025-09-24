@@ -46,8 +46,8 @@ jobs:
         with:
           name: ${{matrix.configuration}} zonetool
           path: |
-            build/bin/Win32/${{matrix.Configuration}}/zonetool.dll
-            build/bin/Win32/${{matrix.configuration}}/zonetool.pdb
+            build/bin/Win32/${{matrix.Configuration}}/ZoneTool.dll
+            build/bin/Win32/${{matrix.configuration}}/ZoneTool.pdb
 
   release:
     name: Create Release
