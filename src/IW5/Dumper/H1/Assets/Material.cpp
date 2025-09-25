@@ -624,7 +624,7 @@ namespace ZoneTool
 						index = 1;
 					}
 				}
-				else if (h1_sortkey >= 18 && h1_sortkey <= 33) // blend start, blend end
+				else if (h1_sortkey >= 18 && h1_sortkey <= 37) // blend start, blend end
 				{
 					index = 3;
 				}
@@ -779,6 +779,7 @@ namespace ZoneTool
 				{"2d", 60},
 				{"mc_shadowcaster_atest", 38},
 				{"wc_shadowcaster", 38},
+				{"mc_reflexsight", 37},
 			};
 
 			bool is_blend_sortkey(std::uint8_t h1_sortkey)
@@ -864,6 +865,7 @@ namespace ZoneTool
 				{"2d", H1::CAMERA_REGION_NONE},
 				{"mc_shadowcaster_atest", H1::CAMERA_REGION_NONE},
 				{"wc_shadowcaster", H1::CAMERA_REGION_NONE},
+				{"mc_reflexsight", H1::CAMERA_REGION_DEPTH_HACK},
 			};
 
 			std::uint8_t get_h1_camera_region(std::uint8_t camera_region, std::string matname, std::string h1_techset = "")
@@ -1122,33 +1124,35 @@ namespace ZoneTool
 				}
 
 #define CONSTANT_TABLE_ADD_IF_NOT_FOUND(CONST_NAME, CONST_HASH, LITERAL_1, LITERAL_2, LITERAL_3, LITERAL_4) \
-				bool has_const = false; \
-				std::size_t insert_position = constant_table.size(); \
-				for (std::size_t i = 0; i < constant_table.size(); i++) \
 				{ \
-					if (constant_table[i]["nameHash"].get<std::size_t>() == CONST_HASH) \
+					bool has_const = false; \
+					std::size_t insert_position = constant_table.size(); \
+					for (std::size_t i = 0; i < constant_table.size(); i++) \
 					{ \
-						has_const = true; \
-						break; \
+						if (constant_table[i]["nameHash"].get<std::size_t>() == CONST_HASH) \
+						{ \
+							has_const = true; \
+							break; \
+						} \
+						if (constant_table[i]["nameHash"].get<std::size_t>() > CONST_HASH) \
+						{ \
+							insert_position = i; \
+							break; \
+						} \
 					} \
-					if (constant_table[i]["nameHash"].get<std::size_t>() > CONST_HASH) \
+					if (!has_const) \
 					{ \
-						insert_position = i; \
-						break; \
+						ordered_json table; \
+						table["name"] = CONST_NAME; \
+						table["nameHash"] = CONST_HASH; \
+						nlohmann::json literal_entry; \
+						literal_entry[0] = LITERAL_1; \
+						literal_entry[1] = LITERAL_2; \
+						literal_entry[2] = LITERAL_3; \
+						literal_entry[3] = LITERAL_4; \
+						table["literal"] = literal_entry; \
+						constant_table.insert(constant_table.begin() + insert_position, table); \
 					} \
-				} \
-				if (!has_const) \
-				{ \
-					ordered_json table; \
-					table["name"] = CONST_NAME; \
-					table["nameHash"] = CONST_HASH; \
-					nlohmann::json literal_entry; \
-					literal_entry[0] = LITERAL_1; \
-					literal_entry[1] = LITERAL_2; \
-					literal_entry[2] = LITERAL_3; \
-					literal_entry[3] = LITERAL_4; \
-					table["literal"] = literal_entry; \
-					constant_table.insert(constant_table.begin() + insert_position, table); \
 				}
 
 				if (h1_techset.find("sd0") != std::string::npos)
@@ -1184,6 +1188,12 @@ namespace ZoneTool
 				if (h1_techset.find("_objective2") != std::string::npos)
 				{
 					CONSTANT_TABLE_ADD_IF_NOT_FOUND("colorObjHdrP", 3345677433, 1.0f, 0.0f, 0.0f, 0.0f);
+				}
+
+				if (h1_techset == "mc_reflexsight" || h1_techset == "m_reflexsight")
+				{
+					CONSTANT_TABLE_ADD_IF_NOT_FOUND("detailScale", 148072969, 40.0f, 40.0f, 0.0f, 0.0f);
+					CONSTANT_TABLE_ADD_IF_NOT_FOUND("sceneLumParm", 3719717047, 0.0f, 0.0f, 0.0f, 0.0f);
 				}
 
 				matdata["constantTable"] = constant_table;

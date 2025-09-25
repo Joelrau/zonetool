@@ -213,8 +213,8 @@ namespace ZoneTool::IW5
 				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_BOOL, { .p_bool = asset->sight->noAdsWhenMagEmpty }, offsetof(H1::WeaponDef, noAdsWhenMagEmpty));
 				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_BOOL, { .p_bool = asset->sight->canHoldBreath }, offsetof(H1::WeaponDef, canHoldBreath));
 				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_BOOL, { .p_bool = asset->sight->canVariableZoom }, offsetof(H1::WeaponDef, canVariableZoom));
-				h1_asset->showSideRail = asset->sight->hideRailWithThisScope == true;
-				h1_asset->showMasterRail = asset->sight->hideRailWithThisScope == true;
+				h1_asset->showSideRail = asset->sight->hideRailWithThisScope == false;
+				h1_asset->showMasterRail = asset->sight->hideRailWithThisScope == false;
 			}
 
 			if (asset->reload)
@@ -309,27 +309,45 @@ namespace ZoneTool::IW5
 				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->idleSettings->adsIdleLerpTime * idleSettingsScale }, offsetof(H1::WeaponDef, adsIdleLerpTime));
 			}
 
-			if (asset->adsSettings)
+			if (!asset->shareAmmoWithAlt)
 			{
-				
+				if (asset->adsSettings)
+				{
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsSpread * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsSpread));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsAimPitch * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsAimPitch));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT32, { .p_float = asset->adsSettings->adsTransInTime * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransInTime));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT32, { .p_float = asset->adsSettings->adsTransOutTime * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransOutTime));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_INT, { .p_int = (int)std::round(asset->adsSettings->adsReloadTransTime * adsSettingsScaleMain) }, offsetof(H1::WeaponDef, positionReloadTransTime));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsCrosshairInFrac }, offsetof(H1::WeaponDef, adsCrosshairInFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsCrosshairOutFrac }, offsetof(H1::WeaponDef, adsCrosshairOutFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsZoomFov * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomFov));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsZoomInFrac * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomInFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsZoomOutFrac * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomOutFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsBobFactor * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsBobFactor));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsViewBobMult * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsViewBobMult));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsViewErrorMin }, offsetof(H1::WeaponDef, adsViewErrorMin));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettings->adsViewErrorMax }, offsetof(H1::WeaponDef, adsViewErrorMax));
+				}
 			}
-
-			if (asset->adsSettingsMain)
+			else
 			{
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsSpread * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsSpread));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsAimPitch * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsAimPitch));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsTransInTime * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransInTime));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsTransOutTime * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransOutTime));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_INT, { .p_int = (int)std::round(asset->adsSettingsMain->adsReloadTransTime * adsSettingsScaleMain) }, offsetof(H1::WeaponDef, positionReloadTransTime));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsCrosshairInFrac }, offsetof(H1::WeaponDef, adsCrosshairInFrac));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsCrosshairOutFrac }, offsetof(H1::WeaponDef, adsCrosshairOutFrac));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsZoomFov * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomFov));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsZoomInFrac * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomInFrac));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsZoomOutFrac * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomOutFrac));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsBobFactor * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsBobFactor));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsViewBobMult * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsViewBobMult));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsViewErrorMin }, offsetof(H1::WeaponDef, adsViewErrorMin));
-				addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsViewErrorMax }, offsetof(H1::WeaponDef, adsViewErrorMax));
+				if (asset->adsSettingsMain)
+				{
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsSpread * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsSpread));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsAimPitch * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsAimPitch));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsTransInTime * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransInTime));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsTransOutTime * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransOutTime));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_INT, { .p_int = (int)std::round(asset->adsSettingsMain->adsReloadTransTime * adsSettingsScaleMain) }, offsetof(H1::WeaponDef, positionReloadTransTime));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsCrosshairInFrac }, offsetof(H1::WeaponDef, adsCrosshairInFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsCrosshairOutFrac }, offsetof(H1::WeaponDef, adsCrosshairOutFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsZoomFov * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomFov));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsZoomInFrac * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomInFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsZoomOutFrac * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomOutFrac));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsBobFactor * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsBobFactor));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsViewBobMult * adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsViewBobMult));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsViewErrorMin }, offsetof(H1::WeaponDef, adsViewErrorMin));
+					addField(H1::FIELD_OP_NUMBER_SET, H1::WAFIELD_TYPE_FLOAT, { .p_float = asset->adsSettingsMain->adsViewErrorMax }, offsetof(H1::WeaponDef, adsViewErrorMax));
+				}
 			}
 
 			if (asset->hipSpread)
@@ -528,24 +546,41 @@ namespace ZoneTool::IW5
 				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = idleSettingsScale }, offsetof(H1::WeaponDef, adsIdleLerpStartTime));
 				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = idleSettingsScale }, offsetof(H1::WeaponDef, adsIdleLerpTime));
 			}
-			if (adsSettingsScale != 0.0f && adsSettingsScale != 1.0f && asset->adsSettings == nullptr)
+			if (!asset->shareAmmoWithAlt)
 			{
-				
+				if (adsSettingsScale != 0.0f && adsSettingsScale != 1.0f && asset->adsSettings == nullptr)
+				{
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsAimPitch));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsBobFactor));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsFireAnimFrac));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, positionReloadTransTime));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsViewBobMult));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsZoomFov));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsTransInTime));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsTransOutTime));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsZoomInFrac));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsZoomOutFrac));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScale }, offsetof(H1::WeaponDef, adsSpread));
+				}
 			}
-			if (adsSettingsScaleMain != 0.0f && adsSettingsScaleMain != 1.0f && asset->adsSettingsMain == nullptr)
+			else
 			{
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsAimPitch));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsBobFactor));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsFireAnimFrac));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, positionReloadTransTime));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsViewBobMult));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomFov));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransInTime));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransOutTime));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomInFrac));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomOutFrac));
-				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsSpread));
+				if (adsSettingsScaleMain != 0.0f && adsSettingsScaleMain != 1.0f && asset->adsSettingsMain == nullptr)
+				{
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsAimPitch));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsBobFactor));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsFireAnimFrac));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, positionReloadTransTime));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsViewBobMult));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomFov));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransInTime));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsTransOutTime));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomInFrac));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsZoomOutFrac));
+					addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = adsSettingsScaleMain }, offsetof(H1::WeaponDef, adsSpread));
+				}
 			}
+			
 			if (hipSpreadScale != 0.0f && hipSpreadScale != 1.0f && asset->hipSpread == nullptr)
 			{
 				addField(H1::FIELD_OP_NUMBER_MULTIPLY, H1::WAFIELD_TYPE_FLOAT, { .p_float = hipSpreadScale }, offsetof(H1::WeaponDef, hipSpreadStandMin));

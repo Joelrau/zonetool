@@ -239,6 +239,12 @@ namespace ZoneTool::IW5
 			COPY_FIELD(reloadAddTime, iReloadAddTime);
 			h1_asset->reloadEmptyAddTime = 0;
 
+			// sometimes this bugs out
+			if (h1_asset->reloadAddTime > h1_asset->reloadTime)
+			{
+				h1_asset->reloadAddTime = h1_asset->reloadTime - 50;
+			}
+
 			COPY_FIELD(reloadStartTime, iReloadStartTime);
 			COPY_FIELD(reloadStartAddTime, iReloadStartAddTime);
 			COPY_FIELD(reloadEndTime, iReloadEndTime);
@@ -861,7 +867,7 @@ namespace ZoneTool::IW5
 			COPY_FIELD(moveSpeedScale, weapDef->moveSpeedScale);
 			COPY_FIELD(adsMoveSpeedScale, weapDef->adsMoveSpeedScale);
 			COPY_FIELD(sprintDurationScale, weapDef->sprintDurationScale);
-			h1_asset->adsZoomFov = 65.0f;
+			COPY_FIELD(adsZoomFov, fAdsZoomFov);
 			COPY_FIELD(adsZoomInFrac, weapDef->fAdsZoomInFrac);
 			COPY_FIELD(adsZoomOutFrac, weapDef->fAdsZoomOutFrac);
 			h1_asset->adsSceneBlurStrength = 0.0f;
