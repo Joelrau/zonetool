@@ -8,7 +8,8 @@ namespace ZoneTool::IW5::Dumper
 {
 	void dump(RawFile* asset)
 	{
-		auto file = filesystem::file(asset->name);
+		std::string name = asset->name == "*"s ? "RadiantFields.bin" : asset->name;
+		auto file = filesystem::file(name);
 		file.open("wb");
 
 		if (asset->compressedLen > 0)
