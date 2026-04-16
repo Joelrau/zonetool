@@ -78,8 +78,8 @@ namespace ZoneTool::IW5
 					REINTERPRET_CAST_SAFE(iw6_asset->aabbTrees[i].aabbTree[j].smodelIndexes, asset->aabbTrees[i].aabbTree[j].smodelIndexes);
 
 					// has some problems?
-					iw6_asset->aabbTrees[i].aabbTree[j].childCount = asset->aabbTrees[i].aabbTree[j].childCount;
-					//iw6_asset->aabbTrees[i].aabbTree[j].childCount = 0;
+					//iw6_asset->aabbTrees[i].aabbTree[j].childCount = asset->aabbTrees[i].aabbTree[j].childCount;
+					iw6_asset->aabbTrees[i].aabbTree[j].childCount = 0;
 
 					// re-calculate childrenOffset
 					auto offset = asset->aabbTrees[i].aabbTree[j].childrenOffset;
