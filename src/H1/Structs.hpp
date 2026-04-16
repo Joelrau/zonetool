@@ -6732,7 +6732,7 @@ namespace ZoneTool::H1
 		float origin[3];
 		unsigned short triggerIndex;
 		unsigned char sunPrimaryLightIndex;
-		unsigned int entityUID;
+		float radiometricScale;
 	}; assert_sizeof(Stage, 32);
 
 	enum DynEntityType : std::int32_t
@@ -8182,7 +8182,7 @@ namespace ZoneTool::H1
 	struct GfxHeroOnlyLight
 	{
 		unsigned char type;
-		unsigned char needsDynamicShadows;
+		unsigned char physicallyBased;
 		unsigned char unused[2];
 		float color[3];
 		float dir[3];

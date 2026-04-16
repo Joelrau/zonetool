@@ -3,6 +3,9 @@
 
 #include "GfxImage.hpp"
 
+#include <DirectXMath.h>
+#include <DirectXPackedVector.h>
+
 namespace ZoneTool::IW5
 {
 	namespace IW6Converter
@@ -79,7 +82,7 @@ namespace ZoneTool::IW5
 
 		std::unordered_map<D3DFORMAT, DXGI_FORMAT> d3d_dxgi_map =
 		{
-			{D3DFMT_A8R8G8B8, DXGI_FORMAT_R8G8B8A8_UNORM},
+			{D3DFMT_A8R8G8B8, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB},
 			{D3DFMT_L8, DXGI_FORMAT_R8_UNORM},
 		};
 
@@ -92,31 +95,85 @@ namespace ZoneTool::IW5
 			return DXGI_FORMAT_UNKNOWN;
 		}
 
-		inline std::uint32_t from_argb(std::uint32_t argb)
+		void ConvertD3DFMT_A8R8G8B8ToDXGI_R8G8B8A8_UNORM(
+			const uint32_t* src,     // Source buffer (D3DFMT_A8R8G8B8)
+			uint8_t* dest,           // Destination buffer (DXGI_FORMAT_R8G8B8A8_UNORM)
+			size_t pixelCount        // Number of pixels to convert
+		)
 		{
-			return
-				// Source is in format: 0xAARRGGBB
-				((argb & 0x00FF0000) >> 16) | //______RR
-				((argb & 0x0000FF00)) | //____GG__
-				((argb & 0x000000FF) << 16)  | //___BB____
-				((argb & 0xFF000000));         //AA______
-				// Return value is in format:  0xAABBGGRR 
+			for (size_t i = 0; i < pixelCount; ++i)
+			{
+				uint32_t pixel = src[i];
+
+				// Extract the ARGB components
+				uint8_t a = (pixel >> 24) & 0xFF;
+				uint8_t r = (pixel >> 16) & 0xFF;
+				uint8_t g = (pixel >> 8) & 0xFF;
+				uint8_t b = pixel & 0xFF;
+
+				// Convert from sRGB to linear space
+				auto srgbToLinear = [](uint8_t value) -> uint8_t {
+					float normalized = value / 255.0f;
+					float linear = (normalized <= 0.04045f)
+						? normalized / 12.92f
+						: std::pow((normalized + 0.055f) / 1.055f, 2.4f);
+					return static_cast<uint8_t>(std::round(linear * 255));
+				};
+
+				dest[i * 4 + 0] = srgbToLinear(r);
+				dest[i * 4 + 1] = srgbToLinear(g);
+				dest[i * 4 + 2] = srgbToLinear(b);
+				dest[i * 4 + 3] = a; // Preserve the alpha channel
+			}
 		}
 
-		unsigned int argb_to_rgba(unsigned char* input, unsigned int size, unsigned char* output)
+		// Convert D3DFMT_A8R8G8B8 to DXGI_FORMAT_R8G8B8A8_UNORM
+		void ConvertD3DFMT_A8R8G8B8ToDXGI_R8G8B8A8_UNORM_SRGB(
+			const uint32_t* src,     // Source buffer (D3DFMT_A8R8G8B8)
+			uint8_t* dest,           // Destination buffer (DXGI_FORMAT_R8G8B8A8_UNORM)
+			size_t pixelCount        // Number of pixels to convert
+		)
 		{
-			unsigned int offset = 0;
-
-			for (unsigned int i = 0; i < size / 4; i++)
+			for (size_t i = 0; i < pixelCount; ++i)
 			{
-				auto argb = *(unsigned int*)(&input[offset]);
-				auto rgba = from_argb(argb);
+				uint32_t pixel = src[i];
 
-				*(unsigned int*)&output[offset] = rgba;
+				// Extract the ARGB components
+				uint8_t a = (pixel >> 24) & 0xFF;
+				uint8_t r = (pixel >> 16) & 0xFF;
+				uint8_t g = (pixel >> 8) & 0xFF;
+				uint8_t b = pixel & 0xFF;
 
-				offset += 4;
+				dest[i * 4 + 0] = r;
+				dest[i * 4 + 1] = g;
+				dest[i * 4 + 2] = b;
+				dest[i * 4 + 3] = a;
 			}
-			return offset;
+		}
+
+		// Convert linear float to 16-bit half-float
+		inline uint16_t ConvertLinearFloatToHalf(float value) {
+			return DirectX::PackedVector::XMConvertFloatToHalf(value);
+		}
+
+		// Convert R8G8B8A8_UNORM (in linear space) to R16G16B16A16_FLOAT
+		void ConvertR8G8B8A8ToR16G16B16A16Float(
+			const uint8_t* src,          // Source buffer (R8G8B8A8_UNORM in linear space)
+			uint16_t* dest,              // Destination buffer (R16G16B16A16_FLOAT)
+			size_t pixelCount            // Number of pixels to convert
+		) {
+			for (size_t i = 0; i < pixelCount; ++i) {
+				float r = src[i * 4 + 0] / 255.0f;
+				float g = src[i * 4 + 1] / 255.0f;
+				float b = src[i * 4 + 2] / 255.0f;
+				float a = src[i * 4 + 3] / 255.0f;
+
+				// Convert to 16-bit half-float
+				dest[i * 4 + 0] = ConvertLinearFloatToHalf(r);
+				dest[i * 4 + 1] = ConvertLinearFloatToHalf(g);
+				dest[i * 4 + 2] = ConvertLinearFloatToHalf(b);
+				dest[i * 4 + 3] = ConvertLinearFloatToHalf(a);
+			}
 		}
 
 		unsigned int Image_CountMipmaps(unsigned int imageFlags, unsigned int width, unsigned int height, unsigned int depth)
@@ -138,7 +195,7 @@ namespace ZoneTool::IW5
 			const auto iw6_asset = mem.allocate<IW6::GfxImage>();
 
 			iw6_asset->name = asset->name;
-			iw6_asset->imageFormat = get_d3d_to_dxgi(asset->texture.loadDef->format); //iw6_asset->imageFormat = MFMapDX9FormatToDXGIFormat(asset->texture->format);
+			iw6_asset->imageFormat = get_d3d_to_dxgi(asset->texture.loadDef->format);
 			iw6_asset->mapType = static_cast<IW6::MapType>(asset->mapType);
 			iw6_asset->semantic = asset->semantic;
 			iw6_asset->category = asset->category;
@@ -148,7 +205,7 @@ namespace ZoneTool::IW5
 			iw6_asset->width = asset->width;
 			iw6_asset->height = asset->height;
 			iw6_asset->depth = asset->depth;
-			iw6_asset->numElements = asset->mapType == 1;
+			iw6_asset->numElements = 1;
 			iw6_asset->levelCount = Image_CountMipmaps(asset->texture.loadDef->flags, asset->width, asset->height, asset->depth);
 			iw6_asset->streamed = false;
 			iw6_asset->pixelData = reinterpret_cast<unsigned char*>(&asset->texture.loadDef->data);
@@ -159,15 +216,39 @@ namespace ZoneTool::IW5
 				ZONETOOL_FATAL("Unknown DXGIFORMAT for image \"%s\" (%d)", asset->name, asset->texture.loadDef->format);
 			}
 
-			if (asset->texture.loadDef->format == D3DFMT_A8R8G8B8 && iw6_asset->imageFormat == DXGI_FORMAT_R8G8B8A8_UNORM)
+			std::string sname(iw6_asset->name);
+			if (sname.starts_with("*lightmap") && sname.ends_with("_secondary") && asset->texture.loadDef->format == D3DFMT_A8R8G8B8)
 			{
-				auto* new_pixels = mem.allocate<unsigned char>(asset->texture.loadDef->resourceSize);
-				argb_to_rgba(iw6_asset->pixelData, asset->texture.loadDef->resourceSize, new_pixels);
+				iw6_asset->imageFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+			}
+
+			if (asset->texture.loadDef->format == D3DFMT_A8R8G8B8 && iw6_asset->imageFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+			{
+				auto* new_pixels = mem.allocate<unsigned char>(iw6_asset->dataLen1);
+
+				// Calculate the number of pixels
+				size_t pixelCount = iw6_asset->dataLen1 / 4;
+
+				ConvertD3DFMT_A8R8G8B8ToDXGI_R8G8B8A8_UNORM_SRGB(reinterpret_cast<uint32_t*>(iw6_asset->pixelData), new_pixels, pixelCount);
 				iw6_asset->pixelData = new_pixels;
+			}
+			else if (asset->texture.loadDef->format == D3DFMT_A8R8G8B8 && iw6_asset->imageFormat == DXGI_FORMAT_R8G8B8A8_UNORM)
+			{
+				auto* new_pixels = mem.allocate<unsigned char>(iw6_asset->dataLen1);
+
+				// Calculate the number of pixels
+				size_t pixelCount = iw6_asset->dataLen1 / 4;
+
+				ConvertD3DFMT_A8R8G8B8ToDXGI_R8G8B8A8_UNORM(reinterpret_cast<uint32_t*>(iw6_asset->pixelData), new_pixels, pixelCount);
+				iw6_asset->pixelData = new_pixels;
+			}
+			else if (asset->texture.loadDef->format == D3DFMT_L8 && iw6_asset->imageFormat == DXGI_FORMAT_R8_UNORM)
+			{
+
 			}
 			else
 			{
-				//ZONETOOL_FATAL("No known conversion for image \"%s\"", asset->name);
+				ZONETOOL_FATAL("No known conversion for image \"%s\"", asset->name);
 			}
 
 			return iw6_asset;

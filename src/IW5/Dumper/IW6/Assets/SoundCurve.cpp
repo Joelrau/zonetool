@@ -2,7 +2,7 @@
 
 #include "SoundCurve.hpp"
 #include "Converter/IW6/Assets/SoundCurve.hpp"
-//#include "IW6/Assets/SoundCurve.hpp"
+#include "IW6/Assets/SoundCurve.hpp"
 
 namespace ZoneTool::IW5::IW6Dumper
 {
@@ -13,6 +13,6 @@ namespace ZoneTool::IW5::IW6Dumper
 		auto* iw6_asset = IW6Converter::convert(asset, allocator);
 
 		// dump soundcurve
-		//IW6::ISoundCurve::dump(iw6_asset);
+		IW6::ISoundCurve::dump(iw6_asset);
 	}
 }

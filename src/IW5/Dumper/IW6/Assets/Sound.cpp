@@ -2,7 +2,7 @@
 
 #include "Sound.hpp"
 #include "Converter/IW6/Assets/Sound.hpp"
-//#include "IW6/Assets/Sound.hpp"
+#include "IW6/Assets/Sound.hpp"
 
 namespace ZoneTool::IW5::IW6Dumper
 {
@@ -13,6 +13,6 @@ namespace ZoneTool::IW5::IW6Dumper
 		auto* iw6_asset = IW6Converter::convert(asset, allocator, get_streamed_sound_data);
 
 		// dump sound
-		//IW6::ISound::dump(iw6_asset);
+		IW6::ISound::dump(iw6_asset);
 	}
 }

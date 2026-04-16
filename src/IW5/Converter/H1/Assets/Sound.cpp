@@ -504,7 +504,7 @@ namespace ZoneTool::IW5
 			h1_flags.packed.fullDryLevel = iw5_flags.fullDryLevel;
 			h1_flags.packed.noWetLevel = iw5_flags.noWetLevel;
 			h1_flags.packed.randomLooping = iw5_flags.randomLooping;
-			h1_flags.packed.spatializedRangeCheck = iw5_flags.unk_is3D;
+			h1_flags.packed.spatializedRangeCheck = iw5_flags.spatialize;
 			h1_flags.packed.spatializedIs3D = !channel_is_3d[iw5_flags.channel]; // dont ask...
 			h1_flags.packed.unk9 = 1;
 			h1_flags.packed.inheritPitch = 0;

@@ -2601,7 +2601,7 @@ namespace ZoneTool::IW6
 			unsigned int fullDryLevel : 1;
 			unsigned int noWetLevel : 1;
 			unsigned int randomLooping : 1;
-			unsigned int unknown2 : 1;
+			unsigned int spatialize : 1;
 			unsigned int type : 2;
 			SoundChannel channel : 7;
 		} packed;

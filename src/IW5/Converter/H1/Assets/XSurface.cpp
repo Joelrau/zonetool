@@ -142,7 +142,6 @@ namespace ZoneTool::IW5
 			// blend verts
 			memcpy(&h1_asset->blendVertCounts, &asset->vertInfo.vertCount, sizeof(asset->vertInfo.vertCount));
 			h1_asset->blendVerts = reinterpret_cast<unsigned short* __ptr64>(asset->vertInfo.vertsBlend);
-
 			h1_asset->blendVertsTable = mem.allocate<H1::BlendVertsUnknown>(asset->vertCount);
 			GenerateH1BlendVertsTable(h1_asset);
 

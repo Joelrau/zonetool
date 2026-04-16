@@ -78,6 +78,7 @@ namespace ZoneTool
 			{"mc_l_r0c0n0s0",							"mc_l_r0c0n0s0l0_nfwpf"},
 			{"mc_l_r0c0n0s0_nocast",					"mc_l_r0c0n0s0l0_nocast_nfwpf"},
 			{"mc_l_t0c0n0s0",							"mc_l_t0c0n0s0l0_nfwpf"},
+			{"mc_unlit",								"mc_unlit_replace_lin_bl_nfwpf"},
 			{"mc_unlit_add_lin",						"mc_unlit_add_lin_ndw_bl_nfwpf"},
 			{"mc_unlit_blend_lin",						"mc_unlit_blend_lin_ndw_bl_abl_cltrans"}, // could be wrong
 			{"mc_unlit_replace_lin",					"mc_unlit_replace_lin_bl_nfwpf"},
@@ -292,12 +293,13 @@ namespace ZoneTool
 
 					bool result = false;
 					iw6_techset = IW6::get_iw6_techset(iw5_techset, asset->name, &result);
-					if (!result)
-					{
-						ZONETOOL_ERROR("Not dumping material \"%s\"", asset->name);
-						return;
-					}
+					//if (!result)
+					//{
+					//	ZONETOOL_ERROR("Not dumping material \"%s\"", asset->name);
+					//	return;
+					//}
 					matdata["techniqueSet->name"] = iw6_techset;
+					matdata["techniqueSet->og_name"] = iw5_techset;
 				}
 
 				matdata["gameFlags"] = asset->info.gameFlags; // convert

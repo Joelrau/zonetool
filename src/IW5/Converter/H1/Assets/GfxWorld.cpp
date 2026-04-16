@@ -273,6 +273,8 @@ namespace ZoneTool::IW5
 				}
 			}
 
+#define EXPERIMENTAL_LIGHTGRID_COLORS
+#ifdef EXPERIMENTAL_LIGHTGRID_COLORS
 			// --experimental--
 			{
 				// iw6 mp_character_room
@@ -332,6 +334,7 @@ namespace ZoneTool::IW5
 				}
 			}
 			// ----
+#endif
 
 			h1_asset->modelCount = asset->modelCount;
 			h1_asset->models = mem.allocate<H1::GfxBrushModel>(h1_asset->modelCount);

@@ -210,14 +210,14 @@ namespace ZoneTool
 
 			{"mc_l_sm_du_dm_t0c0q0n0s0p0",				"mc_l_sm_t0c0n0sd0p0_nfwpf"},
 
-			{"mc_l_flag_t0c0",							"mc_l_sm_flag_fuv_t0c0_nfwpf"},
-			{"mc_l_flag_t0c0p0",						"mc_l_sm_flag_fuv_t0c0_nfwpf"},
-			{"mc_l_flag_t0c0_nocast",					"mc_l_sm_flag_fuv_t0c0_nfwpf"},
+			{"mc_l_flag_t0c0",							"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
+			{"mc_l_flag_t0c0p0",						"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
+			{"mc_l_flag_t0c0_nocast",					"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
 			{"mc_l_flag_t0c0n0s0",						"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
-			{"mc_l_sm_flag_t0c0",						"mc_l_sm_flag_fuv_t0c0_nfwpf"},
-			{"mc_l_sm_flag_t0c0_nocast",				"mc_l_sm_flag_fuv_t0c0_nfwpf"},
-			{"mc_l_sm_flag_t0c0s0",						"mc_l_sm_flag_fuv_t0c0_nfwpf"},
-			{"mc_l_sm_flag_t0c0p0",						"mc_l_sm_flag_fuv_t0c0_nfwpf"},
+			{"mc_l_sm_flag_t0c0",						"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
+			{"mc_l_sm_flag_t0c0_nocast",				"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
+			{"mc_l_sm_flag_t0c0s0",						"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
+			{"mc_l_sm_flag_t0c0p0",						"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
 			{"mc_l_sm_flag_t0c0s0p0",					"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
 			{"mc_l_sm_flag_t0c0n0",						"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
 			{"mc_l_sm_flag_t0c0n0s0",					"mc_l_sm_flag_fuv_t0c0n0sd0_nfwpf"},
@@ -750,7 +750,7 @@ namespace ZoneTool
 				{30, 32},	// Blend 2
 				{31, 33},	// Blend 3
 				//{32, },	// ?
-				{33, 36},	// Gun blend?
+				{33, 36},	// Gun blend | in h1 35 = gun emissive, 36 = gun blend, 37 = gun depth hack
 				{34, 38},	// Shadow Caster
 				//{35, 35},	// ?
 				//{36, },	// ?
@@ -779,7 +779,6 @@ namespace ZoneTool
 				{"2d", 60},
 				{"mc_shadowcaster_atest", 38},
 				{"wc_shadowcaster", 38},
-				{"mc_reflexsight", 37},
 			};
 
 			bool is_blend_sortkey(std::uint8_t h1_sortkey)
@@ -865,7 +864,6 @@ namespace ZoneTool
 				{"2d", H1::CAMERA_REGION_NONE},
 				{"mc_shadowcaster_atest", H1::CAMERA_REGION_NONE},
 				{"wc_shadowcaster", H1::CAMERA_REGION_NONE},
-				{"mc_reflexsight", H1::CAMERA_REGION_DEPTH_HACK},
 			};
 
 			std::uint8_t get_h1_camera_region(std::uint8_t camera_region, std::string matname, std::string h1_techset = "")
@@ -1049,6 +1047,15 @@ namespace ZoneTool
 				matdata["cameraRegion"] = H1::get_h1_camera_region(asset->cameraRegion, asset->name, h1_techset);
 				matdata["materialType"] = H1::get_material_type_from_name(asset->name);
 				matdata["assetFlags"] = H1::MTL_ASSETFLAG_NONE;
+
+				// fix gun sortkey
+				if (matdata["sortKey"].get<int>() == 36)
+				{
+					if (matdata["cameraRegion"].get<int>() == H1::CAMERA_REGION_DEPTH_HACK)
+						matdata["sortKey"] = 37;
+					else if (matdata["cameraRegion"].get<int>() == H1::CAMERA_REGION_EMISSIVE)
+						matdata["sortKey"] = 35;
+				}
 
 				ordered_json constant_table = json::array();
 				for (int i = 0; i < asset->constantCount && techset != "2d"; i++)

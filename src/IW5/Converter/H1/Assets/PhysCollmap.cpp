@@ -307,7 +307,7 @@ namespace ZoneTool::IW5
 			const auto subEdgeCount = 24;
 			const auto facesCount = 6;
 
-			H1::dmSubEdge edge[vertexCount][4] = {};
+			H1::dmSubEdge edge[facesCount][4] = {};
 			edge[0][0] = { .twinOffset = 1, .tail = 4, .left = 0, .next = 20 };
 			edge[0][1] = { .twinOffset = -1, .tail = 5, .left = 5, .next = 3 };
 			edge[0][2] = { .twinOffset = 1, .tail = 7, .left = 3, .next = 5 };
@@ -421,7 +421,7 @@ namespace ZoneTool::IW5
 			
 			h1_asset->count = asset->count;
 			memcpy(&h1_asset->mass, &asset->mass, sizeof(PhysMass));
-			memcpy(&h1_asset->bounds, &asset->bounds, sizeof(PhysMass));
+			memcpy(&h1_asset->bounds, &asset->bounds, sizeof(Bounds));
 
 			float center[3] = { 0.0f, 0.0f, 0.0f };
 			float inertia1[3] = { 0.0f, 0.0f, 0.0f };

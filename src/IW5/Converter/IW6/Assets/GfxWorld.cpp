@@ -79,6 +79,7 @@ namespace ZoneTool::IW5
 
 					// has some problems?
 					iw6_asset->aabbTrees[i].aabbTree[j].childCount = asset->aabbTrees[i].aabbTree[j].childCount;
+					//iw6_asset->aabbTrees[i].aabbTree[j].childCount = 0;
 
 					// re-calculate childrenOffset
 					auto offset = asset->aabbTrees[i].aabbTree[j].childrenOffset;
@@ -182,6 +183,31 @@ namespace ZoneTool::IW5
 			for (unsigned int i = 0; i < iw6_asset->draw.vertexCount; i++)
 			{
 				memcpy(&iw6_asset->draw.vd.vertices[i], &asset->draw.vd.vertices[i], sizeof(IW5::GfxWorldVertex));
+
+				// re-calculate these...
+				float normal_unpacked[3]{ 0.0f, 0.0f, 0.0f };
+				PackedVec::Vec3UnpackUnitVec(asset->draw.vd.vertices[i].normal.array, normal_unpacked);
+
+				float tangent_unpacked[3]{ 0.0f, 0.0f, 0.0f };
+				PackedVec::Vec3UnpackUnitVec(asset->draw.vd.vertices[i].tangent.array, tangent_unpacked);
+
+				float normal[3] = { normal_unpacked[0], normal_unpacked[1], normal_unpacked[2] };
+				float tangent[3] = { tangent_unpacked[0], tangent_unpacked[1], tangent_unpacked[2] };
+
+				float sign = 0.0f;
+				if (asset->draw.vd.vertices[i].binormalSign == -1.0f)
+				{
+					sign = 1.0f;
+				}
+
+				iw6_asset->draw.vd.vertices[i].normal.packed = PackedVec::Vec3PackUnitVec(normal);
+				iw6_asset->draw.vd.vertices[i].tangent.packed = PackedVec::Vec3PackUnitVec(tangent);
+
+				// correct color : bgra->rgba
+				iw6_asset->draw.vd.vertices[i].color.array[0] = asset->draw.vd.vertices[i].color.array[2];
+				iw6_asset->draw.vd.vertices[i].color.array[1] = asset->draw.vd.vertices[i].color.array[1];
+				iw6_asset->draw.vd.vertices[i].color.array[2] = asset->draw.vd.vertices[i].color.array[0];
+				iw6_asset->draw.vd.vertices[i].color.array[3] = asset->draw.vd.vertices[i].color.array[3];
 			}
 			iw6_asset->draw.vd.worldVb = nullptr;
 
@@ -213,6 +239,8 @@ namespace ZoneTool::IW5
 			iw6_asset->lightGrid.colorCount = asset->lightGrid.colorCount;
 			iw6_asset->lightGrid.colors = reinterpret_cast<IW6::GfxLightGridColors*>(asset->lightGrid.colors);
 
+#define EXPERIMENTAL_LIGHTGRID_COLORS
+#ifdef EXPERIMENTAL_LIGHTGRID_COLORS
 			// --experimental--
 			{
 				// iw6 mp_character_room
@@ -252,6 +280,7 @@ namespace ZoneTool::IW5
 				//memcpy(&iw6_asset->lightGrid.defaultLightGridColors, defaultLightGridColors_bytes, sizeof(defaultLightGridColors_bytes));
 			}
 			// ----
+#endif
 
 			iw6_asset->modelCount = asset->modelCount;
 			iw6_asset->models = mem.allocate<IW6::GfxBrushModel>(iw6_asset->modelCount);

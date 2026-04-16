@@ -83,7 +83,7 @@ namespace ZoneTool
 				iw5_flags.fullDryLevel = iw4_flags.fullDryLevel;
 				iw5_flags.noWetLevel = iw4_flags.noWetLevel;
 				iw5_flags.randomLooping = iw4_flags.randomLooping;
-				iw5_flags.unk_is3D = iw4_flags.unknown2;
+				iw5_flags.spatialize = iw4_flags.unknown2;
 				iw5_flags.type = iw4_flags.type;
 				iw5_flags.channel = channel_to_iw5(IW4::SoundChannel(iw4_flags.channel));
 

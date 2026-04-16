@@ -180,7 +180,7 @@ namespace ZoneTool::IW5
 				}
 			};
 
-			if (elem->elemType == H1::FX_ELEM_TYPE_DECAL)
+			if (elem->elemType == FX_ELEM_TYPE_DECAL)
 			{
 			}
 			else if (elem->visualCount > 1)
@@ -200,8 +200,8 @@ namespace ZoneTool::IW5
 
 			if (emissive)
 			{
-				h1_effect->flags |= 0x10;
-				h1_elem->flags2 |= 0x8;
+				h1_effect->flags |= H1::FX_EFFECT_NEEDS_EMISSIVE_DRAW;
+				h1_elem->flags2 |= H1::FX_ELEM2_USE_EMISSIVE_DRAW;
 			}
 
 			memcpy(&h1_elem->spawn, &elem->spawn, sizeof(FxSpawnDef));
@@ -344,18 +344,42 @@ namespace ZoneTool::IW5
 				h1_elem->extended.spotLightDef = mem.allocate<H1::FxSpotLightDef>();
 				if (elem->extended.spotLightDef)
 				{
-					// check
-					h1_elem->extended.spotLightDef->halfFovOuter = elem->extended.spotLightDef->fovInnerFraction; // idk
-					h1_elem->extended.spotLightDef->halfFovInner = elem->extended.spotLightDef->fovInnerFraction; // idk
-					h1_elem->extended.spotLightDef->radius = elem->extended.spotLightDef->endRadius; // idk
-					h1_elem->extended.spotLightDef->brightness = elem->extended.spotLightDef->brightness;
-					h1_elem->extended.spotLightDef->maxLength = elem->extended.spotLightDef->maxLength;
-					h1_elem->extended.spotLightDef->exponent = elem->extended.spotLightDef->exponent;
-					h1_elem->extended.spotLightDef->nearClip = 1.0f;
-					h1_elem->extended.spotLightDef->bulbRadius = 1.0f;
-					h1_elem->extended.spotLightDef->bulbLength = 1.0f;
-					h1_elem->extended.spotLightDef->fadeOffsetRt[0] = 0.0f;
-					h1_elem->extended.spotLightDef->fadeOffsetRt[1] = 1.0f;
+					// ai giving you the following code:
+
+					auto* dst = h1_elem->extended.spotLightDef;
+					auto* src = elem->extended.spotLightDef;
+
+					// Defensive clamps
+					const float epsilon = 1e-4f;
+					const float maxLen = std::max(src->maxLength, epsilon);
+					const float r0 = std::max(src->startRadius, 0.0f);
+					const float r1 = std::max(src->endRadius, 0.0f);
+					const float dR = std::max(r1 - r0, 0.0f);                 // beam widening
+					const float frac = std::clamp(src->fovInnerFraction, 0.0f, 1.0f);
+
+					// Half-angles (radians) from beam slope.
+					// Outer: atan( (end-start) / length )
+					// Inner uses the same slope scaled by the fraction.
+					const float halfFovOuter = std::atan2(dR, maxLen);
+					const float halfFovInner = std::atan2(frac * dR, maxLen);
+
+					// Assign to H1
+					dst->halfFovOuter = halfFovOuter;
+					dst->halfFovInner = std::min(halfFovOuter, halfFovInner);      // safety
+					dst->radius = r1;                                         // end radius at max distance
+					dst->brightness = src->brightness;                            // might need a scale, engine-dependent
+					dst->maxLength = maxLen;
+					dst->exponent = src->exponent;
+
+					// Use startRadius to populate emitter/bulb; near clip small to avoid acne
+					dst->bulbRadius = r0;                                         // emitter base radius
+					dst->bulbLength = 0.0f;                                       // unknown in src; 0 is safest
+					dst->nearClip = 0.01f;                                      // tiny, or tie to % of maxLen if you prefer
+
+					// Keep your fade ramp unless you have better data
+					dst->fadeOffsetRt[0] = 0.0f;
+					dst->fadeOffsetRt[1] = 1.0f;
+
 				}
 				break;
 			case FX_ELEM_TYPE_OMNI_LIGHT:

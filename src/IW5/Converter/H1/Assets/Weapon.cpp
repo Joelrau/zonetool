@@ -284,6 +284,13 @@ namespace ZoneTool::IW5
 
 			COPY_FIELD(aiFuseTime, aiFuseTime);
 			COPY_FIELD(fuseTime, fuseTime);
+
+			// fix
+			if (asset->fuseTime && !asset->aiFuseTime)
+			{
+				asset->aiFuseTime = asset->fuseTime;
+			}
+
 			h1_asset->missileTime = def->weapDef->weapClass == WEAPCLASS_ROCKETLAUNCHER ? 4000 : 0;
 			h1_asset->primeTime = 0;
 			h1_asset->bHoldFullPrime = false;

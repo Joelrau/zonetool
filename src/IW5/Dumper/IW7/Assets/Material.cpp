@@ -196,8 +196,8 @@ namespace ZoneTool
 
 			std::unordered_map<std::uint8_t, std::uint8_t> mapped_sortkeys =
 			{
-				{43, 36},	// Distortion
 				{1, 2},		// Opaque
+				{43, 36},	// Distortion
 				{48, 35},	// Effect auto sort!
 			};
 

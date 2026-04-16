@@ -139,7 +139,7 @@ namespace ZoneTool::IW5
 			GenerateIW6BlendVertsShit(iw6_asset);
 
 			// triIndices
-			iw6_asset->triIndices = reinterpret_cast<IW6::Face * __ptr64>(asset->triIndices); // this is draw indices?
+			iw6_asset->triIndices = reinterpret_cast<IW6::Face * __ptr64>(asset->triIndices);
 
 			// verts
 			//iw6_asset->verts0.packedVerts0 = reinterpret_cast<IW6::GfxPackedVertex* __ptr64>(asset->verticies);
@@ -169,8 +169,8 @@ namespace ZoneTool::IW5
 					sign = 1.0f;
 				}
 
-				iw6_asset->verts0.packedVerts0[i].normal.packed = PackedVec::Vec3PackUnitVecWithAlpha(normal, 1.0f);
-				iw6_asset->verts0.packedVerts0[i].tangent.packed = PackedVec::Vec3PackUnitVecWithAlpha(tangent, sign);
+				iw6_asset->verts0.packedVerts0[i].normal.packed = PackedVec::Vec3PackUnitVec(normal);
+				iw6_asset->verts0.packedVerts0[i].tangent.packed = PackedVec::Vec3PackUnitVec(tangent);
 				
 				// correct color : bgra->rgba
 				iw6_asset->verts0.packedVerts0[i].color.array[0] = asset->verts0.packedVerts0[i].color.array[2];
