@@ -55,7 +55,10 @@ namespace ZoneTool
 				xmodel->lods[i].numSurfacesInLod = asset->lodInfo[i].numsurfs;
 				xmodel->lods[i].surfIndex = asset->lodInfo[i].surfIndex;
 				memcpy(xmodel->lods[i].partBits, asset->lodInfo[i].partBits, sizeof(int[4]));
-				memcpy(&xmodel->lods[i].lod, &asset->lodInfo[i].lod, 3);
+				xmodel->lods[i].lod = asset->lodInfo[i].lod;
+				xmodel->lods[i].smcBaseIndexPlusOne = 0;
+				xmodel->lods[i].smcSubIndexMask = 0;
+				xmodel->lods[i].smcBucket = 0;
 
 				// this is only necessary if the xmodel is used as a static model...
 				//if (xmodel->lods[i].numSurfacesInLod > 16)
@@ -75,10 +78,11 @@ namespace ZoneTool
 				xmodel->lods[i].surfaces->surfs = mem.allocate<IW4::XSurface>(xmodel->lods[i].numSurfacesInLod);
 
 				// loop through surfaces in current Level-of-Detail
+				int surfIndex = asset->lodInfo[i].surfIndex;
 				for (int surf = 0; surf < xmodel->lods[i].numSurfacesInLod; surf++)
 				{
 					// generate iw4 surface
-					const auto surface = GenerateIW4Surface(&asset->surfs[surf], &xmodel->lods[i].surfaces->surfs[surf], mem);
+					const auto surface = GenerateIW4Surface(&asset->surfs[surfIndex + surf], &xmodel->lods[i].surfaces->surfs[surf], mem);
 				}
 			}
 
@@ -100,10 +104,15 @@ namespace ZoneTool
 			xmodel->boneInfo = mem.allocate<IW4::XBoneInfo>(xmodel->numBones);
 			for (int i = 0; i < xmodel->numBones; i++)
 			{
-				memcpy(&xmodel->boneInfo[i].bounds, &asset->boneInfo[i].bounds, sizeof(Bounds));
+				IW4::XBoneInfo* target = &xmodel->boneInfo[i];
+				XBoneInfo* source = &asset->boneInfo[i];
 
-				bounds::compute(asset->boneInfo[i].bounds[0], asset->boneInfo[i].bounds[1], &xmodel->boneInfo[i].packedBounds.midPoint);
-				xmodel->boneInfo[i].radiusSquared = asset->boneInfo[i].radiusSquared;
+				target->radiusSquared = source->radiusSquared;
+
+				target->packedBounds.compute(source->bounds[0], source->bounds[1]);
+				target->packedBounds.midPoint[0] += source->offset[0];
+				target->packedBounds.midPoint[1] += source->offset[1];
+				target->packedBounds.midPoint[2] += source->offset[2];
 			}
 
 			xmodel->radius = asset->radius;
