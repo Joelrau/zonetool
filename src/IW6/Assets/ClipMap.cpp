@@ -2,7 +2,7 @@
 
 namespace ZoneTool::IW6
 {
-	void IClipMap::dump_info(ClipInfo* info, assetmanager::dumper& write, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IClipMap::dump_info(ClipInfo* info, assetmanager::dumper& write)
 	{
 		write.dump_array(info->planes, info->planeCount);
 		write.dump_array(info->materials, info->numMaterials);
@@ -49,7 +49,7 @@ namespace ZoneTool::IW6
 		write.dump_array(info->brushContents, info->numBrushes);
 	}
 
-	void IClipMap::dump(clipMap_t* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IClipMap::dump(clipMap_t* asset)
 	{
 		const auto path = asset->name + ".colmap"s;
 
@@ -62,7 +62,7 @@ namespace ZoneTool::IW6
 		write.dump_single(asset);
 		write.dump_string(asset->name);
 
-		dump_info(&asset->info, write, SL_ConvertToString);
+		dump_info(&asset->info, write);
 
 		//write.dump_single(asset->pInfo);
 		//dump_info(asset->pInfo, write);

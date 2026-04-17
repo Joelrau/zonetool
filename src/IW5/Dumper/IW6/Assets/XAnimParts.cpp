@@ -6,13 +6,13 @@
 
 namespace ZoneTool::IW5::IW6Dumper
 {
-	void dump(XAnimParts* asset, const std::function<const char* (uint16_t)>& convertToString)
+	void dump(XAnimParts* asset)
 	{
 		// generate IW6 anims
 		allocator allocator;
 		auto iw6_asset = IW6Converter::convert(asset, allocator);
 
 		// dump IW6 anims
-		IW6::IXAnimParts::dump(iw6_asset, convertToString);
+		IW6::IXAnimParts::dump(iw6_asset);
 	}
 }

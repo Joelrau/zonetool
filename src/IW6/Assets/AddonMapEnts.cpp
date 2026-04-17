@@ -33,7 +33,7 @@ namespace ZoneTool::IW6
 		}
 	}
 
-	void IAddonMapEnts::dump(AddonMapEnts* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IAddonMapEnts::dump(AddonMapEnts* asset)
 	{
 		dump_entityStrings(asset->name, asset->entityString, asset->numEntityChars);
 		dump_triggers(asset->name, &asset->trigger);

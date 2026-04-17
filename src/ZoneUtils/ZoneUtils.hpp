@@ -160,6 +160,16 @@ namespace zonetool
 	extern dump_source dumping_source;
 }
 
+namespace ZoneTool
+{
+	namespace Shared
+	{
+		extern const char* SL_ConvertToString(std::uint16_t index);
+		extern short SL_AllocString(const std::string& string);
+	}
+	using namespace Shared;
+}
+
 template <typename T1, typename T2>
 std::size_t Difference(const T1& t1, const T2& t2)
 {

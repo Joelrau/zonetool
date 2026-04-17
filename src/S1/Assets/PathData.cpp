@@ -34,7 +34,7 @@ namespace ZoneTool::S1
 		}
 	}
 
-	void IPathData::dump(PathData* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IPathData::dump(PathData* asset)
 	{
 		const auto path = asset->name + ".aipaths"s;
 

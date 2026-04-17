@@ -6,13 +6,13 @@
 
 namespace ZoneTool::IW5::IW6Dumper
 {
-	void dump(XModel* asset, const std::function<const char* (uint16_t)>& convertToString)
+	void dump(XModel* asset)
 	{
 		// generate IW6 model
 		allocator allocator;
 		auto iw6_asset = IW6Converter::convert(asset, allocator);
 
 		// dump IW6 model
-		IW6::IXModel::dump(iw6_asset, convertToString);
+		IW6::IXModel::dump(iw6_asset);
 	}
 }

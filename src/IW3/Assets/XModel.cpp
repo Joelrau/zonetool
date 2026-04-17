@@ -123,7 +123,7 @@ namespace ZoneTool
 			auto iw4_model = GenerateIW4Model(asset, allocator);
 
 			// dump model
-			IW4::IXModel::dump(iw4_model, SL_ConvertToString);
+			IW4::IXModel::dump(iw4_model);
 
 			// dump all xsurfaces
 			for (int i = 0; i < iw4_model->numLods; i++)

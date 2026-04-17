@@ -489,11 +489,11 @@ namespace ZoneTool
 			}
 		}
 
-		void IXModel::dump(XModel* asset, const std::function<const char* (std::uint16_t)>& convertToString)
+		void IXModel::dump(XModel* asset)
 		{
 			allocator allocator;
 			const auto h1_asset = generate_h1_xmodel(asset, allocator);
-			H1::IXModel::dump(h1_asset, convertToString);
+			H1::IXModel::dump(h1_asset);
 		}
 	}
 }

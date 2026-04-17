@@ -8,6 +8,6 @@ namespace ZoneTool::H1
 		static void dump_triggers(const std::string& name, MapTriggers* trigger);
 		static void dump_entityStrings(const std::string& name, char* entityString, int numEntityChars);
 
-		static void dump(AddonMapEnts* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString);
+		static void dump(AddonMapEnts* asset);
 	};
 }

@@ -15,7 +15,7 @@ namespace ZoneTool::IW5::H1Dumper
 		auto* h1_asset = H1Converter::convert(asset, allocator);
 
 		// dump h1 clipmap
-		H1::IClipMap::dump(h1_asset, SL_ConvertToString);
+		H1::IClipMap::dump(h1_asset);
 
 		// dump physmap here too i guess, since it's needed.
 		{
@@ -35,7 +35,7 @@ namespace ZoneTool::IW5::H1Dumper
 				auto* physmap = ZoneTool::H1::physworld_gen::generate_physworld(h1_asset, &allocator);
 				ZONETOOL_INFO("Generated PhysWorld.");
 
-				H1::IPhysWorld::dump(physmap, SL_ConvertToString);
+				H1::IPhysWorld::dump(physmap);
 			}
 			catch (std::exception& err)
 			{

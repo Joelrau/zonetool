@@ -5,10 +5,10 @@ namespace ZoneTool
 {
 	namespace IW4
 	{
-		void IXAnimParts::dump(XAnimParts* asset, const std::function<const char* (uint16_t)>& convertToString)
+		void IXAnimParts::dump(XAnimParts* asset)
 		{
 			// dump anims
-			IW5::IXAnimParts::dump(reinterpret_cast<IW5::XAnimParts*>(asset), convertToString);
+			IW5::IXAnimParts::dump(reinterpret_cast<IW5::XAnimParts*>(asset));
 		}
 	}
 }

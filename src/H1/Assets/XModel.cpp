@@ -2,7 +2,7 @@
 
 namespace ZoneTool::H1
 {
-	void IXModel::dump(XModel* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IXModel::dump(XModel* asset)
 	{
 		const auto path = "xmodel\\"s + asset->name + ".xmb";
 

@@ -922,7 +922,7 @@ namespace ZoneTool::H1
 		ATTACHMENT_DUMP_FIELD(adsFireAnimFrac);
 	}
 
-	void IWeaponAttachment::dump(WeaponAttachment* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IWeaponAttachment::dump(WeaponAttachment* asset)
 	{
 		const auto path = "attachments\\"s + asset->name + ".json"s;
 

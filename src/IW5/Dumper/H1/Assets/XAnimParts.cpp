@@ -6,13 +6,13 @@
 
 namespace ZoneTool::IW5::H1Dumper
 {
-	void dump(XAnimParts* asset, const std::function<const char* (uint16_t)>& convertToString)
+	void dump(XAnimParts* asset)
 	{
 		// generate h1 anims
 		allocator allocator;
 		auto h1_asset = H1Converter::convert(asset, allocator);
 
 		// dump h1 anims
-		H1::IXAnimParts::dump(h1_asset, convertToString);
+		H1::IXAnimParts::dump(h1_asset);
 	}
 }

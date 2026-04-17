@@ -199,6 +199,6 @@ namespace ZoneTool::H1
 	class IWeaponDef
 	{
 	public:
-		static void dump(WeaponDef* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString);
+		static void dump(WeaponDef* asset);
 	};
 }

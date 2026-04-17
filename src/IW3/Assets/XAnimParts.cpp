@@ -68,7 +68,7 @@ namespace ZoneTool
 			auto* iw4_asset = GenerateIW4XAnimParts(asset, allocator);
 
 			// dump anims
-			IW4::IXAnimParts::dump(iw4_asset, SL_ConvertToString);
+			IW4::IXAnimParts::dump(iw4_asset);
 		}
 	}
 }

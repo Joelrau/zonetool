@@ -451,4 +451,38 @@ namespace ZoneTool
 			startup_default();
 		}
 	}
+
+	namespace Shared
+	{
+		const char* SL_ConvertToString(std::uint16_t index)
+		{
+			switch (zonetool::dumping_source)
+			{
+				case zonetool::dump_source::iw3:
+					return IW3::SL_ConvertToString(index);
+				case zonetool::dump_source::iw4:
+					return IW4::SL_ConvertToString(index);
+				case zonetool::dump_source::iw5:
+					return IW5::SL_ConvertToString(index);
+				case zonetool::dump_source::t6:
+					return T6::SL_ConvertToString(index);
+			}
+			return nullptr;
+		}
+		short SL_AllocString(const std::string& string)
+		{
+			switch(zonetool::dumping_source)
+			{
+				case zonetool::dump_source::iw3:
+					return IW3::SL_AllocString(string);
+				case zonetool::dump_source::iw4:
+					return IW4::SL_AllocString(string);
+				case zonetool::dump_source::iw5:
+					return IW5::SL_AllocString(string);
+				case zonetool::dump_source::t6:
+					return T6::SL_AllocString(string);
+			}
+			return 0;
+		}
+	}
 }

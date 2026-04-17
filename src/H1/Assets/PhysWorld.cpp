@@ -2,7 +2,7 @@
 
 namespace ZoneTool::H1
 {
-	void IPhysWorld::dump(PhysWorld* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IPhysWorld::dump(PhysWorld* asset)
 	{
 		const auto path = asset->name + ".physmap"s;
 

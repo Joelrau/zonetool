@@ -6,13 +6,13 @@
 
 namespace ZoneTool::IW5::H1Dumper
 {
-	void dump(WeaponAttachment* asset, const std::function<const char* (uint16_t)>& convertToString)
+	void dump(WeaponAttachment* asset)
 	{
 		// generate h1 anims
 		allocator allocator;
 		auto h1_asset = H1Converter::convert(asset, allocator);
 
 		// dump h1 anims
-		H1::IWeaponAttachment::dump(h1_asset, convertToString);
+		H1::IWeaponAttachment::dump(h1_asset);
 	}
 }

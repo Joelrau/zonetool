@@ -43,7 +43,7 @@ namespace ZoneTool
 		data[#__field__] = ""; \
 	}
 
-		Json dump_weapondef(WeaponDef* asset, const std::function<const char* (uint16_t)>& convertToString)
+		Json dump_weapondef(WeaponDef* asset)
 		{
 			Json data;
 
@@ -74,7 +74,7 @@ namespace ZoneTool
 			{
 				if (asset->notetrackSoundMapKeys && asset->notetrackSoundMapKeys[i])
 				{
-					data["notetrackSoundMapKeys"][i] = convertToString(asset->notetrackSoundMapKeys[i]);
+					data["notetrackSoundMapKeys"][i] = SL_ConvertToString(asset->notetrackSoundMapKeys[i]);
 				}
 				else
 				{
@@ -83,7 +83,7 @@ namespace ZoneTool
 
 				if (asset->notetrackSoundMapValues && asset->notetrackSoundMapValues[i])
 				{
-					data["notetrackSoundMapValues"][i] = convertToString(asset->notetrackSoundMapValues[i]);
+					data["notetrackSoundMapValues"][i] = SL_ConvertToString(asset->notetrackSoundMapValues[i]);
 				}
 				else
 				{
@@ -804,7 +804,7 @@ namespace ZoneTool
 			return data;
 		}
 
-		Json dump_complete(WeaponVariantDef* asset, const std::function<const char* (uint16_t)>& convertToString)
+		Json dump_complete(WeaponVariantDef* asset)
 		{
 			Json data;
 			data["baseAsset"] = asset->szInternalName;
@@ -831,7 +831,7 @@ namespace ZoneTool
 					data["hideTags"][i] = "";
 				}
 			}
-			data["weapDef"] = dump_weapondef(asset->weapDef, convertToString);
+			data["weapDef"] = dump_weapondef(asset->weapDef);
 			printf("1\n");
 			WEAPON_DUMP_FIELD(szInternalName);
 			WEAPON_DUMP_FIELD(szAltWeaponName);
@@ -971,10 +971,10 @@ namespace ZoneTool
 			return data;
 		}
 
-		void IWeaponVariantDef::dump(WeaponVariantDef* asset, const std::function<const char* (uint16_t)>& convertToString)
+		void IWeaponVariantDef::dump(WeaponVariantDef* asset)
 		{
 			std::string path = "weapons/"s + asset->szInternalName;
-			std::string json = dump_complete(asset, convertToString).dump(4);
+			std::string json = dump_complete(asset).dump(4);
 
 			auto file = FileSystem::FileOpen(path, "w"s);
 			fwrite(json.data(), json.size(), 1, file);

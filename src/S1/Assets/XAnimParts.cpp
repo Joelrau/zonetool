@@ -6,8 +6,8 @@
 
 namespace ZoneTool::S1
 {
-	void IXAnimParts::dump(XAnimParts* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IXAnimParts::dump(XAnimParts* asset)
 	{
-		H1::IXAnimParts::dump(reinterpret_cast<H1::XAnimParts*>(asset), SL_ConvertToString);
+		H1::IXAnimParts::dump(reinterpret_cast<H1::XAnimParts*>(asset));
 	}
 }

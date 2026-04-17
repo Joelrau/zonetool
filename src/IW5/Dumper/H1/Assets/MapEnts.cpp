@@ -13,7 +13,7 @@ namespace ZoneTool::IW5::H1Dumper
 		auto* h1_asset = H1Converter::convert(asset, allocator);
 
 		// dump h1 mapents
-		H1::IMapEnts::dump(h1_asset, SL_ConvertToString);
+		H1::IMapEnts::dump(h1_asset);
 
 		// dump spawns
 		mapents2spawns::dump_spawns(filesystem::get_dump_path() + asset->name + ".ents.spawnList"s, h1_asset->entityString);

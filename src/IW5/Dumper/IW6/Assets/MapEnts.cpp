@@ -13,7 +13,7 @@ namespace ZoneTool::IW5::IW6Dumper
 		auto* iw6_asset = IW6Converter::convert(asset, allocator);
 
 		// dump IW6 mapents
-		IW6::IMapEnts::dump(iw6_asset, SL_ConvertToString);
+		IW6::IMapEnts::dump(iw6_asset);
 
 		// dump spawns
 		mapents2spawns::dump_spawns(filesystem::get_dump_path() + asset->name + ".ents.spawnList"s, iw6_asset->entityString);

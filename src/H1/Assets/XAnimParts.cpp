@@ -26,7 +26,7 @@ namespace ZoneTool::H1
 		return result;
 	}
 
-	void IXAnimParts::dump(XAnimParts* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IXAnimParts::dump(XAnimParts* asset)
 	{
 		const auto path = "xanim\\"s + asset->name + ".xab";
 

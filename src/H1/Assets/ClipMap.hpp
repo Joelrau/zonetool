@@ -5,9 +5,9 @@ namespace ZoneTool::H1
 	class IClipMap
 	{
 	private:
-		static void dump_info(ClipInfo* info, assetmanager::dumper& write, const std::function<const char* (std::uint16_t)>& SL_ConvertToString);
+		static void dump_info(ClipInfo* info, assetmanager::dumper& write);
 
 	public:
-		static void dump(clipMap_t* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString);
+		static void dump(clipMap_t* asset);
 	};
 }

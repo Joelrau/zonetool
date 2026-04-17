@@ -23,13 +23,13 @@ namespace ZoneTool
 
 		static const char* SL_ConvertToString(std::uint16_t index)
 		{
-			return Memory::func<const char*(int)>(0x004EC1D0)(index);
+			return Memory::func<const char* (int)>(0x004EC1D0)(index);
 		}
 
 		static short SL_AllocString(const std::string& string)
 		{
-			return Memory::func<short(const char*, std::uint32_t, std::size_t)>(0x00436B40)(
-				string.data(), 1, string.size() + 1);
+			return Memory::func<short(const char*, std::uint32_t, std::size_t, std::uint32_t)>(0x00436B40)(
+				string.data(), 1, string.size() + 1, 7);
 		}
 	}
 }

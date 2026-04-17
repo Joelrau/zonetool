@@ -17,17 +17,6 @@ namespace ZoneTool::IW5::H1Dumper
 		allocator allocator;
 		auto* h1_asset = H1Converter::convert(asset, allocator);
 
-		if (zonetool::dumping_source == zonetool::iw3)
-		{
-			H1::IPathData::dump(h1_asset, IW3::SL_ConvertToString);
-		}
-		else if (zonetool::dumping_source == zonetool::iw4)
-		{
-			H1::IPathData::dump(h1_asset, IW4::SL_ConvertToString);
-		}
-		else if (zonetool::dumping_source == zonetool::iw5)
-		{
-			H1::IPathData::dump(h1_asset, IW5::SL_ConvertToString);
-		}
+		H1::IPathData::dump(h1_asset);
 	}
 }

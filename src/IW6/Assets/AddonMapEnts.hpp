@@ -9,6 +9,6 @@ namespace ZoneTool::IW6
 		static void dump_entityStrings(const std::string& name, char* entityString, int numEntityChars);
 
 	public:
-		static void dump(AddonMapEnts* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString);
+		static void dump(AddonMapEnts* asset);
 	};
 }

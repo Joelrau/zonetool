@@ -17,7 +17,7 @@ namespace ZoneTool
 		private:
 
 		public:
-			static void dump(WeaponVariantDef* asset, const std::function<const char* (uint16_t)>& convertToString = SL_ConvertToString);
+			static void dump(WeaponVariantDef* asset);
 		};
 	}
 }

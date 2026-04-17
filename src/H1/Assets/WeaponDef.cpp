@@ -265,7 +265,7 @@ namespace ZoneTool::H1
 		return data;
 	}
 
-	void IWeaponDef::dump(WeaponDef* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IWeaponDef::dump(WeaponDef* asset)
 	{
 		const auto path = "weapons\\"s + asset->name + ".json"s;
 

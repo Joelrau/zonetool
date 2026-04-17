@@ -11,6 +11,6 @@ namespace ZoneTool::IW5::S1Dumper
 		allocator allocator;
 		auto* s1_asset = S1Converter::convert(asset, allocator);
 
-		S1::IPathData::dump(s1_asset, SL_ConvertToString);
+		S1::IPathData::dump(s1_asset);
 	}
 }

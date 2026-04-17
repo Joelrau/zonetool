@@ -11,6 +11,6 @@ namespace ZoneTool::IW5::IW6Dumper
 		allocator allocator;
 		auto* iw6_asset = IW6Converter::convert(asset, allocator);
 
-		IW6::IAddonMapEnts::dump(iw6_asset, SL_ConvertToString);
+		IW6::IAddonMapEnts::dump(iw6_asset);
 	}
 }

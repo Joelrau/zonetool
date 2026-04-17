@@ -11,6 +11,6 @@ namespace ZoneTool::IW5::H1Dumper
 		allocator allocator;
 		auto* h1_asset = H1Converter::convert(asset, allocator);
 
-		H1::IAddonMapEnts::dump(h1_asset, SL_ConvertToString);
+		H1::IAddonMapEnts::dump(h1_asset);
 	}
 }

@@ -5,7 +5,7 @@ namespace ZoneTool
 {
 	namespace IW4
 	{
-		void IXModel::dump(XModel* asset, const std::function<const char* (uint16_t)>& convertToString)
+		void IXModel::dump(XModel* asset)
 		{
 			allocator allocator;
 			auto* iw5_model = allocator.allocate<IW5::XModel>();
@@ -18,7 +18,7 @@ namespace ZoneTool
 			}
 
 			// dump model
-			IW5::IXModel::dump(iw5_model, convertToString);
+			IW5::IXModel::dump(iw5_model);
 		}
 	}
 }

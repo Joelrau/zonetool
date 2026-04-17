@@ -6,9 +6,9 @@
 
 namespace ZoneTool::IW5::S1Dumper
 {
-	void dump(XAnimParts* asset, const std::function<const char* (uint16_t)>& convertToString)
+	void dump(XAnimParts* asset)
 	{
 		// 1:1 to H1
-		ZoneTool::IW5::H1Dumper::dump(asset, convertToString);
+		ZoneTool::IW5::H1Dumper::dump(asset);
 	}
 }

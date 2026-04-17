@@ -23,7 +23,7 @@ namespace ZoneTool::H1
 		}
 	}
 
-	void IMapEnts::dump_spawnList(const std::string& name, SpawnPointRecordList* spawnList, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IMapEnts::dump_spawnList(const std::string& name, SpawnPointRecordList* spawnList)
 	{
 		const auto path = name + ".ents.spawnList"s;
 		auto file = filesystem::file(path);
@@ -135,13 +135,13 @@ namespace ZoneTool::H1
 		}
 	}
 
-	void IMapEnts::dump(MapEnts* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IMapEnts::dump(MapEnts* asset)
 	{
 		dump_entityStrings(asset->name, asset->entityString, asset->numEntityChars);
 		dump_triggers(asset->name, &asset->trigger);
 		dump_clientTriggers(asset->name, &asset->clientTrigger);
 		dump_clientBlendTriggers(asset->name, &asset->clientTriggerBlend);
-		dump_spawnList(asset->name, &asset->spawnList, SL_ConvertToString);
+		dump_spawnList(asset->name, &asset->spawnList);
 		dump_splineList(asset->name, &asset->splineList);
 	}
 }

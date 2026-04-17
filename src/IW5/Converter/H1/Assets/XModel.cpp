@@ -110,12 +110,12 @@ namespace ZoneTool::IW5
 			for (auto i = 0; i < asset->numBones; i++)
 			{
 #ifdef CONVERT_TAGS
-				std::string bone_name = SL_ConvertToString(asset->boneNames[i]);
+				std::string bone_name = Shared::SL_ConvertToString(asset->boneNames[i]);
 				if (bone_name == "tag_rail")
 				{
 					bone_name = "tag_sight_off";
 				}
-				h1_asset->boneNames[i] = SL_AllocString(bone_name.c_str());
+				h1_asset->boneNames[i] = Shared::SL_AllocString(bone_name.c_str());
 #else
 				h1_asset->boneNames[i] = static_cast<H1::scr_string_t>(asset->boneNames[i]);
 #endif

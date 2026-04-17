@@ -13,6 +13,6 @@ namespace ZoneTool::IW5::IW6Dumper
 		auto* iw6_asset = IW6Converter::convert(asset, allocator);
 
 		// dump iw6 clipmap
-		IW6::IClipMap::dump(iw6_asset, SL_ConvertToString);
+		IW6::IClipMap::dump(iw6_asset);
 	}
 }

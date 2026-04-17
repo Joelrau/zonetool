@@ -42,13 +42,13 @@ namespace ZoneTool::S1
 		}
 	}
 
-	void IMapEnts::dump(MapEnts* asset, const std::function<const char* (std::uint16_t)>& SL_ConvertToString)
+	void IMapEnts::dump(MapEnts* asset)
 	{
 		H1::IMapEnts::dump_entityStrings(asset->name, asset->entityString, asset->numEntityChars);
 		H1::IMapEnts::dump_triggers(asset->name, reinterpret_cast<H1::MapTriggers*>(&asset->trigger));
 		dump_clientTriggers(asset->name, &asset->clientTrigger);
 		H1::IMapEnts::dump_clientBlendTriggers(asset->name, reinterpret_cast<H1::ClientTriggerBlend*>(&asset->clientTriggerBlend));
-		H1::IMapEnts::dump_spawnList(asset->name, reinterpret_cast<H1::SpawnPointRecordList*>(&asset->spawnList), SL_ConvertToString);
+		H1::IMapEnts::dump_spawnList(asset->name, reinterpret_cast<H1::SpawnPointRecordList*>(&asset->spawnList));
 		H1::IMapEnts::dump_splineList(asset->name, reinterpret_cast<H1::SplineRecordList*>(&asset->splineList));
 	}
 }
