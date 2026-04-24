@@ -142,7 +142,7 @@ namespace ZoneTool::H1
 		float bulletForceScale;
 		float explosiveForceScale;
 		float explosiveSpinScale;
-		int unk2; // 42001553
+		int contents; // 42001553
 		const char PTR64 sndAliasPrefix;
 		float piecesSpreadFraction;
 		float piecesUpwardVelocity;
@@ -1072,6 +1072,8 @@ namespace ZoneTool::H1
 		CONST_SRC_CODE_INVERSE_TRANSPOSE_WORLD_VIEW_PROJECTION_MATRIX2,
 		CONST_SRC_TOTAL_COUNT,
 		CONST_SRC_NONE,
+
+		CONST_SRC_CODE_COUNT_FLOAT4 = 349
 	};
 
 	enum MaterialTextureSource : std::int32_t
@@ -1574,6 +1576,41 @@ namespace ZoneTool::H1
 		MaterialVertexStreamRouting routing;
 	}; assert_sizeof(MaterialVertexDeclaration, 0x840);
 
+	enum CustomSamplerFlags : std::uint8_t
+	{
+		CUSTOM_SAMPLER_FLAG_USE_REFLECTION_PROBE = 0x1,
+		CUSTOM_SAMPLER_FLAG_USE_LIGHTMAP_PRIMARY = 0x2,
+		CUSTOM_SAMPLER_FLAG_USE_LIGHTMAP_SECONDARY = 0x4,
+	};
+
+	enum CustomBufferFlags : std::uint32_t
+	{
+		CUSTOM_BUFFER_PER_PRIM = 0x1,
+		CUSTOM_BUFFER_PER_OBJECT = 0x2,
+		CUSTOM_BUFFER_PER_STABLE = 0x4,
+		CUSTOM_BUFFER_MATERIAL = 0x8,
+		CUSTOM_BUFFER_SUBDOMAIN = 0x10,
+		CUSTOM_BUFFER_REACTIVE_MOTION = 0x20,
+		CUSTOM_BUFFER_REACTIVE_TURBULENCE_EFFECTORS = 0x40,
+		CUSTOM_BUFFER_SMODEL_WORLDMATRIX = 0x80,
+		CUSTOM_BUFFER_SMODEL_LIGHTING = 0x100,
+		CUSTOM_BUFFER_SMODEL_AMBIENT = 0x200,
+		CUSTOM_BUFFER_SKINNED_CACHED_PREV_FRAME = 0x400,
+		CUSTOM_BUFFER_SUBDIV_PATCH = 0x800,
+		CUSTOM_BUFFER_REGULAR_PATCH_FLAGS = 0x1000,
+		CUSTOM_BUFFER_UNKNOWN2000 = 0x2000,
+		CUSTOM_BUFFER_UNKNOWN4000 = 0x4000,
+	};
+
+	enum PrecompiledIndex : std::uint8_t
+	{
+		PRECOMPILED_INDEX_LIT = 1,
+		PRECOMPILED_INDEX_UNLIT = 2,
+		PRECOMPILED_INDEX_AMBIENT = 3,
+		PRECOMPILED_INDEX_VERTEX_LIT = 4,
+		PRECOMPILED_INDEX_MODEL_LMAP = 5,
+	};
+
 	struct MaterialPass
 	{
 		MaterialVertexShader PTR64 vertexShader;
@@ -1936,11 +1973,11 @@ namespace ZoneTool::H1
 	enum MaterialGameFlags : std::uint8_t
 	{
 		MTL_GAMEFLAG_NONE = 0x0,
-		MTL_GAMEFLAG_1 = 0x1,
-		MTL_GAMEFLAG_2 = 0x2, // with this flag, the game will use precomputed primaryLightIndex instead of computed one for shadows
-		MTL_GAMEFLAG_4 = 0x4,
+		MTL_GAMEFLAG_NO_MARKS1 = 0x1,
+		MTL_GAMEFLAG_MARK_HAS_LIGHTMAP = 0x2, // with this flag, the game will use precomputed primaryLightIndex instead of computed one for shadows
+		MTL_GAMEFLAG_NO_MARKS2 = 0x4,
 		MTL_GAMEFLAG_8 = 0x8,
-		MTL_GAMEFLAG_10 = 0x10,
+		MTL_GAMEFLAG_MARK_HAS_REFLECTION = 0x10,
 		MTL_GAMEFLAG_20 = 0x20,
 		MTL_GAMEFLAG_CASTS_SHADOW = 0x40,
 		MTL_GAMEFLAG_CASTS_SHADOW_EFFECT = 0x80,
@@ -2185,34 +2222,44 @@ namespace ZoneTool::H1
 
 	enum MaterialType : std::uint8_t
 	{
-		MTL_TYPE_DEFAULT = 0x0, // ""
-		MTL_TYPE_MODEL = 0x1, // "m"
-		MTL_TYPE_MODEL_EFFECT = 0x2, // "me"
-		MTL_TYPE_MODEL_VERTCOL = 0x3, // "mc"
-		MTL_TYPE_MODEL_VERTCOL_EFFECT = 0x4, // "mce"
-		MTL_TYPE_MODEL_VERTCOL_GREY = 0xD, // "mv"
-		MTL_TYPE_MODEL_VERTCOL_GREY_EFFECT = 0xE, // "mvc"
-		MTL_TYPE_MODEL_QUANTIZED = 0x7,
-		MTL_TYPE_MODEL_QUANTIZED_EFFECT = 0x8,
-		MTL_TYPE_MODEL_QUANTIZED_VERTCOL = 0x9,
-		MTL_TYPE_MODEL_QUANTIZED_VERTCOL_EFFECT = 0xA,
-		MTL_TYPE_MODEL_QUANTIZED_VERTCOL_GREY = 0xB,
-		MTL_TYPE_MODEL_QUANTIZED_VERTCOL_GREY_EFFECT = 0xC,
-		MTL_TYPE_MODEL_VERTLIT = 0xD,
-		MTL_TYPE_MODEL_VERTLIT_VERTCOL = 0xE,
-		MTL_TYPE_MODEL_VERTLIT_VERTCOL_GREY = 0xF,
-		MTL_TYPE_MODEL_VERTLIT_QUANTIZED = 0x10,
-		MTL_TYPE_MODEL_VERTLIT_QUANTIZED_VERTCOL = 0x11,
-		MTL_TYPE_MODEL_VERTLIT_QUANTIZED_VERTCOL_GREY = 0x12,
-		MTL_TYPE_MODEL_LMAP = 0x13, // "ml"
-		MTL_TYPE_MODEL_LMAP_VERTCOL = 0x14, // "mlc"
-		MTL_TYPE_MODEL_LMAP_VERTCOL_GREY = 0x15,
-		MTL_TYPE_MODEL_SUBDIV = 0x19, // "ms"
-		MTL_TYPE_MODEL_SUBDIV_VERTCOL = 0x1A, // "msc"
-		MTL_TYPE_MODEL_SUBDIV_VERTCOL_GREY = 0x1F, // "msv"
-		MTL_TYPE_WORLD = 0x23, // "w"
-		MTL_TYPE_WORLD_VERTCOL = 0x24, // "wc"
-		MTL_TYPE_COUNT = 0x25,
+		MTL_TYPE_DEFAULT = 0, // ""
+		MTL_TYPE_MODEL = 1, // "m"
+		MTL_TYPE_MODEL_EFFECT = 2, // "me"
+		MTL_TYPE_MODEL_VERTCOL = 3, // "mc"
+		MTL_TYPE_MODEL_VERTCOL_EFFECT = 4, // "mce"
+		MTL_TYPE_MODEL_UNK5 = 5,
+		MTL_TYPE_MODEL_UNK6 = 6,
+		MTL_TYPE_MODEL_QUANTIZED = 7,
+		MTL_TYPE_MODEL_QUANTIZED_EFFECT = 8,
+		MTL_TYPE_MODEL_QUANTIZED_VERTCOL = 9,
+		MTL_TYPE_MODEL_QUANTIZED_VERTCOL_EFFECT = 10,
+		MTL_TYPE_MODEL_QUANTIZED_VERTCOL_GREY = 11,
+		MTL_TYPE_MODEL_QUANTIZED_VERTCOL_GREY_EFFECT = 12,
+		MTL_TYPE_MODEL_VERTLIT = 13, // "mv"
+		MTL_TYPE_MODEL_VERTLIT_VERTCOL = 14, // "mvc"
+		MTL_TYPE_MODEL_VERTLIT_VERTCOL_GREY = 15,
+		MTL_TYPE_MODEL_VERTLIT_QUANTIZED = 16,
+		MTL_TYPE_MODEL_VERTLIT_QUANTIZED_VERTCOL = 17,
+		MTL_TYPE_MODEL_VERTLIT_QUANTIZED_VERTCOL_GREY = 18,
+		MTL_TYPE_MODEL_LMAP = 19, // "ml"
+		MTL_TYPE_MODEL_LMAP_VERTCOL = 20, // "mlc"
+		MTL_TYPE_MODEL_LMAP_VERTCOL_GREY = 21,
+		MTL_TYPE_MODEL_UNK22 = 22,
+		MTL_TYPE_MODEL_UNK23 = 23,
+		MTL_TYPE_MODEL_UNK24 = 24,
+		MTL_TYPE_MODEL_UNK25 = 25,
+		MTL_TYPE_MODEL_SUBDIV = 26, // "ms"
+		MTL_TYPE_MODEL_SUBDIV_VERTCOL = 27, // "msc"
+		MTL_TYPE_MODEL_SUBDIV_VERTCOL_GREY = 28, //
+		MTL_TYPE_MODEL_SUBDIV_TENSION = 29, //
+		MTL_TYPE_MODEL_SUBVDIV_UNK30 = 30, //
+		MTL_TYPE_MODEL_SUBDIV_VERTLIT = 31, // "msv"
+		MTL_TYPE_MODEL_SUBDIV_VERTLIT_VERTCOL = 32, // "msvc"
+		MTL_TYPE_MODEL_SUBDIV_LMAP = 33, // "msl"
+		MTL_TYPE_MODEL_SUBDIV_LMAP_VERTCOL = 34, // "mslc"
+		MTL_TYPE_WORLD = 35, // "w"
+		MTL_TYPE_WORLD_VERTCOL = 36, // "wc"
+		MTL_TYPE_COUNT = 37,
 	};
 
 	enum MaterialAssetFlags : std::uint8_t
@@ -2869,9 +2916,9 @@ namespace ZoneTool::H1
 			const char PTR64 name;
 		};
 		snd_alias_t PTR64 head;
-		snd_alias_context_list PTR64 contextList;
+		snd_alias_context_list PTR64 contextList; // contexts
 		unsigned char count;
-		unsigned char contextListCount;
+		unsigned char contextListCount; // contextCount
 	}; assert_sizeof(snd_alias_list_t, 0x20);
 
 	struct LocalizeEntry
@@ -2923,12 +2970,15 @@ namespace ZoneTool::H1
 	{
 		CLIENT_TRIGGER_NONE = 0x0,
 		CLIENT_TRIGGER_VISIONSET = 0x1,
-		CLIENT_TRIGGER_REVERB = 0x2,
+		CLIENT_TRIGGER_LIGHTSET = 0x2,
 		CLIENT_TRIGGER_AUDIO = 0x4,
 		CLIENT_TRIGGER_BLEND_VISION = 0x8,
 		CLIENT_TRIGGER_BLEND_AUDIO = 0x10,
-		CLIENT_TRIGGER_BLEND_ALL = 0x12,
+		CLIENT_TRIGGER_BLEND_ALL = CLIENT_TRIGGER_BLEND_VISION | CLIENT_TRIGGER_BLEND_AUDIO,
 		CLIENT_TRIGGER_NPC = 0x20,
+		CLIENT_TRIGGER_CLUT = 0x40,
+		CLIENT_TRIGGER_CONTEXT = 0x80,
+		CLIENT_TRIGGER_WATER = 0x100,
 	};
 
 	struct ClientTriggers
@@ -2946,10 +2996,10 @@ namespace ZoneTool::H1
 		float PTR64 scriptDelay;
 		short PTR64 audioTriggers;
 		short PTR64 blendLookup;
-		short PTR64 unkTriggers;
-		short PTR64 npcTriggers; // could be wrong
+		short PTR64 npcTriggers;
 		short PTR64 contextTriggers;
 		short PTR64 waterTriggers;
+		short PTR64 unkTriggers;
 	}; assert_sizeof(ClientTriggers, 0xB0);
 
 	struct ClientTriggerBlendNode
@@ -2972,7 +3022,7 @@ namespace ZoneTool::H1
 		scr_string_t name;
 		scr_string_t target;
 		scr_string_t script_noteworthy;
-		scr_string_t unknown;
+		scr_string_t targetname;
 		float origin[3];
 		float angles[3];
 	};
@@ -3182,6 +3232,10 @@ namespace ZoneTool::H1
 		NETCONSTSTRINGTYPE_ANIMCLASS = 21, // acl
 		NETCONSTSTRINGTYPE_LUI = 22, // lui
 		NETCONSTSTRINGTYPE_LASER = 23, // lsr
+		NETCONSTSTRINGTYPE_ASSET_COUNT = 24,
+		NETCONSTSTRINGTYPE_CODINFO_DVAR = 24,
+		NETCONSTSTRINGTYPE_CODINFOVALUE_DVAR = 25,
+		NETCONSTSTRINGTYPE_NETWORK_DVAR = 26,
 		NETCONSTSTRINGTYPE_COUNT = 27,
 		NETCONSTSTRINGTYPE_NONE = 27,
 	};
@@ -3533,7 +3587,7 @@ namespace ZoneTool::H1
 		float bulbLength;
 		float fadeOffsetRt[2];
 		char unk1;
-		char opl;
+		char opl; // overlapsPrimaryLight
 		char unk2;
 		char unused;
 	};
@@ -3792,7 +3846,7 @@ namespace ZoneTool::H1
 		unsigned int randomDataShortCount; // 36
 		unsigned int randomDataIntCount; // 40
 		unsigned int indexCount; // 44
-		float framerate;  // 48
+		float framerate; // 48
 		float frequency; // 56
 		scr_string_t PTR64 names; // 56
 		char PTR64 dataByte; // 64
@@ -3973,10 +4027,12 @@ namespace ZoneTool::H1
 	struct XSurfaceSubdivInfo
 	{
 		XSurfaceSubdivLevel PTR64 levels;
-		int flags; // maybe
+		int flags;
 		int totalVertCount; // foreach level: vertCount + VertOffset
-		int totalPatchCount; // foreach level: regularPatchCount + regularPatchOffset
-		int unk[3];
+		int totalRegularPatchCount; // foreach level: regularPatchCount + regularPatchOffset
+		int unk1;
+		int unk2;
+		int unk3;
 		GfxSubdivCache cache;
 	}; assert_sizeof(XSurfaceSubdivInfo, 0x38);
 
@@ -4029,7 +4085,7 @@ namespace ZoneTool::H1
 		ID3D11ShaderResourceView PTR64 vb0View;
 		ID3D11Buffer PTR64 indexBuffer;
 		XRigidVertList PTR64 rigidVertLists;
-		UnknownXSurface0 PTR64 unknown0;
+		UnknownXSurface0 PTR64 unknown0; // GfxQuantizedNoColorVertex
 		XBlendInfo PTR64 blendVerts;
 		BlendVertsUnknown PTR64 blendVertsTable;
 		ID3D11Buffer PTR64 blendVertsBuffer;
@@ -4047,8 +4103,8 @@ namespace ZoneTool::H1
 		ID3D11ShaderResourceView PTR64 indexBufferView;
 		BlendShape PTR64 blendShapes;
 		unsigned int blendShapesCount;
+		char __pad0[4];
 		unsigned int vertexLightingIndex;
-		float quantizeScale;
 		int partBits[8];
 		char __pad1[4];
 	}; assert_sizeof(XSurface, 0x108);
@@ -4061,11 +4117,11 @@ namespace ZoneTool::H1
 		int partBits[8];
 	}; assert_sizeof(XModelSurfs, 0x38);
 
-	enum XModelLodFlags
+	enum XModelLodInfoFlags
 	{
-		XMODEL_LOD_FLAG_NONE = 0x0,
-		XMODEL_LOD_FLAG_SUBDIV = 0x1,
-		XMODEL_LOD_FLAG_SUBDIV_UNK = 0x2,
+		XMODEL_LODINFO_FLAG_NONE = 0x0,
+		XMODEL_LODINFO_FLAG_SUBDIV = 0x1,
+		XMODEL_LODINFO_FLAG_SUBDIV_NON_ADAPTIVE = 0x2,
 	};
 
 	struct XModelLodInfo
@@ -4076,7 +4132,7 @@ namespace ZoneTool::H1
 		XModelSurfs PTR64 modelSurfs;
 		int partBits[8];
 		XSurface PTR64 surfs;
-		int unk;
+		int subdivLodValidMask;
 		char flags;
 		char pad[3];
 	};
@@ -4236,7 +4292,7 @@ namespace ZoneTool::H1
 		short u3; // 634
 		float quantization; // 636
 		MdaoVolume PTR64 mdaoVolumes; // 640
-		int u4; // 648
+		float subdivRadius; // 648
 		int u5; // 652
 		SkeletonScript PTR64 skeletonScript; // 656
 		XModel PTR64 PTR64 compositeModels; // 664
@@ -4268,7 +4324,7 @@ namespace ZoneTool::H1
 		PLAYERANIMTYPE_LAPTOP = 0xC,
 		PLAYERANIMTYPE_THROWINGKNIFE = 0xD,
 		PLAYERANIMTYPE_MINIGUN = 0xE,
-		PLAYERANIMTYPE_SMG_BULLPUP = 0x1F,
+		PLAYERANIMTYPE_SMG_BULLPUP = 0xF,
 		PLAYERANIMTYPE_AUTOFILE_BULLPUP = 0x10,
 		PLAYERANIMTYPE_SNIPER_BULLPUP = 0x11,
 		PLAYERANIMTYPE_KILLSTREAKTRIGGER = 0x12,
@@ -4974,81 +5030,81 @@ namespace ZoneTool::H1
 
 	struct StateTimers
 	{
-		int fireDelay; // 1640  PTR64 x
-		int meleeDelay; // 1644  PTR64 x
-		int meleeChargeDelay; // 1648  PTR64 x
-		int detonateDelay; // 1652  PTR64 x
-		int fireTime; // 1656  PTR64 x
-		int rechamberTime; // 1660  PTR64 x
-		int rechamberTimeOneHanded; // 1664  PTR64 x
-		int rechamberBoltTime; // 1668  PTR64 x
-		int holdFireTime; // 1672  PTR64 x
-		int grenadePrimeReadyToThrowTime; // 1676  PTR64 x
-		int detonateTime; // 1680  PTR64 x
-		int meleeTime; // 1684  PTR64 x
-		int meleeChargeTime; // 1688  PTR64 x
-		int reloadTime; // 1692  PTR64 x
-		int reloadShowRocketTime; // 1696  PTR64 x
-		int reloadEmptyTime; // 1700  PTR64 x
-		int reloadAddTime; // 1704  PTR64 x
-		int reloadEmptyAddTime; // 1708  PTR64 x
-		int reloadStartTime; // 1712  PTR64 x
-		int reloadStartAddTime; // 1716  PTR64 x
-		int reloadEndTime; // 1720  PTR64 x
-		int reloadTimeDualWield; // 1724  PTR64 x
-		int reloadAddTimeDualWield; // 1728  PTR64 x
-		int reloadEmptyDualMag; // 1732  PTR64 x
-		int reloadEmptyAddTimeDualMag; // 1736  PTR64 x
-		int speedReloadTime; // 1740  PTR64 x // (unused)
-		int speedReloadAddTime; // 1744  PTR64 x // (unused)
-		int dropTime; // 1748  PTR64 x
-		int raiseTime; // 1752  PTR64 x
-		int altDropTime; // 1756  PTR64 x
-		int altRaiseTime; // 1760  PTR64 x
-		int quickDropTime; // 1764  PTR64 x
-		int quickRaiseTime; // 1768  PTR64 x
-		int firstRaiseTime; // 1772  PTR64 x
-		int breachRaiseTime; // 1776  PTR64 x
-		int emptyRaiseTime; // 1780  PTR64 x
-		int emptyDropTime; // 1784  PTR64 x
-		int sprintInTime; // 1788  PTR64 x
-		int sprintLoopTime; // 1792  PTR64 x
-		int sprintOutTime; // 1796  PTR64 x
-		int stunnedTimeBegin; // 1800  PTR64 x
-		int stunnedTimeLoop; // 1804  PTR64 x
-		int stunnedTimeEnd; // 1808  PTR64 x
-		int nightVisionWearTime; // 1812  PTR64 x
-		int nightVisionWearTimeFadeOutEnd; // 1816  PTR64 x
-		int nightVisionWearTimePowerUp; // 1820  PTR64 x
-		int nightVisionRemoveTime; // 1824  PTR64 x
-		int nightVisionRemoveTimePowerDown; // 1828  PTR64 x
-		int nightVisionRemoveTimeFadeInStart; // 1832  PTR64 x
-		int aiFuseTime; // 1836  PTR64 x
-		int fuseTime; // 1840  PTR64 x
-		int missileTime; // 1844  PTR64 x
-		int primeTime; // 1848  PTR64 x
-		bool bHoldFullPrime; // 1852  PTR64 x
-		int blastFrontTime; // 1856  PTR64 x
-		int blastRightTime; // 1860  PTR64 x
-		int blastBackTime; // 1864  PTR64 x
-		int blastLeftTime; // 1868  PTR64 x
-		int slideInTime; // 1872  PTR64 x (unused)
-		int slideLoopTime; // 1876  PTR64 x (unused)
-		int slideOutTime; // 1880  PTR64 x (unused)
-		int highJumpInTime; // 1884  PTR64 x (unused)
-		int highJumpDropInTime; // 1888  PTR64 x (unused)
-		int highJumpDropLoopTime; // 1892  PTR64 x (unused)
-		int highJumpDropLandTime; // 1896  PTR64 x (unused)
-		int dodgeTime; // 1900  PTR64 x (unused)
-		int landDipTime; // 1904  PTR64 x (unused)
-		int hybridSightInTime; // 1908  PTR64 x (unused)
-		int hybridSightOutTime; // 1912  PTR64 x (unused)
-		int offhandSwitchTime; // 1916  PTR64 x
-		int heatCooldownInTime; // 1920  PTR64 x
-		int heatCooldownOutTime; // 1924  PTR64 x
-		int heatCooldownOutReadyTime; // 1928  PTR64 x
-		int overheatOutTime; // 1932  PTR64 x
-		int overheatOutReadyTime; // 1936  PTR64 x
+		int fireDelay; // 1640 * x
+		int meleeDelay; // 1644 * x
+		int meleeChargeDelay; // 1648 * x
+		int detonateDelay; // 1652 * x
+		int fireTime; // 1656 * x
+		int rechamberTime; // 1660 * x
+		int rechamberTimeOneHanded; // 1664 * x
+		int rechamberBoltTime; // 1668 * x
+		int holdFireTime; // 1672 * x
+		int grenadePrimeReadyToThrowTime; // 1676 * x
+		int detonateTime; // 1680 * x
+		int meleeTime; // 1684 * x
+		int meleeChargeTime; // 1688 * x
+		int reloadTime; // 1692 * x
+		int reloadShowRocketTime; // 1696 * x
+		int reloadEmptyTime; // 1700 * x
+		int reloadAddTime; // 1704 * x
+		int reloadEmptyAddTime; // 1708 * x
+		int reloadStartTime; // 1712 * x
+		int reloadStartAddTime; // 1716 * x
+		int reloadEndTime; // 1720 * x
+		int reloadTimeDualWield; // 1724 * x
+		int reloadAddTimeDualWield; // 1728 * x
+		int reloadEmptyDualMag; // 1732 * x
+		int reloadEmptyAddTimeDualMag; // 1736 * x
+		int speedReloadTime; // 1740 * x // (unused)
+		int speedReloadAddTime; // 1744 * x // (unused)
+		int dropTime; // 1748 * x
+		int raiseTime; // 1752 * x
+		int altDropTime; // 1756 * x
+		int altRaiseTime; // 1760 * x
+		int quickDropTime; // 1764 * x
+		int quickRaiseTime; // 1768 * x
+		int firstRaiseTime; // 1772 * x
+		int breachRaiseTime; // 1776 * x
+		int emptyRaiseTime; // 1780 * x
+		int emptyDropTime; // 1784 * x
+		int sprintInTime; // 1788 * x
+		int sprintLoopTime; // 1792 * x
+		int sprintOutTime; // 1796 * x
+		int stunnedTimeBegin; // 1800 * x
+		int stunnedTimeLoop; // 1804 * x
+		int stunnedTimeEnd; // 1808 * x
+		int nightVisionWearTime; // 1812 * x
+		int nightVisionWearTimeFadeOutEnd; // 1816 * x
+		int nightVisionWearTimePowerUp; // 1820 * x
+		int nightVisionRemoveTime; // 1824 * x
+		int nightVisionRemoveTimePowerDown; // 1828 * x
+		int nightVisionRemoveTimeFadeInStart; // 1832 * x
+		int aiFuseTime; // 1836 * x
+		int fuseTime; // 1840 * x
+		int missileTime; // 1844 * x
+		int primeTime; // 1848 * x
+		bool bHoldFullPrime; // 1852 * x
+		int blastFrontTime; // 1856 * x
+		int blastRightTime; // 1860 * x
+		int blastBackTime; // 1864 * x
+		int blastLeftTime; // 1868 * x
+		int slideInTime; // 1872 * x (unused)
+		int slideLoopTime; // 1876 * x (unused)
+		int slideOutTime; // 1880 * x (unused)
+		int highJumpInTime; // 1884 * x (unused)
+		int highJumpDropInTime; // 1888 * x (unused)
+		int highJumpDropLoopTime; // 1892 * x (unused)
+		int highJumpDropLandTime; // 1896 * x (unused)
+		int dodgeTime; // 1900 * x (unused)
+		int landDipTime; // 1904 * x (unused)
+		int hybridSightInTime; // 1908 * x (unused)
+		int hybridSightOutTime; // 1912 * x (unused)
+		int offhandSwitchTime; // 1916 * x
+		int heatCooldownInTime; // 1920 * x
+		int heatCooldownOutTime; // 1924 * x
+		int heatCooldownOutReadyTime; // 1928 * x
+		int overheatOutTime; // 1932 * x
+		int overheatOutReadyTime; // 1936 * x
 	}; assert_sizeof(StateTimers, 300);
 
 	struct clipindex_t
@@ -5475,6 +5531,7 @@ namespace ZoneTool::H1
 		vec2_t PTR64 accuracyGraphKnots[2]; // 3088
 		vec2_t PTR64 originalAccuracyGraphKnots[2]; // 3104
 		short accuracyGraphKnotCount[2]; // 3120
+		short originalAccuracyGraphKnotCount[2]; // 3124
 		float leftArc; // 3128
 		float rightArc; // 3132
 		float topArc; // 3136
@@ -6116,7 +6173,7 @@ namespace ZoneTool::H1
 		Operand lastResult[4];
 	};
 
-	struct __declspec(align(8)) Statement_s
+	struct Statement_s
 	{
 		int numEntries;
 		expressionEntry PTR64 entries;
@@ -6156,7 +6213,7 @@ namespace ZoneTool::H1
 		EVENT_COUNT = 0x7,
 	};
 
-	struct __declspec(align(8)) MenuEventHandler
+	struct MenuEventHandler
 	{
 		EventData eventData;
 		EventType eventType;
@@ -6185,7 +6242,7 @@ namespace ZoneTool::H1
 		int endTriggerType;
 	};
 
-	struct __declspec(align(8)) menuData_t
+	struct menuData_t
 	{
 		int fullScreen;
 		int fadeCycle;
@@ -6219,14 +6276,14 @@ namespace ZoneTool::H1
 		unsigned char priority;
 	};
 
-	struct __declspec(align(4)) rectDef_s
+	struct rectDef_s
 	{
 		float x;
 		float y;
 		float w;
 		float h;
-		unsigned __int8 horzAlign;
-		unsigned __int8 vertAlign;
+		unsigned char horzAlign;
+		unsigned char vertAlign;
 	};
 
 	struct windowDef_t
@@ -6324,7 +6381,7 @@ namespace ZoneTool::H1
 		void PTR64 data;
 	};
 
-	enum ItemFloatExpressionTarget
+	enum ItemFloatExpressionTarget : std::int32_t
 	{
 		ITEM_FLOATEXP_TGT_RECT_X = 0x0,
 		ITEM_FLOATEXP_TGT_RECT_Y = 0x1,
@@ -8076,6 +8133,7 @@ namespace ZoneTool::H1
 		GfxStaticModelVertexLighting PTR64 lightingValues;
 		ID3D11Buffer PTR64 lightingValuesVb;
 		int numLightingValues;
+		int subdivVertexLightingInfoIndex;
 	};
 
 	struct GfxStaticModelLightmapInfo
@@ -8103,6 +8161,7 @@ namespace ZoneTool::H1
 	struct GfxSubdivVertexLightingInfo
 	{
 		int vertexLightingIndex;
+		int flags;
 		ID3D11Buffer PTR64 vb;
 		GfxSubdivCache cache;
 	}; assert_sizeof(GfxSubdivVertexLightingInfo, 40);
@@ -8273,6 +8332,7 @@ namespace ZoneTool::H1
 		umbraTomePtr_t umbraTomePtr; // 2776
 		unsigned int mdaoVolumesCount; // 2784
 		MdaoVolume PTR64 mdaoVolumes; // 2792
+		char __pad2[2];
 		bool useLightGridDefaultModelLightingLookup;
 		bool useLightGridDefaultFXLightingLookup;
 		float lightGridDefaultModelLightingLookup[3];
@@ -8432,22 +8492,31 @@ namespace ZoneTool::H1
 		NODE_COVER_PRONE = 5,
 		NODE_COVER_RIGHT = 6,
 		NODE_COVER_LEFT = 7,
-		//NODE_COVER_UNK1 = 8,
-		//NODE_COVER_UNK2 = 9,
+		NODE_COVER_WIDE_RIGHT = 8,
+		NODE_COVER_WIDE_LEFT = 9,
 		NODE_COVER_MULTI = 10,
 		NODE_AMBUSH = 11,
 		NODE_EXPOSED = 12,
 		NODE_CONCEALMENT_STAND = 13,
 		NODE_CONCEALMENT_CROUCH = 14,
 		NODE_CONCEALMENT_PRONE = 15,
-		NODE_DOOR = 16, // not confirmed
-		NODE_DOOR_INTERIOR = 17, // not confirmed
+		NODE_DOOR = 16,
+		NODE_DOOR_INTERIOR = 17,
 		NODE_SCRIPTED = 18,
 		NODE_NEGOTIATION_BEGIN = 19,
 		NODE_NEGOTIATION_END = 20,
 		NODE_TURRET = 21,
 		NODE_GUARD = 22,
+		NODE_PATHNODE_3D = 23,
+		NODE_COVER_UP_3D = 24,
+		NODE_COVER_RIGHT_3D = 25,
+		NODE_COVER_LEFT_3D = 26,
+		NODE_EXPOSED_3D = 27,
+		NODE_SCRIPTED_3D = 28,
+		NODE_NEGOTIATION_BEGIN_3D = 29,
+		NODE_NEGOTIATION_END_3D = 30,
 		NODE_NUMTYPES = 31,
+		NODE_DONTLINK = 31,
 	};
 
 	struct pathnode_constant_t
@@ -8750,7 +8819,7 @@ namespace ZoneTool::H1
 		float steeringLerpCentering;
 		float minSteeringScale;
 		float minSteeringSpeed;
-		float disableWheelsTurning;
+		int disableWheelsTurning;
 		float pad2;
 		FxEffectDef PTR64 treadDefaultFx;
 		FxEffectDef PTR64 handBrakeDefaultFx;
@@ -9474,7 +9543,7 @@ namespace ZoneTool::H1
 	{
 		const char PTR64 name;
 		SndGlobalSettings_t settings;
-		XaReverbSettings PTR64 reverbSettings;  // array: 26
+		XaReverbSettings PTR64 reverbSettings; // array: 26
 	}; assert_sizeof(SndDriverGlobals, 0x38);
 	assert_offsetof(SndDriverGlobals, reverbSettings, 48);
 

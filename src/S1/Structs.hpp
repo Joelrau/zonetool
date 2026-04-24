@@ -2368,7 +2368,7 @@ namespace ZoneTool::S1
 		scr_string_t name;
 		scr_string_t target;
 		scr_string_t script_noteworthy;
-		scr_string_t unknown;
+		scr_string_t targetname;
 		float origin[3];
 		float angles[3];
 	};

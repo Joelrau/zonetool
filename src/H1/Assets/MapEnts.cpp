@@ -25,7 +25,7 @@ namespace ZoneTool::H1
 
 	void IMapEnts::dump_spawnList(const std::string& name, SpawnPointRecordList* spawnList)
 	{
-		const auto path = name + ".ents.spawnList"s;
+		const auto path = name + ".ents.spawnList.json"s;
 		auto file = filesystem::file(path);
 		file.open("wb");
 
@@ -41,7 +41,7 @@ namespace ZoneTool::H1
 			data[i]["name"] = SL_ConvertToString(spawnList->spawns[i].name);
 			data[i]["target"] = SL_ConvertToString(spawnList->spawns[i].target);
 			data[i]["script_noteworthy"] = SL_ConvertToString(spawnList->spawns[i].script_noteworthy);
-			data[i]["unknown"] = SL_ConvertToString(spawnList->spawns[i].unknown);
+			data[i]["targetname"] = SL_ConvertToString(spawnList->spawns[i].targetname);
 			for (auto j = 0; j < 3; j++)
 			{
 				data[i]["origin"][j] = spawnList->spawns[i].origin[j];

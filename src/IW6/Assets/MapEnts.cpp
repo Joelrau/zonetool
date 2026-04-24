@@ -25,7 +25,7 @@ namespace ZoneTool::IW6
 
 	void IMapEnts::dump_spawnList(const std::string& name, SpawnPointRecordList* spawnList)
 	{
-		const auto path = name + ".ents.spawnList"s;
+		const auto path = name + ".ents.spawnList.json"s;
 		auto file = filesystem::file(path);
 		file.open("wb");
 

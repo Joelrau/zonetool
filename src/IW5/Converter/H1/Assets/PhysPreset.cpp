@@ -19,7 +19,7 @@ namespace ZoneTool::IW5
 			h1_asset->bulletForceScale = asset->bulletForceScale;
 			h1_asset->explosiveForceScale = asset->explosiveForceScale;
 			h1_asset->explosiveSpinScale = 0.0f;
-			h1_asset->unk2 = 42001553;
+			h1_asset->contents = 42001553;
 			h1_asset->sndAliasPrefix = asset->sndAliasPrefix;
 			h1_asset->piecesSpreadFraction = asset->piecesSpreadFraction;
 			h1_asset->piecesUpwardVelocity = asset->piecesUpwardVelocity;
