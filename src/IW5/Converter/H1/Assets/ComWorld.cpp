@@ -1,4 +1,4 @@
-#include "stdafx.hpp"
+﻿#include "stdafx.hpp"
 #include "../Include.hpp"
 
 #include "ComWorld.hpp"
@@ -7,6 +7,33 @@ namespace ZoneTool::IW5
 {
 	namespace H1Converter
 	{
+		float PhysicallyBasedLight_IntensityFromCandelas(float candelas)
+		{
+			return candelas * 1550.0f;
+		}
+
+		float PhysicallyBasedLight_FramebufferUnitsFromIntensity(float intensity, float radiometricScale)
+		{
+			return intensity * radiometricScale;
+		}
+
+		void convertColorToPhysicallyBased(float* color)
+		{
+			float extracted_intensity = std::max({ color[0], color[1], color[2] });
+			float normalized_color[3] = {
+				color[0] / extracted_intensity,
+				color[1] / extracted_intensity,
+				color[2] / extracted_intensity
+			};
+
+			auto intensity = PhysicallyBasedLight_IntensityFromCandelas(extracted_intensity * 1000.0f);
+			auto framebuffer_units = PhysicallyBasedLight_FramebufferUnitsFromIntensity(intensity, 0.001f);
+
+			color[0] = normalized_color[0] * framebuffer_units;
+			color[1] = normalized_color[1] * framebuffer_units;
+			color[2] = normalized_color[2] * framebuffer_units;
+		}
+
 		H1::ComWorld* GenerateH1ComWorld(ComWorld* asset, allocator& mem)
 		{
 			// allocate H1 ComWorld structure
@@ -56,11 +83,7 @@ namespace ZoneTool::IW5
 					h1_asset->primaryLights[i].fadeOffset[0] = 0.0f;
 					h1_asset->primaryLights[i].fadeOffset[1] = 0.0f;
 
-					// idk why...
-					for (auto c = 0; c < 3; c++)
-					{
-						h1_asset->primaryLights[i].color[c] *= 10000.0f;
-					}
+					convertColorToPhysicallyBased(h1_asset->primaryLights[i].color);
 
 					if (!h1_asset->primaryLights[i].defName)
 					{
@@ -83,11 +106,7 @@ namespace ZoneTool::IW5
 					h1_asset->primaryLights[i].fadeOffset[0] = 0.0f;
 					h1_asset->primaryLights[i].fadeOffset[1] = 0.0f;
 
-					// idk why...
-					for (auto c = 0; c < 3; c++)
-					{
-						h1_asset->primaryLights[i].color[c] *= 10000.0f;
-					}
+					convertColorToPhysicallyBased(h1_asset->primaryLights[i].color);
 
 					if (!h1_asset->primaryLights[i].defName)
 					{
