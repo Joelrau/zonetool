@@ -109,6 +109,20 @@ namespace ZoneTool
 			return file_buffer;
 		}
 
+		char* Sys_GetMapZoneDir_stub(int a1, const char* filename)
+		{
+			char dest[64]{};
+			strncpy(dest, filename, 0x3F);
+			dest[63] = 0;
+
+			auto game_va = reinterpret_cast<char* (*)(const char*, const char*)>(0x535580);
+			auto lang = *reinterpret_cast<char**>(0x594242C);
+
+			if (filesystem::file(va("zone\\%s\\%s.ff", lang, filename)).exists())
+				return game_va("zone\\%s\\", lang);
+			return game_va("%s", "zone\\dlc\\");
+		}
+
 		void Linker::startup()
 		{
 			if (this->is_used())
@@ -148,6 +162,9 @@ namespace ZoneTool
 
 				// Replace the default attachment name (the specified default does not exist)
 				Memory(0x74B0BC).write_string("reflex");
+
+				// Fix some dlc zones not loading
+				Memory(0x44FD9A).call(Sys_GetMapZoneDir_stub);
 			}
 		}
 
