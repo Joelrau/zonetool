@@ -5,6 +5,8 @@
 
 #include "X64/Utils/Umbra/umbra.hpp"
 #include "X64/Utils/Utils.hpp"
+#include "X64/Utils/LightGrid/LightGridSH.hpp"
+#include "X64/Utils/LightGrid/LightGridTree.hpp"
 
 namespace ZoneTool::IW5
 {
@@ -273,35 +275,31 @@ namespace ZoneTool::IW5
 				}
 			}
 
-#define EXPERIMENTAL_LIGHTGRID_COLORS
-#ifdef EXPERIMENTAL_LIGHTGRID_COLORS
-			// --experimental--
+			// build the SH color palette + lightgrid tree from the legacy LDR data.
 			{
-				// iw6 mp_character_room
-				[[maybe_unused]] const std::uint8_t skyLightGridColors_bytes[] = { 0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63 };
-				[[maybe_unused]] const std::uint8_t defaultLightGridColors_bytes[] = { 0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63 };
-				[[maybe_unused]] const std::uint8_t p_nodeTable_bytes[] = { 1,0,0,255,9,0,0,136,11,0,0,68,13,0,0,34,15,0,0,17,17,0,0,136,19,0,0,68,21,0,0,34,23,0,0,17,0,0,0,240,47,0,0,255,134,0,0,240,172,0,0,255,0,1,0,240,41,1,0,255,136,1,0,240,186,1,0,255,26,2,0,255,95,2,0,15,124,2,0,255,193,2,0,15,222,2,0,255,35,3,0,15,64,3,0,255,129,3,0,15 };
-				[[maybe_unused]] const std::uint8_t p_leafTable_bytes[] = { 43,200,178,32,26,91,212,113,63,110,254,190,224,239,3,89,15,100,0,252,15,224,43,211,47,48,207,0,100,192,195,15,30,34,219,254,131,150,22,48,178,254,36,217,86,210,6,59,202,210,28,202,178,8,26,71,69,29,63,254,254,190,192,223,7,178,30,200,122,236,0,252,7,0,252,195,60,3,243,12,244,192,195,99,240,48,25,255,65,75,11,45,45,32,2,117,151,182,137,5,254,254,190,192,223,7,178,30,200,122,236,0,252,7,0,252,195,60,3,243,12,236,192,195,7,192,195,163,165,133,150,22,8,1,59,73,66,32,90,199,196,45,108,0,252,7,0,252,195,60,3,126,0,248,10,0,240,5,211,22,32,30,247,2,108,63,79,240,243,160,165,5,59,203,66,40,203,66,40,26,75,69,25,63,236,0,252,23,0,252,195,60,3,243,12,254,0,248,42,0,240,5,211,22,76,91,32,110,205,22,236,63,79,241,243,160,165,133,150,22,252,0,252,7,1,248,135,121,6,230,25,254,0,248,10,0,240,5,211,22,76,91,48,241,152,17,252,63,79,240,231,65,75,11,45,45,59,137,145,36,122,199,196,37,108,192,195,7,192,195,163,165,5,48,42,158,160,255,0,126,128,135,9,0,15,131,182,12,100,31,143,96,152,21,0,230,25,59,203,177,52,14,177,48,26,11,197,245,3,236,192,195,31,192,195,163,165,133,150,22,48,211,121,128,36,146,2,254,128,135,57,0,15,131,182,12,218,50,228,31,143,100,152,183,1,0,204,51,48,207,0,244,192,195,99,128,240,90,42,11,180,180,208,210,2,32,219,7,8,254,128,135,57,0,15,131,182,12,218,50,228,31,143,64,216,7,4,128,121,6,230,25,43,7,195,36,26,95,148,221,246,3,48,23,40,123,107,215,3,116,63,143,68,218,94,160,9,2,180,180,0,116,31,15,53,202,110,39,64,0,152,103,0,124,124,77,4,249,154,192,107,2,59,135,227,44,132,194,44,26,199,69,217,109,63,48,23,56,187,42,187,27,244,63,143,4,250,15,36,75,16,160,165,133,150,22,228,31,143,249,219,230,70,2,0,204,51,48,207,0,236,124,77,4,124,77,224,53,129,215,4,32,70,119,14,236,63,79,240,243,160,165,133,150,22,228,31,143,4,152,7,0,48,207,192,60,3,236,124,77,4,124,77,224,53,129,215,4,27,138,162,0,138,162,0,26,4,246,254,62,127,31,200,122,32,235,1,228,0,252,3,240,15,243,12,204,51,228,192,195,3,15,143,150,22,90,90,246,254,62,127,31,200,122,32,235,1,228,0,252,3,240,15,243,12,204,51,228,192,195,3,15,143,150,22,90,90,27,7,130,0,26,4,182,254,62,127,31,200,122,164,0,252,3,240,15,243,12,164,192,195,3,15,143,150,22,27,202,2,36,202,2,36,26,4,228,0,252,3,240,15,243,12,204,51,246,0,248,2,192,23,76,91,48,109,1,228,63,207,207,131,150,22,90,90,228,0,252,3,240,15,243,12,204,51,246,0,248,2,192,23,76,91,48,109,1,228,63,207,207,131,150,22,90,90,27,8,2,28,26,4,164,0,252,3,240,15,243,12,182,0,248,2,192,23,76,91,164,63,207,207,131,150,22,27,10,176,36,10,176,36,26,4,228,192,195,3,15,143,150,22,90,90,246,128,135,1,60,12,218,50,104,203,0,228,31,207,199,3,243,12,204,51,228,192,195,3,15,143,150,22,90,90,246,128,135,1,60,12,218,50,104,203,0,228,31,207,199,3,243,12,204,51,27,8,128,28,26,4,164,192,195,3,15,143,150,22,182,128,135,1,60,12,218,50,164,31,207,199,3,243,12,27,64,146,40,64,146,40,26,4,228,63,207,207,131,150,22,90,90,228,31,207,199,3,243,12,204,51,228,124,77,240,53,129,215,4,94,19,228,63,207,207,131,150,22,90,90,228,31,207,199,3,243,12,204,51,228,124,77,240,53,129,215,4,94,19,27,192,113,32,26,4,164,63,207,207,131,150,22,164,31,207,199,3,243,12,164,124,77,240,53,129,215,4 };
-				[[maybe_unused]] const std::uint8_t paletteBitStream_bytes[] ={ 8, 33, 195, 128, 128, 124, 128, 128, 128, 129, 128, 199, 128, 128, 124, 128, 128, 128, 129, 128, 216, 128, 128, 124, 128, 128, 128, 129, 128, 0, 8, 33, 187, 128, 128, 130, 128, 128, 128, 128, 128, 191, 128, 128, 130, 128, 128, 128, 128, 128, 209, 128, 128, 130, 128, 128, 128, 128, 128, 0, 0, 0, 82, 80, 18, 64, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 214, 106, 18, 64, 1, 0, 0, 0, 8, 33, 195, 128, 128, 124, 128, 128, 128, 129, 128, 199, 128, 128, 124, 128, 128, 128, 129, 128, 216, 128, 128, 124, 128, 128, 128, 129, 128, 0, 198, 24, 241, 248, 8, 128, 128, 128, 128, 90, 128, 241, 8, 128, 248, 128, 128, 128, 147, 184, 241, 128, 248, 8, 128, 128, 128, 147, 72, 0 };
+				// palette: one SH entry per legacy color set, colorsIndex maps 1:1
+				const auto palette = lightgrid_sh::build_palette_from_ldr(
+					reinterpret_cast<const unsigned char*>(asset->lightGrid.colors),
+					asset->lightGrid.colorCount);
 
 				h1_asset->lightGrid.tableVersion = 1;
 				h1_asset->lightGrid.paletteVersion = 1;
-				h1_asset->lightGrid.paletteEntryCount = asset->lightGrid.colorCount;
+
+				h1_asset->lightGrid.rangeExponent8BitsEncoding = palette.config.range_exp_8bits;
+				h1_asset->lightGrid.rangeExponent12BitsEncoding = palette.config.range_exp_12bits;
+				h1_asset->lightGrid.rangeExponent16BitsEncoding = palette.config.range_exp_16bits;
+
+				h1_asset->lightGrid.paletteEntryCount = static_cast<unsigned int>(palette.entry_address.size());
 				h1_asset->lightGrid.paletteEntryAddress = mem.allocate<int>(h1_asset->lightGrid.paletteEntryCount);
-				for (unsigned int i = 0; i < h1_asset->lightGrid.paletteEntryCount; i++)
-				{
-					h1_asset->lightGrid.paletteEntryAddress[i] = 30; // 0, 30, 86, 116 //asset->lightGrid.entries[i].colorsIndex;
-				}
+				memcpy(h1_asset->lightGrid.paletteEntryAddress, palette.entry_address.data(),
+					palette.entry_address.size() * sizeof(int));
 
-				h1_asset->lightGrid.paletteBitstreamSize = sizeof(paletteBitStream_bytes);
+				h1_asset->lightGrid.paletteBitstreamSize = static_cast<unsigned int>(palette.bitstream.size());
 				h1_asset->lightGrid.paletteBitstream = mem.allocate<unsigned char>(h1_asset->lightGrid.paletteBitstreamSize);
-				memcpy(h1_asset->lightGrid.paletteBitstream, paletteBitStream_bytes, sizeof(paletteBitStream_bytes));
+				memcpy(h1_asset->lightGrid.paletteBitstream, palette.bitstream.data(), palette.bitstream.size());
 
-				h1_asset->lightGrid.missingGridColorIndex = h1_asset->lightGrid.paletteEntryCount - 1;
-
-				h1_asset->lightGrid.rangeExponent8BitsEncoding = 0;
-				h1_asset->lightGrid.rangeExponent12BitsEncoding = 4;
-				h1_asset->lightGrid.rangeExponent16BitsEncoding = 23;
+				// palette entry 0 = default colors, matching the old colorsIndex semantics
+				h1_asset->lightGrid.missingGridColorIndex = 0;
 
 				h1_asset->lightGrid.stageCount = asset->primaryLightCount;
 				h1_asset->lightGrid.stageLightingContrastGain = mem.allocate<float>(h1_asset->lightGrid.stageCount);
@@ -310,31 +308,91 @@ namespace ZoneTool::IW5
 					h1_asset->lightGrid.stageLightingContrastGain[i] = 0.3f;
 				}
 
-				for (unsigned int j = 0; j < 56; j++)
+				// sky/default grid colors are linear HDR values stored as half floats
+				float hdr_colors[56][3];
+				if (asset->lightGrid.colorCount > 0)
 				{
-					auto& rgb = asset->lightGrid.colors[1].rgb[j];
-					auto& dest_rgb = h1_asset->lightGrid.skyLightGridColors.rgb[j];
-					dest_rgb[0] = float_to_half(rgb[0] / 255.f);
-					dest_rgb[1] = float_to_half(rgb[1] / 255.f);
-					dest_rgb[2] = float_to_half(rgb[2] / 255.f);
+					lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[0].rgb, hdr_colors);
+					for (unsigned int j = 0; j < 56; j++)
+					{
+						h1_asset->lightGrid.defaultLightGridColors.rgb[j][0] = float_to_half(hdr_colors[j][0]);
+						h1_asset->lightGrid.defaultLightGridColors.rgb[j][1] = float_to_half(hdr_colors[j][1]);
+						h1_asset->lightGrid.defaultLightGridColors.rgb[j][2] = float_to_half(hdr_colors[j][2]);
+					}
+				}
+				if (asset->lightGrid.colorCount > 1)
+				{
+					lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[1].rgb, hdr_colors);
+					for (unsigned int j = 0; j < 56; j++)
+					{
+						h1_asset->lightGrid.skyLightGridColors.rgb[j][0] = float_to_half(hdr_colors[j][0]);
+						h1_asset->lightGrid.skyLightGridColors.rgb[j][1] = float_to_half(hdr_colors[j][1]);
+						h1_asset->lightGrid.skyLightGridColors.rgb[j][2] = float_to_half(hdr_colors[j][2]);
+					}
 				}
 
-				for (unsigned int j = 0; j < 56; j++)
+				// tree: enumerate every populated grid position from the legacy row data
+				// and rebuild the compressed octree that H1 walks in R_LightGridLookup
+				const auto refs = lightgrid_tree::enumerate_row_data(
+					asset->lightGrid.mins, asset->lightGrid.maxs,
+					asset->lightGrid.rowAxis, asset->lightGrid.colAxis,
+					asset->lightGrid.rowDataStart, asset->lightGrid.rawRowData);
+
+				std::vector<lightgrid_tree::grid_sample> tree_samples;
+				tree_samples.reserve(refs.size());
+				for (const auto& ref : refs)
 				{
-					auto& rgb = asset->lightGrid.colors[0].rgb[j];
-					auto& dest_rgb = h1_asset->lightGrid.defaultLightGridColors.rgb[j];
-					dest_rgb[0] = float_to_half(rgb[0] / 255.f);
-					dest_rgb[1] = float_to_half(rgb[1] / 255.f);
-					dest_rgb[2] = float_to_half(rgb[2] / 255.f);
+					if (ref.entry_index >= asset->lightGrid.entryCount)
+					{
+						continue;
+					}
+					const auto& entry = asset->lightGrid.entries[ref.entry_index];
+					
+
+					lightgrid_tree::grid_sample sample{};
+					memcpy(sample.pos, ref.pos, sizeof(sample.pos));
+					sample.color_index = entry.colorsIndex;
+					sample.light_index = entry.primaryLightIndex;
+					// the old per-corner needsTrace mask becomes two z-half trace bits
+					sample.trace_lo = (entry.needsTrace & 0x55) != 0;
+					sample.trace_hi = (entry.needsTrace & 0xAA) != 0;
+					// fix the light_index
+					if (entry.primaryLightIndex >= 256 - asset->lastSunPrimaryLightIndex)
+					{
+						sample.light_index = 0;
+						sample.trace_lo = 0;
+						sample.trace_hi = 0;
+					}
+					tree_samples.push_back(sample);
 				}
 
+				const auto tree = lightgrid_tree::build_tree(tree_samples.data(), tree_samples.size());
 				for (auto i = 0; i < 3; i++)
 				{
-					h1_asset->lightGrid.tree[i].index = i;
+					auto& h1_tree = h1_asset->lightGrid.tree[i];
+
+					if (i > 0) continue;
+
+					memset(&h1_tree, 0, sizeof(h1_tree));
+					h1_tree.index = static_cast<unsigned char>(i);
+					h1_tree.maxDepth = tree.max_depth;
+					h1_tree.nodeCount = tree.node_count;
+					h1_tree.leafCount = tree.leaf_count;
+					memcpy(h1_tree.coordMinGridSpace, tree.coord_min_grid_space, sizeof(int[3]));
+					memcpy(h1_tree.coordMaxGridSpace, tree.coord_max_grid_space, sizeof(int[3]));
+					memcpy(h1_tree.coordHalfSizeGridSpace, tree.coord_half_size_grid_space, sizeof(int[3]));
+					h1_tree.defaultColorIndexBitCount = tree.default_color_index_bit_count;
+					h1_tree.defaultLightIndexBitCount = tree.default_light_index_bit_count;
+					h1_tree.p_nodeTable = mem.allocate<unsigned int>(static_cast<std::uint32_t>(tree.node_table.size()));
+					memcpy(h1_tree.p_nodeTable, tree.node_table.data(), tree.node_table.size() * sizeof(unsigned int));
+					h1_tree.leafTableSize = static_cast<int>(tree.leaf_table.size());
+					if (!tree.leaf_table.empty())
+					{
+						h1_tree.p_leafTable = mem.allocate<unsigned char>(h1_tree.leafTableSize);
+						memcpy(h1_tree.p_leafTable, tree.leaf_table.data(), tree.leaf_table.size());
+					}
 				}
 			}
-			// ----
-#endif
 
 			h1_asset->modelCount = asset->modelCount;
 			h1_asset->models = mem.allocate<H1::GfxBrushModel>(h1_asset->modelCount);
