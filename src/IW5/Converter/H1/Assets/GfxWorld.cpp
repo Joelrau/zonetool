@@ -260,6 +260,11 @@ namespace ZoneTool::IW5
 				h1_asset->lightGrid.entries[i].primaryLightEnvIndex = asset->lightGrid.entries[i].primaryLightIndex;
 				h1_asset->lightGrid.entries[i].unused = 0;
 				h1_asset->lightGrid.entries[i].needsTrace = asset->lightGrid.entries[i].needsTrace;
+
+				if (asset->lightGrid.entries[i].primaryLightIndex >= 256 - asset->lastSunPrimaryLightIndex)
+				{
+					h1_asset->lightGrid.entries[i].primaryLightEnvIndex = static_cast<unsigned short>(asset->primaryLightCount);
+				}
 			}
 			h1_asset->lightGrid.colorCount = asset->lightGrid.colorCount;
 			h1_asset->lightGrid.colors = mem.allocate<H1::GfxLightGridColors>(h1_asset->lightGrid.colorCount);
@@ -347,7 +352,6 @@ namespace ZoneTool::IW5
 						continue;
 					}
 					const auto& entry = asset->lightGrid.entries[ref.entry_index];
-					
 
 					lightgrid_tree::grid_sample sample{};
 					memcpy(sample.pos, ref.pos, sizeof(sample.pos));
@@ -356,12 +360,9 @@ namespace ZoneTool::IW5
 					// the old per-corner needsTrace mask becomes two z-half trace bits
 					sample.trace_lo = (entry.needsTrace & 0x55) != 0;
 					sample.trace_hi = (entry.needsTrace & 0xAA) != 0;
-					// fix the light_index
 					if (entry.primaryLightIndex >= 256 - asset->lastSunPrimaryLightIndex)
 					{
-						sample.light_index = 0;
-						sample.trace_lo = 0;
-						sample.trace_hi = 0;
+						sample.light_index = static_cast<unsigned short>(asset->primaryLightCount);
 					}
 					tree_samples.push_back(sample);
 				}
