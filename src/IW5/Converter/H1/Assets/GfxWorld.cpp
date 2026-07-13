@@ -371,10 +371,11 @@ namespace ZoneTool::IW5
 				{
 					auto& h1_tree = h1_asset->lightGrid.tree[i];
 
-					if (i > 0) continue;
-
 					memset(&h1_tree, 0, sizeof(h1_tree));
 					h1_tree.index = static_cast<unsigned char>(i);
+
+					if (i > 0) continue;
+
 					h1_tree.maxDepth = tree.max_depth;
 					h1_tree.nodeCount = tree.node_count;
 					h1_tree.leafCount = tree.leaf_count;
