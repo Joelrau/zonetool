@@ -116,9 +116,9 @@ namespace ZoneTool
 			{"wc_unlit_falloff_add_lin_ua",				"wc_unlit_falloff_add_lin_ndw_ua_cltrans"},
 			{"wc_unlit_falloff_blend_lin_ua",			"wc_unlit_falloff_add_lin_ndw_ua_cltrans"},
 			{"wc_unlit_falloff_screen_lin",				"wc_unlit_falloff_screen_lin_ndw_cltrans"},
-			{"wc_unlit_multiply",						"wc_unlit_multiply_lin_ndw_cltrans"},
-			{"wc_unlit_multiply_lin",					"wc_unlit_multiply_lin_ndw_cltrans"},
-			{"wc_unlit_multiply_lin_nofog",				"wc_unlit_multiply_lin_ndw_cltrans"},
+			//{"wc_unlit_multiply",						"wc_unlit_multiply_lin_ndw_cltrans"},
+			//{"wc_unlit_multiply_lin",					"wc_unlit_multiply_lin_ndw_cltrans"},
+			//{"wc_unlit_multiply_lin_nofog",				"wc_unlit_multiply_lin_ndw_cltrans"},
 			{"wc_unlit_replace",						"wc_unlit_atest_lin_nfwpf"},
 			{"wc_unlit_replace_lin",					"wc_unlit_atest_lin_nfwpf"},
 			{"wc_unlit_replace_lin_nocast",				"wc_unlit_atest_lin_nfwpf"},
@@ -422,6 +422,9 @@ namespace ZoneTool
 		techset_map wc_l_sm_t0c0s0 = { "wc_l_sm_t0c0sd0_nfwpf", "wc_l_sm_t0c0sd0_nfwpf_frt_aat", "", "" };
 		techset_map wc_l_sm_t0c0n0s0 = { "wc_l_sm_t0c0n0sd0_nfwpf", "wc_l_sm_t0c0n0sd0_nfwpf_frt_aat", "", "" };
 
+		techset_map wc_unlit_multiply_lin = { "wc_unlit_multiply_lin_ndw_nfwpf", 
+			"wc_unlit_multiply_lin_ndw_nfwpf", "", "wc_unlit_multiply_lin_ndw_cltrans" };
+
 		// mc
 
 		techset_map mc_l_sm_b0c0 = { "", "mc_l_sm_ndw_b0c0_nfwpf_frt_im_aat", "mc_l_sm_ndw_b0c0n0sd0_nfwpf_frt_im_aat", "m_l_sm_ndw_b0c0_cltrans" };
@@ -530,6 +533,10 @@ namespace ZoneTool
 			{"wc_l_t0c0n0s0_nocast",					wc_l_sm_t0c0n0s0},
 
 			{"wc_l_sm_ua_t0c0s0_nocast",				wc_l_sm_t0c0s0},
+
+			{"wc_unlit_multiply",						wc_unlit_multiply_lin},
+			{"wc_unlit_multiply_lin",					wc_unlit_multiply_lin},
+			{"wc_unlit_multiply_lin_nofog",				wc_unlit_multiply_lin},
 
 			// mc
 
@@ -1160,6 +1167,18 @@ namespace ZoneTool
 						table["literal"] = literal_entry; \
 						constant_table.insert(constant_table.begin() + insert_position, table); \
 					} \
+				}
+
+				{
+					const auto pos = h1_techset.find("d0");
+					if (pos != std::string::npos && pos != h1_techset.find("sd0") - 1)
+					{
+						CONSTANT_TABLE_ADD_IF_NOT_FOUND("detailScale", 148072969, 64.0f, 64.0f, 0.0f, 0.0f);
+					}
+					if (h1_techset.find("q0") != std::string::npos)
+					{
+						CONSTANT_TABLE_ADD_IF_NOT_FOUND("detailScale", 148072969, 64.0f, 64.0f, 0.0f, 0.0f);
+					}
 				}
 
 				if (h1_techset.find("sd0") != std::string::npos)
