@@ -1001,9 +1001,32 @@ namespace ZoneTool::IW5
 					break;
 				case PHYS_GEOM_CYLINDER:
 					ok = GenerateCylinder(asset, geom, &tmp_geom, allocator);
+
+					// IW3 assets can mark brush-backed geoms with a type that maps to cylinder while leaving the primitive bounds zeroed
+					if (!ok && geom->brushWrapper)
+					{
+						*data = {};
+						ok = GenerateBrush(asset, geom, &tmp_geom, allocator);
+						if (ok)
+						{
+							ZONETOOL_INFO("PhysCollmap \"%s\": geom %u cooked from brush wrapper instead of cylinder",
+								asset->name, i);
+						}
+					}
 					break;
 				case PHYS_GEOM_CAPSULE:
 					ok = GenerateCapsule(asset, geom, &tmp_geom, allocator);
+					
+					if (!ok && geom->brushWrapper)
+					{
+						*data = {};
+						ok = GenerateBrush(asset, geom, &tmp_geom, allocator);
+						if (ok)
+						{
+							ZONETOOL_INFO("PhysCollmap \"%s\": geom %u cooked from brush wrapper instead of capsule",
+								asset->name, i);
+						}
+					}
 					break;
 				case PHYS_GEOM_BRUSHMODEL:
 				case PHYS_GEOM_BRUSH:

@@ -1,11 +1,243 @@
 #include "stdafx.hpp"
 #include "IW4/Assets/XModel.hpp"
 #include "IW4/Assets/XSurface.hpp"
+#include "IW5/Assets/PhysCollmap.hpp"
+
+#include <cfloat>
 
 namespace ZoneTool
 {
 	namespace IW3
 	{
+		namespace
+		{
+			IW5::cplane_s convert_plane(const cplane_s& src)
+			{
+				IW5::cplane_s dst{};
+				dst.normal[0] = src.normal[0];
+				dst.normal[1] = src.normal[1];
+				dst.normal[2] = src.normal[2];
+				dst.dist = src.dist;
+				dst.type = static_cast<unsigned char>(src.type);
+				dst.pad[0] = 0;
+				dst.pad[1] = 0;
+				dst.pad[2] = 0;
+				return dst;
+			}
+
+			// IW3 PhysGeomInfo::type is a raw int, but pretty much maps out to:
+			//   NONE=0, BOX=1, BRUSHMODEL=2, BRUSH=3, CYLINDER=4, CAPSULE=5.
+			// IW5 inserts COLLMAP=4, shifting CYLINDER->5 and CAPSULE->6.
+			IW5::PhysicsGeomType remap_geom_type(int type, const char* model_name)
+			{
+				switch (type)
+				{
+				case 0: return IW5::PHYS_GEOM_NONE;
+				case 1: return IW5::PHYS_GEOM_BOX;
+				case 2: return IW5::PHYS_GEOM_BRUSHMODEL;
+				case 3: return IW5::PHYS_GEOM_BRUSH;
+				case 4: return IW5::PHYS_GEOM_CYLINDER;
+				case 5: return IW5::PHYS_GEOM_CAPSULE;
+				default:
+					ZONETOOL_WARNING("XModel \"%s\": unknown IW3 phys geom type %d, passing through",
+						model_name, type);
+					return static_cast<IW5::PhysicsGeomType>(type);
+				}
+			}
+
+			IW5::BrushWrapper* convert_brush_wrapper(BrushWrapper* src, const char* model_name, allocator& mem)
+			{
+				auto* dst = mem.allocate<IW5::BrushWrapper>();
+
+				bounds::compute(src->mins, src->maxs, &dst->bounds.midPoint);
+
+				const unsigned int numsides = src->numsides;
+				if (numsides > 0xFFFF)
+				{
+					ZONETOOL_WARNING("XModel \"%s\": brush numsides %u exceeds 0xFFFF, clamping",
+						model_name, numsides);
+				}
+				const unsigned int side_count = numsides > 0xFFFF ? 0xFFFF : numsides;
+
+				dst->brush.numsides = static_cast<unsigned short>(side_count);
+				dst->brush.glassPieceIndex = 0;
+
+				// convert planes (numsides entries)
+				IW5::cplane_s* new_planes = nullptr;
+				if (side_count)
+				{
+					new_planes = mem.allocate<IW5::cplane_s>(side_count);
+					for (unsigned int i = 0; i < side_count; i++)
+					{
+						if (src->planes)
+						{
+							new_planes[i] = convert_plane(src->planes[i]);
+						}
+					}
+				}
+				dst->planes = new_planes;
+
+				// convert sides
+				if (side_count && src->sides)
+				{
+					dst->brush.sides = mem.allocate<IW5::cbrushside_t>(side_count);
+					for (unsigned int i = 0; i < side_count; i++)
+					{
+						const cbrushside_t& s = src->sides[i];
+						IW5::cbrushside_t& d = dst->brush.sides[i];
+
+						// plane must point into the NEW planes array at the same index the
+						// old side's plane had in the old planes array.
+						if (s.plane)
+						{
+							const ptrdiff_t idx = src->planes ? (s.plane - src->planes) : -1;
+							if (src->planes && new_planes && idx >= 0 &&
+								idx < static_cast<ptrdiff_t>(side_count))
+							{
+								d.plane = &new_planes[idx];
+							}
+							else
+							{
+								ZONETOOL_WARNING("XModel \"%s\": brush side %u plane index out of range, "
+									"allocating standalone plane", model_name, i);
+								auto* p = mem.allocate<IW5::cplane_s>();
+								*p = convert_plane(*s.plane);
+								d.plane = p;
+							}
+						}
+
+						d.materialNum = static_cast<unsigned short>(s.materialNum);
+
+						if (s.firstAdjacentSideOffset < 0 || s.firstAdjacentSideOffset > 255)
+						{
+							ZONETOOL_WARNING("XModel \"%s\": brush side %u firstAdjacentSideOffset %d "
+								"out of unsigned char range, clamping to 255", model_name, i,
+								s.firstAdjacentSideOffset);
+							d.firstAdjacentSideOffset = 255;
+						}
+						else
+						{
+							d.firstAdjacentSideOffset = static_cast<unsigned char>(s.firstAdjacentSideOffset);
+						}
+
+						d.edgeCount = static_cast<unsigned char>(s.edgeCount);
+					}
+				}
+
+				// baseAdjacentSide: copy totalEdgeCount bytes
+				dst->totalEdgeCount = src->totalEdgeCount;
+				if (src->totalEdgeCount > 0 && src->baseAdjacentSide)
+				{
+					auto* bas = mem.allocate<unsigned char>(src->totalEdgeCount);
+					memcpy(bas, src->baseAdjacentSide, src->totalEdgeCount);
+					dst->brush.baseAdjacentSide = bas;
+				}
+
+				// axialMaterialNum[2][3]: both short, straight copy
+				for (int a = 0; a < 2; a++)
+				{
+					for (int b = 0; b < 3; b++)
+					{
+						dst->brush.axialMaterialNum[a][b] = src->axialMaterialNum[a][b];
+					}
+				}
+
+				// firstAdjacentSideOffsets[2][3]: __int16 -> unsigned char with clamp
+				for (int a = 0; a < 2; a++)
+				{
+					for (int b = 0; b < 3; b++)
+					{
+						const __int16 v = src->firstAdjacentSideOffsets[a][b];
+						if (v < 0 || v > 255)
+						{
+							ZONETOOL_WARNING("XModel \"%s\": brush firstAdjacentSideOffsets[%d][%d] %d "
+								"out of unsigned char range, clamping to 255", model_name, a, b, v);
+							dst->brush.firstAdjacentSideOffsets[a][b] = 255;
+						}
+						else
+						{
+							dst->brush.firstAdjacentSideOffsets[a][b] = static_cast<unsigned char>(v);
+						}
+					}
+				}
+
+				// edgeCount[2][3]: straight copy
+				for (int a = 0; a < 2; a++)
+				{
+					for (int b = 0; b < 3; b++)
+					{
+						dst->brush.edgeCount[a][b] = static_cast<unsigned char>(src->edgeCount[a][b]);
+					}
+				}
+
+				return dst;
+			}
+
+			IW5::PhysCollmap* GenerateIW5PhysCollmap(XModel* asset, allocator& mem)
+			{
+				auto* src = asset->physGeoms;
+				if (!src || !src->count)
+				{
+					return nullptr;
+				}
+
+				auto* collmap = mem.allocate<IW5::PhysCollmap>();
+				collmap->name = mem.duplicate_string(asset->name);
+				collmap->count = src->count;
+				collmap->geoms = mem.allocate<IW5::PhysGeomInfo>(src->count);
+
+				// IW3 and IW5 PhysMass share an identical layout (3x vec3 floats).
+				memcpy(&collmap->mass, &src->mass, sizeof(IW5::PhysMass));
+
+				float mins[3] = { FLT_MAX, FLT_MAX, FLT_MAX };
+				float maxs[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+				for (unsigned int i = 0; i < src->count; i++)
+				{
+					const PhysGeomInfo& g = src->geoms[i];
+					IW5::PhysGeomInfo& d = collmap->geoms[i];
+
+					d.brushWrapper = g.brush ? convert_brush_wrapper(g.brush, asset->name, mem) : nullptr;
+					d.type = remap_geom_type(g.type, asset->name);
+					memcpy(d.orientation, g.orientation, sizeof(float[3][3]));
+
+					d.bounds.midPoint[0] = g.offset[0];
+					d.bounds.midPoint[1] = g.offset[1];
+					d.bounds.midPoint[2] = g.offset[2];
+					d.bounds.halfSize[0] = g.halfLengths[0];
+					d.bounds.halfSize[1] = g.halfLengths[1];
+					d.bounds.halfSize[2] = g.halfLengths[2];
+
+					// IW3 stores cylinder/capsule primitives ODE-style as
+					// (halfHeight, radius, unused) with the axis along local Z;
+					// IW5 expects an axis-aligned local box (radius, radius, halfHeight)
+					// that the converter re-derives axis/radius from.
+					if ((d.type == IW5::PHYS_GEOM_CYLINDER || d.type == IW5::PHYS_GEOM_CAPSULE)
+						&& g.halfLengths[2] == 0.0f)
+					{
+						const float halfHeight = g.halfLengths[0];
+						const float radius = g.halfLengths[1];
+						d.bounds.halfSize[0] = radius;
+						d.bounds.halfSize[1] = radius;
+						d.bounds.halfSize[2] = halfHeight;
+					}
+
+					for (int a = 0; a < 3; a++)
+					{
+						const float lo = d.bounds.midPoint[a] - d.bounds.halfSize[a];
+						const float hi = d.bounds.midPoint[a] + d.bounds.halfSize[a];
+						if (lo < mins[a]) mins[a] = lo;
+						if (hi > maxs[a]) maxs[a] = hi;
+					}
+				}
+
+				// collmap bounds = union of all geom bounds
+				bounds::compute(mins, maxs, &collmap->bounds.midPoint);
+
+				return collmap;
+			}
+		}
+
 		IW4::XSurface* GenerateIW4Surface(XSurface* asset, IW4::XSurface* xsurface, allocator& mem)
 		{
 			xsurface->tileMode = asset->tileMode;
@@ -120,6 +352,13 @@ namespace ZoneTool
 			xmodel->bad = asset->bad;
 			xmodel->physPreset = reinterpret_cast<IW4::PhysPreset*>(asset->physPreset);
 
+			// create a physcollmap asset for IW5 based off XModel physGeoms
+			if (asset->physGeoms && asset->physGeoms->count)
+			{
+				auto* iw5_collmap = GenerateIW5PhysCollmap(asset, mem);
+				xmodel->physCollmap = reinterpret_cast<IW4::PhysCollmap*>(iw5_collmap);
+			}
+
 			bounds::compute(asset->mins, asset->maxs, &xmodel->bounds.midPoint);
 
 			return xmodel;
@@ -133,6 +372,11 @@ namespace ZoneTool
 
 			// dump model
 			IW4::IXModel::dump(iw4_model);
+
+			if (iw4_model->physCollmap)
+			{
+				IW5::IPhysCollmap::dump(reinterpret_cast<IW5::PhysCollmap*>(iw4_model->physCollmap));
+			}
 
 			// dump all xsurfaces
 			for (int i = 0; i < iw4_model->numLods; i++)
