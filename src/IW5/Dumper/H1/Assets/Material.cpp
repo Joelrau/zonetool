@@ -1,5 +1,6 @@
 #include "stdafx.hpp"
 #include "Material.hpp"
+#include "Techset.hpp"
 
 //#include "H1/Assets/Material.hpp"
 
@@ -969,10 +970,148 @@ namespace ZoneTool
 #define MATERIAL_DUMP_INFO(entry) \
 	matdata[#entry] = asset->info.entry;
 
+		// Suffix/prefix cleanup for a port-tagged techset name, shared between
+		// the standard remap path and the custom IW3 port path.
+		std::string clean_techset_name(std::string techset)
+		{
+			if (techset.ends_with(".3x")) // iw3xport
+			{
+				techset.erase(techset.find(".3x"), 3);
+			}
+			if (techset.ends_with(".5x")) // iw5xport
+			{
+				techset.erase(techset.find(".5x"), 3);
+			}
+			if (techset.starts_with("iw3/")) // iw3
+			{
+				techset.erase(0, 4);
+			}
+			if (techset.ends_with("_sat")) // iw5
+			{
+				techset.erase(techset.find("_sat"), 4);
+			}
+			if (techset.ends_with("_z")) // codo
+			{
+				techset.erase(techset.find("_z"), 2);
+			}
+			return techset;
+		}
+
+		// Fully-custom IW3 -> H1 techset port. Keeps the ORIGINAL techset name and
+		// the ORIGINAL constant/texture tables (no H1 default-constant/image
+		// injection, no remap), and emits the custom H1 techset file-set via the
+		// techset dumper. Only invoked when custom_techset_active() is true.
+		void dump_custom(Material* asset)
+		{
+			auto c_name = clean_name(asset->name);
+
+			const auto path = "materials\\"s + c_name + ".json"s;
+			auto file = zonetool::filesystem::file(path);
+
+			ordered_json matdata;
+			matdata["name"] = std::string(asset->name);
+
+			std::string techset;
+			if (asset->techniqueSet)
+			{
+				techset = clean_techset_name(asset->techniqueSet->name);
+				matdata["techniqueSet->name"] = techset;
+				matdata["techniqueSet->og_name"] = std::string(asset->techniqueSet->name);
+			}
+			else
+			{
+				matdata["techniqueSet->name"] = "";
+			}
+
+			// Converted material metadata (reuse existing helpers, but with no
+			// techset-name-based fixups since we keep the custom techset).
+			matdata["gameFlags"] = asset->info.gameFlags;
+			matdata["sortKey"] = H1::get_h1_sortkey(asset->info.sortKey, asset->name);
+			matdata["renderFlags"] = 0;
+
+			matdata["textureAtlasRowCount"] = asset->info.textureAtlasRowCount;
+			matdata["textureAtlasColumnCount"] = asset->info.textureAtlasColumnCount;
+			matdata["textureAtlasFrameBlend"] = 0;
+			matdata["textureAtlasAsArray"] = 0;
+
+			matdata["surfaceTypeBits"] = asset->info.surfaceTypeBits;
+			matdata["stateFlags"] = asset->stateFlags;
+			matdata["cameraRegion"] = H1::get_h1_camera_region(asset->cameraRegion, asset->name);
+			matdata["materialType"] = H1::get_material_type_from_name(asset->name);
+			matdata["assetFlags"] = H1::MTL_ASSETFLAG_NONE;
+
+			// Original constant table, verbatim (custom shaders consume these).
+			ordered_json constant_table = json::array();
+			for (int i = 0; i < asset->constantCount; i++)
+			{
+				ordered_json table;
+				std::string constant_name = asset->constantTable[i].name;
+				if (constant_name.size() > 12)
+				{
+					constant_name.resize(12);
+				}
+				table["name"] = constant_name;
+				table["nameHash"] = asset->constantTable[i].nameHash;
+				nlohmann::json literal_entry;
+				literal_entry[0] = asset->constantTable[i].literal[0];
+				literal_entry[1] = asset->constantTable[i].literal[1];
+				literal_entry[2] = asset->constantTable[i].literal[2];
+				literal_entry[3] = asset->constantTable[i].literal[3];
+				table["literal"] = literal_entry;
+				constant_table[constant_table.size()] = table;
+			}
+			matdata["constantTable"] = constant_table;
+
+			// Original texture table, verbatim.
+			ordered_json material_images = json::array();
+			for (auto i = 0; i < asset->textureCount; i++)
+			{
+				ordered_json image;
+				if (asset->textureTable[i].semantic == 11)
+				{
+					auto* water = reinterpret_cast<water_t*>(asset->textureTable[i].u.image);
+					image["image"] = (water && water->image && water->image->name) ? water->image->name : "";
+				}
+				else if (asset->textureTable[i].u.image && asset->textureTable[i].u.image->name)
+				{
+					image["image"] = asset->textureTable[i].u.image->name;
+				}
+				else
+				{
+					ZONETOOL_WARNING("material %s has an empty image, assigning default...", asset->name);
+					image["image"] = "default";
+				}
+
+				image["semantic"] = asset->textureTable[i].semantic == 11 ? 2 : asset->textureTable[i].semantic;
+				image["samplerState"] = asset->textureTable[i].samplerState == 11 ? 19 : asset->textureTable[i].samplerState;
+				image["lastCharacter"] = asset->textureTable[i].nameEnd;
+				image["firstCharacter"] = asset->textureTable[i].nameStart;
+				image["typeHash"] = asset->textureTable[i].nameHash;
+				material_images.push_back(image);
+			}
+			matdata["textureTable"] = material_images;
+
+			auto str = matdata.dump(4, ' ', true, nlohmann::detail::error_handler_t::replace);
+			matdata.clear();
+			file.open("wb");
+			file.write(str);
+			file.close();
+
+			// Emit the custom H1 techset / technique / vertexdecl / shader / state
+			// / constant-buffer file-set.
+			dump_techset_iw3(techset, asset);
+		}
+
 		void dump(Material* asset)
 		{
 			if (asset)
 			{
+				if (custom_techset_active())
+				{
+					dump_custom(asset);
+					return;
+				}
+
 				auto c_name = clean_name(asset->name);
 
 				const auto path = "materials\\"s + c_name + ".json"s;
