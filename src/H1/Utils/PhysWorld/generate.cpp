@@ -550,28 +550,19 @@ namespace ZoneTool::H1::physworld_gen
 				}
 				else
 				{
-					using point = std::array<float, 2>;
-					std::vector<point> points;
-					std::vector<std::vector<point>> polygon;
-
-					for (auto i = 0u; i < poly->ptCount; i++)
-					{
-						point p{};
-						p[0] = poly->pts[i][0];
-						p[1] = poly->pts[i][1];
-
-						points.push_back(p);
-					}
-
-					polygon.push_back(points);
-
-					const auto indices = mapbox::earcut<int>(polygon);
-					for (auto i = 0u; i < indices.size(); i += 3)
+					// Brush face windings from get_winding_for_brush_face are convex
+					// (intersection of half-spaces), so a simple fan triangulation in the
+					// polygon's original vertex order is always valid and preserves winding.
+					// This avoids the earcut XY-projection bug that collapsed vertical (wall)
+					// faces to a line and produced zero collision triangles.
+					// The fan (0, i, i+1) matches the ptCount==3 (0,1,2) and ptCount==4
+					// (0,1,2)+(2,3,0) conventions exactly (both are fans off vertex 0).
+					for (auto i = 1u; i + 1 < poly->ptCount; i++)
 					{
 						triangle_t triangle{};
-						triangle.verts[0] = base_index + indices[i + 2];
-						triangle.verts[1] = base_index + indices[i + 1];
-						triangle.verts[2] = base_index + indices[i + 0];
+						triangle.verts[0] = base_index + 0;
+						triangle.verts[1] = base_index + static_cast<int>(i);
+						triangle.verts[2] = base_index + static_cast<int>(i) + 1;
 						triangles.emplace_back(triangle);
 					}
 				}
@@ -1062,6 +1053,14 @@ if (min > rad || max < -rad) \
 			else
 			{
 				const auto leaf = alloc_node(nodes, node_index);
+
+				// set bounds inside-out so this leaf can never overlap anything
+				leaf->lower[0] = 1.f;
+				leaf->lower[1] = 1.f;
+				leaf->lower[2] = 1.f;
+				leaf->upper[0] = -1.f;
+				leaf->upper[1] = -1.f;
+				leaf->upper[2] = -1.f;
 				leaf->node.anon.fields.triangleCount = 1;
 				leaf->node.anon.fields.index = 0;
 			}
@@ -1209,12 +1208,24 @@ if (min > rad || max < -rad) \
 		{
 			const auto node = &nodes[i];
 
-			mesh->m_pRoot[i].lowerX = static_cast<ZoneTool::H1::dm_int16>(node->lower[0] / mesh->m_unquantize.x);
-			mesh->m_pRoot[i].lowerY = static_cast<ZoneTool::H1::dm_int16>(node->lower[1] / mesh->m_unquantize.y);
-			mesh->m_pRoot[i].lowerZ = static_cast<ZoneTool::H1::dm_int16>(node->lower[2] / mesh->m_unquantize.z);
-			mesh->m_pRoot[i].upperX = static_cast<ZoneTool::H1::dm_int16>(node->upper[0] / mesh->m_unquantize.x);
-			mesh->m_pRoot[i].upperY = static_cast<ZoneTool::H1::dm_int16>(node->upper[1] / mesh->m_unquantize.y);
-			mesh->m_pRoot[i].upperZ = static_cast<ZoneTool::H1::dm_int16>(node->upper[2] / mesh->m_unquantize.z);
+			// floor lower bounds, ceil upper bounds so the quantized box always fully contains the real box
+			const auto quantize_floor = [](float v, float unq) -> ZoneTool::H1::dm_int16
+			{
+				const auto q = std::floor(v / unq);
+				return static_cast<ZoneTool::H1::dm_int16>(std::clamp(q, -32768.f, 32767.f));
+			};
+			const auto quantize_ceil = [](float v, float unq) -> ZoneTool::H1::dm_int16
+			{
+				const auto q = std::ceil(v / unq);
+				return static_cast<ZoneTool::H1::dm_int16>(std::clamp(q, -32768.f, 32767.f));
+			};
+
+			mesh->m_pRoot[i].lowerX = quantize_floor(node->lower[0], mesh->m_unquantize.x);
+			mesh->m_pRoot[i].lowerY = quantize_floor(node->lower[1], mesh->m_unquantize.y);
+			mesh->m_pRoot[i].lowerZ = quantize_floor(node->lower[2], mesh->m_unquantize.z);
+			mesh->m_pRoot[i].upperX = quantize_ceil(node->upper[0], mesh->m_unquantize.x);
+			mesh->m_pRoot[i].upperY = quantize_ceil(node->upper[1], mesh->m_unquantize.y);
+			mesh->m_pRoot[i].upperZ = quantize_ceil(node->upper[2], mesh->m_unquantize.z);
 
 			mesh->m_pRoot[i].anon.fields.axis = node->node.anon.fields.axis;
 			mesh->m_pRoot[i].anon.fields.triangleCount = node->node.anon.fields.triangleCount;

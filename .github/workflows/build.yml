@@ -55,6 +55,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: build
+    if: github.event_name == 'push'
     steps:
       - name: Check out files
         uses: actions/checkout@v4

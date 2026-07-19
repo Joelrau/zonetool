@@ -4,6 +4,11 @@
 #include "PhysCollmap.hpp"
 
 #include <immintrin.h>
+#include <vector>
+#include <map>
+#include <utility>
+#include <algorithm>
+#include <cmath>
 
 namespace ZoneTool::IW5
 {
@@ -74,9 +79,14 @@ namespace ZoneTool::IW5
 		Bounds GetBounds(PhysGeomInfo* geom)
 		{
 			auto bounds = geom->bounds;
-			if (geom->type == PHYS_GEOM_NONE || geom->type == PHYS_GEOM_BRUSHMODEL || geom->type == PHYS_GEOM_BRUSH)
+			if (geom->type == PHYS_GEOM_NONE || geom->type == PHYS_GEOM_BRUSHMODEL ||
+				geom->type == PHYS_GEOM_BRUSH || geom->type == PHYS_GEOM_COLLMAP)
 			{
-				bounds = geom->brushWrapper->bounds;
+				// brush based geoms carry their bounds inside the brush wrapper
+				if (geom->brushWrapper)
+				{
+					bounds = geom->brushWrapper->bounds;
+				}
 			}
 			return bounds;
 		}
@@ -384,31 +394,575 @@ namespace ZoneTool::IW5
 			data->contents = -1;
 		}
 
-		void GenerateCylinder(PhysCollmap* asset, PhysGeomInfo* geom, H1::PhysGeomInfo* h1_geom, allocator& allocator)
+		// produces H1 dmPolytopeData (Domino half-edge convex hull) from either an
+		// explicit set of face loops (cylinder / capsule) or a brush plane set.
+		// verified against GenerateBox above and the retail
+		// dmPolytopeBuilder decompile):
+		namespace hull
 		{
-			auto* data = h1_geom->data;
+			struct Vec3 { float x, y, z; };
 
-			// generate...
+			inline Vec3 operator+(const Vec3& a, const Vec3& b) { return { a.x + b.x, a.y + b.y, a.z + b.z }; }
+			inline Vec3 operator-(const Vec3& a, const Vec3& b) { return { a.x - b.x, a.y - b.y, a.z - b.z }; }
+			inline Vec3 operator*(const Vec3& a, float s) { return { a.x * s, a.y * s, a.z * s }; }
+			inline float dot(const Vec3& a, const Vec3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+			inline Vec3 cross(const Vec3& a, const Vec3& b)
+			{
+				return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+			}
+			inline float length(const Vec3& a) { return std::sqrt(dot(a, a)); }
+			inline Vec3 normalize(const Vec3& a)
+			{
+				const float l = length(a);
+				return l > 1e-8f ? a * (1.0f / l) : Vec3{ 0.0f, 0.0f, 0.0f };
+			}
 
-			data->contents = -1;
+			struct Plane { Vec3 n; float d; };
+
+			// volume / area / centroid / inertia via triangulated-face divergence integration.
+			void computeMass(H1::dmPolytopeData* data, const std::vector<Vec3>& verts,
+				const std::vector<std::vector<int>>& faces)
+			{
+				double vol = 0.0, area = 0.0;
+				double cx = 0.0, cy = 0.0, cz = 0.0;
+				double mxx = 0.0, myy = 0.0, mzz = 0.0, mxy = 0.0, myz = 0.0, mzx = 0.0;
+
+				for (const auto& face : faces)
+				{
+					const Vec3& a = verts[face[0]];
+					for (size_t i = 1; i + 1 < face.size(); i++)
+					{
+						const Vec3& b = verts[face[i]];
+						const Vec3& c = verts[face[i + 1]];
+
+						area += 0.5 * (double)length(cross(b - a, c - a));
+
+						const double det =
+							(double)a.x * ((double)b.y * c.z - (double)b.z * c.y) -
+							(double)a.y * ((double)b.x * c.z - (double)b.z * c.x) +
+							(double)a.z * ((double)b.x * c.y - (double)b.y * c.x);
+
+						vol += det / 6.0;
+						cx += det * ((double)a.x + b.x + c.x);
+						cy += det * ((double)a.y + b.y + c.y);
+						cz += det * ((double)a.z + b.z + c.z);
+
+						const double sx = (double)a.x + b.x + c.x;
+						const double sy = (double)a.y + b.y + c.y;
+						const double sz = (double)a.z + b.z + c.z;
+						mxx += det * (sx * sx + (double)a.x * a.x + (double)b.x * b.x + (double)c.x * c.x);
+						myy += det * (sy * sy + (double)a.y * a.y + (double)b.y * b.y + (double)c.y * c.y);
+						mzz += det * (sz * sz + (double)a.z * a.z + (double)b.z * b.z + (double)c.z * c.z);
+						mxy += det * (sx * sy + (double)a.x * a.y + (double)b.x * b.y + (double)c.x * c.y);
+						myz += det * (sy * sz + (double)a.y * a.z + (double)b.y * b.z + (double)c.y * c.z);
+						mzx += det * (sz * sx + (double)a.z * a.x + (double)b.z * b.x + (double)c.z * c.x);
+					}
+				}
+
+				// a negative running volume means the loops came out inward; magnitudes
+				// are still correct, so normalise the sign of every moment together.
+				const double sign = (vol < 0.0) ? -1.0 : 1.0;
+
+				data->m_area = (float)area;
+				data->m_volume = (float)(vol * sign);
+
+				if (std::fabs(vol) > 1e-9)
+				{
+					data->m_centroid.x = (float)(cx / (24.0 * vol));
+					data->m_centroid.y = (float)(cy / (24.0 * vol));
+					data->m_centroid.z = (float)(cz / (24.0 * vol));
+				}
+				else
+				{
+					data->m_centroid = { 0.0f, 0.0f, 0.0f };
+				}
+
+				mxx = mxx * sign / 120.0; myy = myy * sign / 120.0; mzz = mzz * sign / 120.0;
+				mxy = mxy * sign / 120.0; myz = myz * sign / 120.0; mzx = mzx * sign / 120.0;
+
+				data->m_inertiaMoments.x = (float)(myy + mzz);
+				data->m_inertiaMoments.y = (float)(mxx + mzz);
+				data->m_inertiaMoments.z = (float)(mxx + myy);
+				data->m_inertiaProducts.x = (float)(-mxy);
+				data->m_inertiaProducts.y = (float)(-myz);
+				data->m_inertiaProducts.z = (float)(-mzx);
+			}
+
+			// cook vertices + (arbitrary winding) face loops into a dmPolytopeData.
+			bool build(H1::dmPolytopeData* data, std::vector<Vec3> verts,
+				std::vector<std::vector<int>> faceLoops, allocator& alloc)
+			{
+				if (verts.size() < 4 || faceLoops.size() < 4)
+				{
+					return false;
+				}
+
+				Vec3 center{ 0.0f, 0.0f, 0.0f };
+				for (const auto& v : verts) center = center + v;
+				center = center * (1.0f / (float)verts.size());
+
+				std::vector<std::vector<int>> faces;
+				std::vector<Plane> planes;
+				faces.reserve(faceLoops.size());
+				planes.reserve(faceLoops.size());
+
+				for (auto& loop : faceLoops)
+				{
+					if (loop.size() < 3) continue;
+
+					// Newell's method -> robust polygon normal
+					Vec3 n{ 0.0f, 0.0f, 0.0f };
+					for (size_t i = 0; i < loop.size(); i++)
+					{
+						const Vec3& a = verts[loop[i]];
+						const Vec3& b = verts[loop[(i + 1) % loop.size()]];
+						n.x += (a.y - b.y) * (a.z + b.z);
+						n.y += (a.z - b.z) * (a.x + b.x);
+						n.z += (a.x - b.x) * (a.y + b.y);
+					}
+					n = normalize(n);
+					if (n.x == 0.0f && n.y == 0.0f && n.z == 0.0f) continue; // degenerate face
+
+					Vec3 fc{ 0.0f, 0.0f, 0.0f };
+					for (int idx : loop) fc = fc + verts[idx];
+					fc = fc * (1.0f / (float)loop.size());
+
+					// force outward orientation (normal points away from the solid centre)
+					if (dot(n, fc - center) < 0.0f)
+					{
+						std::reverse(loop.begin(), loop.end());
+						n = n * -1.0f;
+					}
+
+					planes.push_back({ n, dot(n, verts[loop[0]]) });
+					faces.push_back(loop);
+				}
+
+				if (faces.size() < 4) return false;
+
+				// assign half-edge indices in twin pairs so twinOffset stays +/-1
+				std::map<std::pair<int, int>, int> pairIndex;
+				std::map<std::pair<int, int>, int> directedHe;
+				int pairCount = 0;
+
+				for (const auto& face : faces)
+				{
+					const size_t n = face.size();
+					for (size_t i = 0; i < n; i++)
+					{
+						const int a = face[i];
+						const int b = face[(i + 1) % n];
+						if (a == b) return false;
+
+						const auto key = std::make_pair(std::min(a, b), std::max(a, b));
+						auto it = pairIndex.find(key);
+						int k;
+						if (it == pairIndex.end())
+						{
+							k = pairCount++;
+							pairIndex[key] = k;
+						}
+						else
+						{
+							k = it->second;
+						}
+
+						const int he = (a < b) ? (2 * k) : (2 * k + 1);
+						const auto dkey = std::make_pair(a, b);
+						if (directedHe.count(dkey)) return false; // non-manifold
+						directedHe[dkey] = he;
+					}
+				}
+
+				const int subEdgeCount = pairCount * 2;
+				if (verts.size() > 255 || faces.size() > 255 || subEdgeCount > 255)
+				{
+					return false;
+				}
+
+				std::vector<int> heTail(subEdgeCount, -1);
+				std::vector<int> heLeft(subEdgeCount, -1);
+				std::vector<int> heNext(subEdgeCount, -1);
+				std::vector<signed char> heTwin(subEdgeCount, 0);
+				std::vector<int> faceFirstHe(faces.size(), -1);
+
+				for (size_t f = 0; f < faces.size(); f++)
+				{
+					const auto& face = faces[f];
+					const size_t n = face.size();
+					for (size_t i = 0; i < n; i++)
+					{
+						const int a = face[i];
+						const int b = face[(i + 1) % n];
+						const int c = face[(i + 2) % n];
+						const int he = directedHe[std::make_pair(a, b)];
+
+						heTail[he] = a;
+						heLeft[he] = (int)f;
+						heNext[he] = directedHe[std::make_pair(b, c)];
+						heTwin[he] = (a < b) ? (signed char)1 : (signed char)-1;
+						if (faceFirstHe[f] < 0) faceFirstHe[f] = he;
+					}
+				}
+
+				// closed manifold check: every half-edge slot must be populated
+				for (int i = 0; i < subEdgeCount; i++)
+				{
+					if (heTail[i] < 0) return false;
+				}
+
+				data->m_vertexCount = (int)verts.size();
+				data->m_faceCount = (int)faces.size();
+				data->m_subEdgeCount = subEdgeCount;
+
+				data->m_aVertices = alloc.allocate<H1::dmFloat4>(data->m_vertexCount);
+				data->m_aPlanes = alloc.allocate<H1::dmPlane>(data->m_faceCount);
+				data->m_aSubEdges = alloc.allocate<H1::dmSubEdge>(data->m_subEdgeCount);
+				data->m_aFaceSubEdges = alloc.allocate<H1::dm_uint8>(data->m_faceCount);
+
+				for (int i = 0; i < data->m_vertexCount; i++)
+				{
+					data->m_aVertices[i].x = verts[i].x;
+					data->m_aVertices[i].y = verts[i].y;
+					data->m_aVertices[i].z = verts[i].z;
+					data->m_aVertices[i].w = 0.0f;
+				}
+				for (int i = 0; i < data->m_faceCount; i++)
+				{
+					data->m_aPlanes[i].normal.x = planes[i].n.x;
+					data->m_aPlanes[i].normal.y = planes[i].n.y;
+					data->m_aPlanes[i].normal.z = planes[i].n.z;
+					data->m_aPlanes[i].offset = planes[i].d;
+					data->m_aFaceSubEdges[i] = (H1::dm_uint8)faceFirstHe[i];
+				}
+				for (int i = 0; i < subEdgeCount; i++)
+				{
+					data->m_aSubEdges[i].twinOffset = (H1::dm_int8)heTwin[i];
+					data->m_aSubEdges[i].tail = (H1::dm_uint8)heTail[i];
+					data->m_aSubEdges[i].left = (H1::dm_uint8)heLeft[i];
+					data->m_aSubEdges[i].next = (H1::dm_uint8)heNext[i];
+				}
+
+				computeMass(data, verts, faces);
+
+				if (!(data->m_volume > 1e-6f))
+				{
+					return false;
+				}
+
+				// m_surfaceTypes / m_vertexMaterials stay null (retail SetAsBox leaves
+				// them null too), contents default matches dmPolytopeData ctor (-1).
+				data->contents = -1;
+				return true;
+			}
+
+			// local (axis-aligned) point -> collmap space using the geom transform
+			inline Vec3 transformLocal(const float orient[3][3], const float mid[3], const Vec3& p)
+			{
+				return {
+					orient[0][0] * p.x + orient[0][1] * p.y + orient[0][2] * p.z + mid[0],
+					orient[1][0] * p.x + orient[1][1] * p.y + orient[1][2] * p.z + mid[1],
+					orient[2][0] * p.x + orient[2][1] * p.y + orient[2][2] * p.z + mid[2],
+				};
+			}
 		}
 
-		void GenerateCapsule(PhysCollmap* asset, PhysGeomInfo* geom, H1::PhysGeomInfo* h1_geom, allocator& allocator)
+		// picks the "radius" plane pair (two ~equal half sizes) vs the axis half size.
+		static void ResolveCylinderAxis(const Bounds& bounds, int& axis, float& radius, float& halfHeight)
 		{
-			auto* data = h1_geom->data;
+			const float hs[3] = { bounds.halfSize[0], bounds.halfSize[1], bounds.halfSize[2] };
+			auto approxEqual = [](float a, float b)
+			{
+				return std::fabs(a - b) <= 0.05f * std::max(1.0f, std::max(std::fabs(a), std::fabs(b)));
+			};
 
-			// generate...
-
-			data->contents = -1;
+			if (approxEqual(hs[0], hs[1])) { axis = 2; radius = 0.5f * (hs[0] + hs[1]); halfHeight = hs[2]; }
+			else if (approxEqual(hs[0], hs[2])) { axis = 1; radius = 0.5f * (hs[0] + hs[2]); halfHeight = hs[1]; }
+			else if (approxEqual(hs[1], hs[2])) { axis = 0; radius = 0.5f * (hs[1] + hs[2]); halfHeight = hs[0]; }
+			else { axis = 2; radius = 0.5f * (hs[0] + hs[1]); halfHeight = hs[2]; } // best effort
 		}
 
-		void GenerateBrush(PhysCollmap* asset, PhysGeomInfo* geom, H1::PhysGeomInfo* h1_geom, allocator& allocator)
+		static hull::Vec3 CylPoint(int axis, float r, float ca, float sa, float h,
+			const float orient[3][3], const float mid[3])
+		{
+			hull::Vec3 lp;
+			if (axis == 2) lp = { r * ca, r * sa, h };
+			else if (axis == 0) lp = { h, r * ca, r * sa };
+			else lp = { r * ca, h, r * sa };
+			return hull::transformLocal(orient, mid, lp);
+		}
+
+		bool GenerateCylinder(PhysCollmap* asset, PhysGeomInfo* geom, H1::PhysGeomInfo* h1_geom, allocator& allocator)
 		{
 			auto* data = h1_geom->data;
+			const auto bounds = GetBounds(geom);
 
-			// generate...
+			int axis; float radius, halfHeight;
+			ResolveCylinderAxis(bounds, axis, radius, halfHeight);
+			if (radius <= 1e-4f || halfHeight <= 1e-4f)
+			{
+				ZONETOOL_WARNING("PhysCollmap \"%s\": degenerate cylinder geom, skipping", asset->name);
+				return false;
+			}
 
-			data->contents = -1;
+			const int SEG = 16; // matches retail SetAsCylinder (2*pi / 16 step)
+			std::vector<hull::Vec3> verts;
+			verts.reserve(SEG * 2);
+
+			for (int ring = 0; ring < 2; ring++)
+			{
+				const float h = (ring == 0) ? -halfHeight : halfHeight;
+				for (int i = 0; i < SEG; i++)
+				{
+					const float a = (2.0f * 3.14159265358979f * i) / SEG;
+					verts.push_back(CylPoint(axis, radius, std::cos(a), std::sin(a), h,
+						geom->orientation, bounds.midPoint));
+				}
+			}
+
+			std::vector<std::vector<int>> faces;
+
+			std::vector<int> bottom, top;
+			for (int i = 0; i < SEG; i++) { bottom.push_back(i); top.push_back(SEG + i); }
+			faces.push_back(bottom);
+			faces.push_back(top);
+
+			for (int i = 0; i < SEG; i++)
+			{
+				const int ni = (i + 1) % SEG;
+				faces.push_back({ i, ni, SEG + ni, SEG + i });
+			}
+
+			if (!hull::build(data, verts, faces, allocator))
+			{
+				ZONETOOL_WARNING("PhysCollmap \"%s\": failed to cook cylinder geom", asset->name);
+				return false;
+			}
+			return true;
+		}
+
+		bool GenerateCapsule(PhysCollmap* asset, PhysGeomInfo* geom, H1::PhysGeomInfo* h1_geom, allocator& allocator)
+		{
+			auto* data = h1_geom->data;
+			const auto bounds = GetBounds(geom);
+
+			int axis; float radius, halfHeight;
+			ResolveCylinderAxis(bounds, axis, radius, halfHeight);
+			if (radius <= 1e-4f || halfHeight <= 1e-4f)
+			{
+				ZONETOOL_WARNING("PhysCollmap \"%s\": degenerate capsule geom, skipping", asset->name);
+				return false;
+			}
+
+			// cylindrical body plus one intermediate latitude ring per
+			// hemispherical cap (kept coarse so vertex/face/edge counts stay < 256).
+			const float cylHalf = std::max(0.0f, halfHeight - radius);
+			const float capR = radius * 0.70710678f;  // 45 degree ring
+			const float capH = radius * 0.70710678f;
+
+			const int SEG = 10;
+
+			// rings ordered bottom -> top; radius 0 marks a pole (single vertex)
+			struct Ring { float r; float h; };
+			const Ring rings[] = {
+				{ 0.0f,   -(cylHalf + radius) }, // bottom pole
+				{ capR,   -(cylHalf + capH)   }, // bottom cap ring
+				{ radius, -cylHalf            }, // bottom rim
+				{ radius,  cylHalf            }, // top rim
+				{ capR,    (cylHalf + capH)   }, // top cap ring
+				{ 0.0f,    (cylHalf + radius) }, // top pole
+			};
+			const int ringCount = (int)(sizeof(rings) / sizeof(rings[0]));
+
+			std::vector<hull::Vec3> verts;
+			std::vector<int> ringStart(ringCount);
+			std::vector<int> ringSize(ringCount);
+
+			for (int r = 0; r < ringCount; r++)
+			{
+				ringStart[r] = (int)verts.size();
+				if (rings[r].r <= 1e-5f)
+				{
+					ringSize[r] = 1;
+					verts.push_back(CylPoint(axis, 0.0f, 1.0f, 0.0f, rings[r].h,
+						geom->orientation, bounds.midPoint));
+				}
+				else
+				{
+					ringSize[r] = SEG;
+					for (int i = 0; i < SEG; i++)
+					{
+						const float a = (2.0f * 3.14159265358979f * i) / SEG;
+						verts.push_back(CylPoint(axis, rings[r].r, std::cos(a), std::sin(a), rings[r].h,
+							geom->orientation, bounds.midPoint));
+					}
+				}
+			}
+
+			std::vector<std::vector<int>> faces;
+			for (int r = 0; r + 1 < ringCount; r++)
+			{
+				const int lo = ringStart[r], loN = ringSize[r];
+				const int hi = ringStart[r + 1], hiN = ringSize[r + 1];
+
+				if (loN == 1) // bottom pole fan
+				{
+					for (int i = 0; i < hiN; i++)
+						faces.push_back({ lo, hi + i, hi + ((i + 1) % hiN) });
+				}
+				else if (hiN == 1) // top pole fan
+				{
+					for (int i = 0; i < loN; i++)
+						faces.push_back({ lo + i, lo + ((i + 1) % loN), hi });
+				}
+				else // quad band (loN == hiN == SEG)
+				{
+					for (int i = 0; i < loN; i++)
+					{
+						const int ni = (i + 1) % loN;
+						faces.push_back({ lo + i, lo + ni, hi + ni, hi + i });
+					}
+				}
+			}
+
+			if (!hull::build(data, verts, faces, allocator))
+			{
+				ZONETOOL_WARNING("PhysCollmap \"%s\": failed to cook capsule geom", asset->name);
+				return false;
+			}
+			return true;
+		}
+
+		bool GenerateBrush(PhysCollmap* asset, PhysGeomInfo* geom, H1::PhysGeomInfo* h1_geom, allocator& allocator)
+		{
+			auto* data = h1_geom->data;
+			auto* bw = geom->brushWrapper;
+			if (!bw)
+			{
+				ZONETOOL_WARNING("PhysCollmap \"%s\": brush geom has null brushWrapper, skipping", asset->name);
+				return false;
+			}
+
+			// the convex brush is the intersection of its half-spaces: the 6 axial
+			// planes (tight to the wrapper bounds) plus the non-axial side planes.
+			// IW5 plane dists share H1's offset = dot(outwardNormal, point) convention.
+			std::vector<hull::Plane> planes;
+			const auto& b = bw->bounds;
+			const float minx = b.midPoint[0] - b.halfSize[0], maxx = b.midPoint[0] + b.halfSize[0];
+			const float miny = b.midPoint[1] - b.halfSize[1], maxy = b.midPoint[1] + b.halfSize[1];
+			const float minz = b.midPoint[2] - b.halfSize[2], maxz = b.midPoint[2] + b.halfSize[2];
+			planes.push_back({ {  1.0f,  0.0f,  0.0f },  maxx });
+			planes.push_back({ { -1.0f,  0.0f,  0.0f }, -minx });
+			planes.push_back({ {  0.0f,  1.0f,  0.0f },  maxy });
+			planes.push_back({ {  0.0f, -1.0f,  0.0f }, -miny });
+			planes.push_back({ {  0.0f,  0.0f,  1.0f },  maxz });
+			planes.push_back({ {  0.0f,  0.0f, -1.0f }, -minz });
+
+			// coplanar duplicates would emit two identical face loops and fail the
+			// manifold check, so sides that repeat an axial (or earlier) plane are skipped
+			auto isDuplicatePlane = [&planes](const hull::Vec3& n, float d)
+			{
+				for (const auto& pl : planes)
+				{
+					if (hull::dot(pl.n, n) > 0.999f && std::fabs(pl.d - d) < 0.1f)
+						return true;
+				}
+				return false;
+			};
+
+			for (int s = 0; s < bw->brush.numsides; s++)
+			{
+				auto* side = &bw->brush.sides[s];
+				if (!side || !side->plane) continue;
+				const hull::Vec3 n{ side->plane->normal[0], side->plane->normal[1], side->plane->normal[2] };
+				if (isDuplicatePlane(n, side->plane->dist)) continue;
+				planes.push_back({ n, side->plane->dist });
+			}
+
+			const int P = (int)planes.size();
+			const float insideEps = 0.1f;
+			const float dedupeEps = 0.05f;
+
+			// vertex set = points where 3 planes meet inside every half-space
+			std::vector<hull::Vec3> verts;
+			for (int i = 0; i < P; i++)
+			{
+				for (int j = i + 1; j < P; j++)
+				{
+					for (int k = j + 1; k < P; k++)
+					{
+						const hull::Vec3 njk = hull::cross(planes[j].n, planes[k].n);
+						const float det = hull::dot(planes[i].n, njk);
+						if (std::fabs(det) < 1e-6f) continue;
+
+						const hull::Vec3 nki = hull::cross(planes[k].n, planes[i].n);
+						const hull::Vec3 nij = hull::cross(planes[i].n, planes[j].n);
+						const hull::Vec3 p =
+							(njk * planes[i].d + nki * planes[j].d + nij * planes[k].d) * (1.0f / det);
+
+						bool inside = true;
+						for (int m = 0; m < P; m++)
+						{
+							if (hull::dot(planes[m].n, p) > planes[m].d + insideEps) { inside = false; break; }
+						}
+						if (!inside) continue;
+
+						bool dup = false;
+						for (const auto& v : verts)
+						{
+							if (hull::length(v - p) < dedupeEps) { dup = true; break; }
+						}
+						if (!dup) verts.push_back(p);
+					}
+				}
+			}
+
+			if (verts.size() < 4)
+			{
+				ZONETOOL_WARNING("PhysCollmap \"%s\": brush geom produced %zu vertices, skipping",
+					asset->name, verts.size());
+				return false;
+			}
+
+			// build a face loop for every plane that actually carries >= 3 vertices
+			const float onPlaneEps = 0.1f;
+			std::vector<std::vector<int>> faces;
+			for (int pi = 0; pi < P; pi++)
+			{
+				std::vector<int> onFace;
+				for (int vi = 0; vi < (int)verts.size(); vi++)
+				{
+					if (std::fabs(hull::dot(planes[pi].n, verts[vi]) - planes[pi].d) < onPlaneEps)
+						onFace.push_back(vi);
+				}
+				if (onFace.size() < 3) continue;
+
+				hull::Vec3 c{ 0.0f, 0.0f, 0.0f };
+				for (int idx : onFace) c = c + verts[idx];
+				c = c * (1.0f / (float)onFace.size());
+
+				const hull::Vec3 n = planes[pi].n;
+				const hull::Vec3 t = (std::fabs(n.z) < 0.9f) ? hull::Vec3{ 0.0f, 0.0f, 1.0f } : hull::Vec3{ 1.0f, 0.0f, 0.0f };
+				const hull::Vec3 u = hull::normalize(hull::cross(t, n));
+				const hull::Vec3 w = hull::cross(n, u);
+
+				std::sort(onFace.begin(), onFace.end(), [&](int A, int B)
+				{
+					const hull::Vec3 da = verts[A] - c;
+					const hull::Vec3 db = verts[B] - c;
+					return std::atan2(hull::dot(da, w), hull::dot(da, u)) <
+						std::atan2(hull::dot(db, w), hull::dot(db, u));
+				});
+
+				faces.push_back(onFace);
+			}
+
+			if (!hull::build(data, verts, faces, allocator))
+			{
+				ZONETOOL_WARNING("PhysCollmap \"%s\": failed to cook brush geom", asset->name);
+				return false;
+			}
+			return true;
 		}
 
 		H1::PhysCollmap* GenerateH1Asset(PhysCollmap* asset, allocator& allocator)
@@ -419,93 +973,113 @@ namespace ZoneTool::IW5
 
 			h1_asset->name = asset->name;
 			
-			h1_asset->count = asset->count;
 			memcpy(&h1_asset->mass, &asset->mass, sizeof(PhysMass));
 			memcpy(&h1_asset->bounds, &asset->bounds, sizeof(Bounds));
 
-			float center[3] = { 0.0f, 0.0f, 0.0f };
-			float inertia1[3] = { 0.0f, 0.0f, 0.0f };
-			float inertia2[3] = { 0.0f, 0.0f, 0.0f };
-			//Bounds bounds{};
+			// Cook each source geom into a Domino polytope. The game asserts that
+			// every geom's polytopeData is non-null and that the SUM of per-geom
+			// m_volume is > FLT_EPSILON, so we never emit a null / zero-volume geom:
+			// failures fall back to a box approximation and are only dropped when even
+			// that is degenerate.
+			std::vector<H1::dmPolytopeData*> polys;
+			polys.reserve(asset->count);
 
-			h1_asset->geoms = allocator.allocate<H1::PhysGeomInfo>(h1_asset->count);
-			for (auto i = 0; i < h1_asset->count; i++)
+			for (auto i = 0u; i < asset->count; i++)
 			{
 				auto* geom = &asset->geoms[i];
-				auto* h1_geom = &h1_asset->geoms[i];
 
-				h1_geom->data = allocator.allocate<H1::dmPolytopeData>();
-				auto* data = h1_geom->data;
+				auto* data = allocator.allocate<H1::dmPolytopeData>();
+				H1::PhysGeomInfo tmp_geom{};
+				tmp_geom.data = data;
 
-				/*auto type = geom->type;
-				switch (type)
+				bool ok = false;
+				switch (geom->type)
 				{
-				case PHYS_GEOM_NONE:
-				{
-					GenerateBrush(asset, geom, h1_geom, allocator);
-					ZONETOOL_INFO("PhysCollmap geom %d (none?) for %s generated!", i, asset->name);
-					break; // sphere...
-				}
 				case PHYS_GEOM_BOX:
-				{
-					GenerateBox(asset, geom, h1_geom, allocator);
-					ZONETOOL_INFO("PhysCollmap geom %d (box) for %s generated!", i, asset->name);
+					GenerateBox(asset, geom, &tmp_geom, allocator);
+					ok = data->m_volume > 1e-6f;
 					break;
-				}
 				case PHYS_GEOM_CYLINDER:
-				{
-					//GenerateCylinder(asset, geom, h1_geom, allocator);
-					ZONETOOL_INFO("PhysCollmap geom %d (cylinder) for %s generated!", i, asset->name);
+					ok = GenerateCylinder(asset, geom, &tmp_geom, allocator);
+
+					// IW3 assets can mark brush-backed geoms with a type that maps to cylinder while leaving the primitive bounds zeroed
+					if (!ok && geom->brushWrapper)
+					{
+						*data = {};
+						ok = GenerateBrush(asset, geom, &tmp_geom, allocator);
+						if (ok)
+						{
+							ZONETOOL_INFO("PhysCollmap \"%s\": geom %u cooked from brush wrapper instead of cylinder",
+								asset->name, i);
+						}
+					}
 					break;
-				}
 				case PHYS_GEOM_CAPSULE:
-				{
-					GenerateCapsule(asset, geom, h1_geom, allocator);
-					ZONETOOL_INFO("PhysCollmap geom %d (capsule) for %s generated!", i, asset->name);
+					ok = GenerateCapsule(asset, geom, &tmp_geom, allocator);
+					
+					if (!ok && geom->brushWrapper)
+					{
+						*data = {};
+						ok = GenerateBrush(asset, geom, &tmp_geom, allocator);
+						if (ok)
+						{
+							ZONETOOL_INFO("PhysCollmap \"%s\": geom %u cooked from brush wrapper instead of capsule",
+								asset->name, i);
+						}
+					}
 					break;
-				}
 				case PHYS_GEOM_BRUSHMODEL:
 				case PHYS_GEOM_BRUSH:
-				{
-					GenerateBrush(asset, geom, h1_geom, allocator);
-					ZONETOOL_INFO("PhysCollmap geom %d (brush) for %s generated!", i, asset->name);
+				case PHYS_GEOM_COLLMAP:
+					ok = GenerateBrush(asset, geom, &tmp_geom, allocator);
+					break;
+				case PHYS_GEOM_NONE:
+				default:
+					ZONETOOL_WARNING("PhysCollmap \"%s\": geom %u has unhandled type %d, approximating as box",
+						asset->name, i, geom->type);
 					break;
 				}
-				default:
-					__debugbreak();
-					break;
-				}*/
-				GenerateBox(asset, geom, h1_geom, allocator);
 
-				center[0] += data->m_centroid.x;
-				center[1] += data->m_centroid.y;
-				center[2] += data->m_centroid.z;
+				if (!ok)
+				{
+					// box fallback (GetBounds is null-safe for brush geoms)
+					*data = {};
+					GenerateBox(asset, geom, &tmp_geom, allocator);
+					ok = data->m_volume > 1e-6f;
+					if (ok)
+					{
+						ZONETOOL_WARNING("PhysCollmap \"%s\": geom %u fell back to box approximation",
+							asset->name, i);
+					}
+				}
 
-				inertia1[0] += data->m_inertiaMoments.x / data->m_volume;
-				inertia1[1] += data->m_inertiaMoments.y / data->m_volume;
-				inertia1[2] += data->m_inertiaMoments.z / data->m_volume;
-
-				inertia2[0] += data->m_inertiaProducts.x / data->m_volume;
-				inertia2[1] += data->m_inertiaProducts.y / data->m_volume;
-				inertia2[2] += data->m_inertiaProducts.z / data->m_volume;
-
-				//bounds = GetBounds(geom);
+				if (ok)
+				{
+					polys.push_back(data);
+					ZONETOOL_INFO("PhysCollmap geom %u (type %d) for %s generated (%d verts, %d faces)",
+						i, geom->type, asset->name, data->m_vertexCount, data->m_faceCount);
+				}
+				else
+				{
+					ZONETOOL_WARNING("PhysCollmap \"%s\": geom %u produced no valid polytope, dropping",
+						asset->name, i);
+				}
 			}
 
-			asset->mass.centerOfMass[0] = center[0] / asset->count;
-			asset->mass.centerOfMass[1] = center[1] / asset->count;
-			asset->mass.centerOfMass[2] = center[2] / asset->count;
+			if (polys.empty())
+			{
+				ZONETOOL_ERROR("PhysCollmap \"%s\": no valid geometry could be generated!", asset->name);
+			}
 
-			asset->mass.momentsOfInertia[0] = (inertia1[0] / asset->count);
-			asset->mass.momentsOfInertia[1] = (inertia1[1] / asset->count);
-			asset->mass.momentsOfInertia[2] = (inertia1[2] / asset->count);
+			h1_asset->count = static_cast<unsigned int>(polys.size());
+			h1_asset->geoms = allocator.allocate<H1::PhysGeomInfo>(polys.empty() ? 1 : polys.size());
+			for (auto i = 0u; i < h1_asset->count; i++)
+			{
+				h1_asset->geoms[i].data = polys[i];
+			}
 
-			asset->mass.productsOfInertia[0] = (inertia2[0] / asset->count);
-			asset->mass.productsOfInertia[1] = (inertia2[1] / asset->count);
-			asset->mass.productsOfInertia[2] = (inertia2[2] / asset->count);
-
-			// re-calc bounds too?
-			//asset->bounds = bounds;
+			// h1_asset->mass keeps the authored IW5 PhysMass (centre of mass / inertia);
+			// the runtime recomputes body mass from the polytope volumes on load.
 
 			return h1_asset;
 		}
