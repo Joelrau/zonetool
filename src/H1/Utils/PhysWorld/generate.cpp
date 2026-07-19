@@ -1067,6 +1067,16 @@ if (min > rad || max < -rad) \
 		}
 	}
 
+	namespace
+	{
+		std::vector<smodel_tri> pending_static_model_tris;
+	}
+
+	void set_static_model_tris(std::vector<smodel_tri>&& tris)
+	{
+		pending_static_model_tris = std::move(tris);
+	}
+
 	ZoneTool::H1::PhysWorld* generate_physworld(ZoneTool::H1::clipMap_t* asset, allocator* allocator)
 	{
 		ZONETOOL_INFO("generating physworld...");
@@ -1104,6 +1114,38 @@ if (min > rad || max < -rad) \
 		}
 
 		auto triangles = generate_triangles(asset, vertices);
+
+		if (!pending_static_model_tris.empty())
+		{
+			const auto push_corner = [&](const float* corner)
+			{
+				ZoneTool::H1::dmFloat4 vert{};
+				vert.x = corner[0];
+				vert.y = corner[1];
+				vert.z = corner[2];
+				vert.w = 0.f;
+				vertices.emplace_back(vert);
+			};
+
+			for (const auto& stri : pending_static_model_tris)
+			{
+				const auto base_index = static_cast<int>(vertices.size());
+
+				push_corner(stri.a);
+				push_corner(stri.b);
+				push_corner(stri.c);
+
+				triangle_t triangle{};
+				triangle.verts[0] = base_index + 0;
+				triangle.verts[1] = base_index + 1;
+				triangle.verts[2] = base_index + 2;
+				triangle.index = static_cast<int>(triangles.size());
+				triangles.emplace_back(triangle);
+			}
+
+			ZONETOOL_INFO("baked %zu static model collision tris into physworld", pending_static_model_tris.size());
+			pending_static_model_tris.clear();
+		}
 
 		ZONETOOL_INFO("total tris: %zu, verts: %zu", triangles.size(), vertices.size());
 

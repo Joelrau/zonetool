@@ -484,8 +484,8 @@ namespace ZoneTool::IW5
 				data->m_inertiaMoments.y = (float)(mxx + mzz);
 				data->m_inertiaMoments.z = (float)(mxx + myy);
 				data->m_inertiaProducts.x = (float)(-mxy);
-				data->m_inertiaProducts.y = (float)(-myz);
-				data->m_inertiaProducts.z = (float)(-mzx);
+				data->m_inertiaProducts.y = (float)(-mzx);
+				data->m_inertiaProducts.z = (float)(-myz);
 			}
 
 			// cook vertices + (arbitrary winding) face loops into a dmPolytopeData.

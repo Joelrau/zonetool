@@ -4,6 +4,7 @@
 #include "IW5/Assets/PhysCollmap.hpp"
 
 #include <cfloat>
+#include <cmath>
 
 namespace ZoneTool
 {
@@ -189,6 +190,19 @@ namespace ZoneTool
 				// IW3 and IW5 PhysMass share an identical layout (3x vec3 floats).
 				memcpy(&collmap->mass, &src->mass, sizeof(IW5::PhysMass));
 
+				// IW3/ODE authors inertia about the COM; Domino expects it about the model origin (parallel-axis shift, per unit mass)
+				{
+					const float cx = collmap->mass.centerOfMass[0];
+					const float cy = collmap->mass.centerOfMass[1];
+					const float cz = collmap->mass.centerOfMass[2];
+					collmap->mass.momentsOfInertia[0] += cy * cy + cz * cz;
+					collmap->mass.momentsOfInertia[1] += cx * cx + cz * cz;
+					collmap->mass.momentsOfInertia[2] += cx * cx + cy * cy;
+					collmap->mass.productsOfInertia[0] -= cx * cy;
+					collmap->mass.productsOfInertia[1] -= cx * cz;
+					collmap->mass.productsOfInertia[2] -= cy * cz;
+				}
+
 				float mins[3] = { FLT_MAX, FLT_MAX, FLT_MAX };
 				float maxs[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 
@@ -208,24 +222,26 @@ namespace ZoneTool
 					d.bounds.halfSize[1] = g.halfLengths[1];
 					d.bounds.halfSize[2] = g.halfLengths[2];
 
-					// IW3 stores cylinder/capsule primitives ODE-style as
-					// (halfHeight, radius, unused) with the axis along local Z;
-					// IW5 expects an axis-aligned local box (radius, radius, halfHeight)
-					// that the converter re-derives axis/radius from.
+					// IW3 packs cylinder/capsule as (halfHeight, radius, unused) with the symmetry axis along geom-local X (orientation maps it to model-up)
 					if ((d.type == IW5::PHYS_GEOM_CYLINDER || d.type == IW5::PHYS_GEOM_CAPSULE)
 						&& g.halfLengths[2] == 0.0f)
 					{
 						const float halfHeight = g.halfLengths[0];
 						const float radius = g.halfLengths[1];
-						d.bounds.halfSize[0] = radius;
+						d.bounds.halfSize[0] = halfHeight;
 						d.bounds.halfSize[1] = radius;
-						d.bounds.halfSize[2] = halfHeight;
+						d.bounds.halfSize[2] = radius;
 					}
 
 					for (int a = 0; a < 3; a++)
 					{
-						const float lo = d.bounds.midPoint[a] - d.bounds.halfSize[a];
-						const float hi = d.bounds.midPoint[a] + d.bounds.halfSize[a];
+						// model-space extent of the oriented local box
+						const float ext =
+							std::fabs(d.orientation[a][0]) * d.bounds.halfSize[0] +
+							std::fabs(d.orientation[a][1]) * d.bounds.halfSize[1] +
+							std::fabs(d.orientation[a][2]) * d.bounds.halfSize[2];
+						const float lo = d.bounds.midPoint[a] - ext;
+						const float hi = d.bounds.midPoint[a] + ext;
 						if (lo < mins[a]) mins[a] = lo;
 						if (hi > maxs[a]) maxs[a] = hi;
 					}

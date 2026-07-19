@@ -1,5 +1,6 @@
 #include "stdafx.hpp"
 #include "IW4/Assets/ClipMap.hpp"
+#include "H1/Utils/PhysWorld/generate.hpp"
 
 namespace ZoneTool
 {
@@ -639,6 +640,98 @@ namespace ZoneTool
 			// generate clipmap
 			allocator allocator;
 			auto iw4_asset = GenerateIW4ClipMap(asset, allocator);
+
+			// extract world-space static-model collision tris so the h1 physworld generator can bake them into the world mesh
+			if (asset->numStaticModels && asset->staticModelList)
+			{
+				std::vector<ZoneTool::H1::physworld_gen::smodel_tri> tris;
+
+				for (auto i = 0u; i < asset->numStaticModels; i++)
+				{
+					const auto& sm = asset->staticModelList[i];
+					const auto* m = sm.xmodel;
+					if (!m)
+					{
+						continue;
+					}
+
+					if (m->collLod < 0 || m->collLod >= m->numLods)
+					{
+						continue;
+					}
+
+					if ((m->contents & 0x1) == 0)
+					{
+						continue;
+					}
+
+					const auto& lod = m->lodInfo[m->collLod];
+					if (lod.numsurfs == 0)
+					{
+						continue;
+					}
+
+					// invScaledAxis = (R*scale)^-1 maps world->model, so its inverse restores the scaled rotation for model->world
+					const auto& axis = sm.invScaledAxis;
+					const auto det =
+						axis[0][0] * (axis[1][1] * axis[2][2] - axis[1][2] * axis[2][1]) -
+						axis[0][1] * (axis[1][0] * axis[2][2] - axis[1][2] * axis[2][0]) +
+						axis[0][2] * (axis[1][0] * axis[2][1] - axis[1][1] * axis[2][0]);
+
+					if (det > -1e-12f && det < 1e-12f)
+					{
+						continue;
+					}
+
+					const auto inv_det = 1.0f / det;
+					float inv[3][3];
+					inv[0][0] = (axis[1][1] * axis[2][2] - axis[1][2] * axis[2][1]) * inv_det;
+					inv[0][1] = -(axis[0][1] * axis[2][2] - axis[0][2] * axis[2][1]) * inv_det;
+					inv[0][2] = (axis[0][1] * axis[1][2] - axis[0][2] * axis[1][1]) * inv_det;
+					inv[1][0] = -(axis[1][0] * axis[2][2] - axis[1][2] * axis[2][0]) * inv_det;
+					inv[1][1] = (axis[0][0] * axis[2][2] - axis[0][2] * axis[2][0]) * inv_det;
+					inv[1][2] = -(axis[0][0] * axis[1][2] - axis[0][2] * axis[1][0]) * inv_det;
+					inv[2][0] = (axis[1][0] * axis[2][1] - axis[1][1] * axis[2][0]) * inv_det;
+					inv[2][1] = -(axis[0][0] * axis[2][1] - axis[0][1] * axis[2][0]) * inv_det;
+					inv[2][2] = (axis[0][0] * axis[1][1] - axis[0][1] * axis[1][0]) * inv_det;
+
+					const auto to_world = [&](const float* v, float* out)
+					{
+						out[0] = inv[0][0] * v[0] + inv[0][1] * v[1] + inv[0][2] * v[2] + sm.origin[0];
+						out[1] = inv[1][0] * v[0] + inv[1][1] * v[1] + inv[1][2] * v[2] + sm.origin[1];
+						out[2] = inv[2][0] * v[0] + inv[2][1] * v[1] + inv[2][2] * v[2] + sm.origin[2];
+					};
+
+					for (auto k = 0; k < lod.numsurfs; k++)
+					{
+						const auto* surf = &m->surfs[lod.surfIndex + k];
+						if (!surf->verts0 || !surf->triIndices)
+						{
+							continue;
+						}
+
+						for (auto t = 0; t < surf->triCount; t++)
+						{
+							const auto i0 = surf->triIndices[3 * t + 0];
+							const auto i1 = surf->triIndices[3 * t + 1];
+							const auto i2 = surf->triIndices[3 * t + 2];
+
+							if (i0 >= surf->vertCount || i1 >= surf->vertCount || i2 >= surf->vertCount)
+							{
+								continue;
+							}
+
+							ZoneTool::H1::physworld_gen::smodel_tri tri{};
+							to_world(surf->verts0[i0].xyz, tri.a);
+							to_world(surf->verts0[i1].xyz, tri.b);
+							to_world(surf->verts0[i2].xyz, tri.c);
+							tris.emplace_back(tri);
+						}
+					}
+				}
+
+				ZoneTool::H1::physworld_gen::set_static_model_tris(std::move(tris));
+			}
 
 			// dump clipmap
 			IW4::IClipMap::dump(iw4_asset);
