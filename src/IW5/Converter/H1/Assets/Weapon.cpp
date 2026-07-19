@@ -845,6 +845,14 @@ namespace ZoneTool::IW5
 			constexpr std::size_t size = MEMBER_SPAN_SIZE_T(WeaponDef, vStandMove, fPosProneRotRate);
 			std::memcpy(&h1_asset->standMove, &asset->weapDef->vStandMove, size);
 
+			// these values are for some reason bogus? this helps...
+			h1_asset->proneMove[0] = std::roundf(asset->weapDef->vProneRot[0] / 100.0f);
+			h1_asset->proneMove[1] = std::roundf(asset->weapDef->vProneRot[1] / 100.0f);
+			h1_asset->proneMove[2] = std::roundf(asset->weapDef->vProneRot[2] / 100.0f);
+			h1_asset->proneRot[0] = std::roundf(asset->weapDef->vProneRot[0] / 100.0f);
+			h1_asset->proneRot[1] = std::roundf(asset->weapDef->vProneRot[1] / 100.0f);
+			h1_asset->proneRot[2] = std::roundf(asset->weapDef->vProneRot[2] / 100.0f);
+
 			COPY_FIELD_CAST(hudIconRatio, weapDef->hudIconRatio); // same enum values
 			COPY_FIELD_CAST(pickupIconRatio, weapDef->pickupIconRatio); // ^
 			COPY_FIELD_CAST(ammoCounterIconRatio, weapDef->ammoCounterIconRatio); // ^

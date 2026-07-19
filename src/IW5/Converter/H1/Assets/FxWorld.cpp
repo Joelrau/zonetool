@@ -44,13 +44,13 @@ namespace ZoneTool::IW5
 				h1_asset->glassSys.defs[i].physPreset = reinterpret_cast<H1::PhysPreset*>(asset->glassSys.defs[i].physPreset);
 
 				h1_asset->glassSys.defs[i].pieceBreakEffect = mem.allocate<H1::FxEffectDef>();
-				h1_asset->glassSys.defs[i].pieceBreakEffect->name = mem.duplicate_string("vfx/code/glass_shatter_piece");
+				h1_asset->glassSys.defs[i].pieceBreakEffect->name = mem.duplicate_string("code/glass_shatter_piece");
 
 				h1_asset->glassSys.defs[i].shatterEffect = mem.allocate<H1::FxEffectDef>();
-				h1_asset->glassSys.defs[i].shatterEffect->name = mem.duplicate_string("vfx/code/glass_shatter_64x64");
+				h1_asset->glassSys.defs[i].shatterEffect->name = mem.duplicate_string("code/glass_shatter_64x64");
 
 				h1_asset->glassSys.defs[i].shatterSmallEffect = mem.allocate<H1::FxEffectDef>();
-				h1_asset->glassSys.defs[i].shatterSmallEffect->name = mem.duplicate_string("vfx/code/glass_shatter_32x32");
+				h1_asset->glassSys.defs[i].shatterSmallEffect->name = mem.duplicate_string("code/glass_shatter_32x32");
 
 				h1_asset->glassSys.defs[i].crackDecalEffect = nullptr;
 

@@ -651,9 +651,9 @@ namespace ZoneTool
 			unsigned int numsides;
 			cbrushside_t* sides;
 			__int16 axialMaterialNum[2][3];
-			char* baseAdjacentSide;
+			unsigned char* baseAdjacentSide;
 			__int16 firstAdjacentSideOffsets[2][3];
-			char edgeCount[2][3];
+			unsigned char edgeCount[2][3];
 			int totalEdgeCount;
 			cplane_s* planes;
 		};
@@ -663,6 +663,17 @@ namespace ZoneTool
 			float centerOfMass[3];
 			float momentsOfInertia[3];
 			float productsOfInertia[3];
+		};
+
+		enum PhysicsGeomType : int
+		{
+			PHYS_GEOM_NONE = 0x0,
+			PHYS_GEOM_BOX = 0x1,
+			PHYS_GEOM_BRUSHMODEL = 0x2,
+			PHYS_GEOM_BRUSH = 0x3,
+			PHYS_GEOM_CYLINDER = 0x4,
+			PHYS_GEOM_CAPSULE = 0x5,
+			PHYS_GEOM_COUNT = 0x6,
 		};
 
 		struct PhysGeomInfo
@@ -1520,9 +1531,9 @@ namespace ZoneTool
 			unsigned int numsides;
 			cbrushside_t* sides;
 			__int16 axialMaterialNum[2][3];
-			char* baseAdjacentSide;
+			unsigned char* baseAdjacentSide;
 			__int16 firstAdjacentSideOffsets[2][3];
-			char edgeCount[2][3];
+			unsigned char edgeCount[2][3];
 			char pad[8];
 		};
 #pragma pack(pop)
@@ -1650,7 +1661,7 @@ namespace ZoneTool
 			unsigned int numBrushSides;
 			cbrushside_t* brushsides;
 			unsigned int numBrushEdges;
-			char* brushEdges;
+			unsigned char* brushEdges;
 			unsigned int numNodes;
 			cNode_t* nodes;
 			unsigned int numLeafs;

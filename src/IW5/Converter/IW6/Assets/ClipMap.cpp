@@ -136,8 +136,7 @@ namespace ZoneTool::IW5
 				info->leafbrushNodes[i].contents = dinfo->leafbrushNodes[i].contents;
 				if (info->leafbrushNodes[i].leafBrushCount > 0)
 				{
-					info->leafbrushNodes[i].data.leaf.brushes = reinterpret_cast<unsigned __int16*>(
-						dinfo->leafbrushNodes[i].data.leaf.brushes);
+					info->leafbrushNodes[i].data.leaf.brushes = dinfo->leafbrushNodes[i].data.leaf.brushes;
 				}
 				else
 				{
@@ -147,7 +146,7 @@ namespace ZoneTool::IW5
 			}
 
 			info->numLeafBrushes = dinfo->numLeafBrushes;
-			info->leafbrushes = reinterpret_cast<unsigned __int16*>(dinfo->leafbrushes);
+			info->leafbrushes = dinfo->leafbrushes;
 
 			info->numBrushes = dinfo->numBrushes;
 			info->brushes = mem.allocate<IW6::cbrush_t>(info->numBrushes);
@@ -185,7 +184,7 @@ namespace ZoneTool::IW5
 			}
 
 			info->brushBounds = reinterpret_cast<IW6::Bounds*>(dinfo->brushBounds);
-			info->brushContents = reinterpret_cast<int*>(dinfo->brushContents);
+			info->brushContents = dinfo->brushContents;
 		}
 
 		IW6::clipMap_t* GenerateIW6ClipMap(clipMap_t* asset, allocator& mem)
@@ -217,8 +216,8 @@ namespace ZoneTool::IW5
 			iw6_asset->vertCount = asset->vertCount;
 			iw6_asset->verts = reinterpret_cast<IW6::vec3_t*>(asset->verts);
 			iw6_asset->triCount = asset->triCount;
-			iw6_asset->triIndices = reinterpret_cast<unsigned __int16*>(asset->triIndices);
-			iw6_asset->triEdgeIsWalkable = reinterpret_cast<unsigned __int8*>(asset->triEdgeIsWalkable);
+			iw6_asset->triIndices = asset->triIndices;
+			iw6_asset->triEdgeIsWalkable = asset->triEdgeIsWalkable;
 			iw6_asset->borderCount = asset->borderCount;
 			iw6_asset->borders = reinterpret_cast<IW6::CollisionBorder *>(asset->borders);
 			iw6_asset->partitionCount = asset->partitionCount;
@@ -250,7 +249,7 @@ namespace ZoneTool::IW5
 			iw6_asset->stages = mem.allocate<IW6::Stage>(iw6_asset->stageCount);
 			for (unsigned int i = 0; i < iw6_asset->stageCount; i++)
 			{
-				iw6_asset->stages[i].name = reinterpret_cast<const char*>(asset->stages[i].name);
+				iw6_asset->stages[i].name = asset->stages[i].name;
 				memcpy(&iw6_asset->stages[i].origin, &asset->stages[i].origin, sizeof(float[3]));
 				iw6_asset->stages[i].triggerIndex = asset->stages[i].triggerIndex;
 				iw6_asset->stages[i].sunPrimaryLightIndex = asset->stages[i].sunPrimaryLightIndex;

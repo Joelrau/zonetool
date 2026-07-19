@@ -1974,7 +1974,6 @@ namespace ZoneTool
 		};
 #pragma pack(pop)
 
-		/* 1003 */
 		struct Font_s
 		{
 			const char* fontName;
@@ -1993,44 +1992,37 @@ namespace ZoneTool
 			char edgeCount;
 		};
 
-		// ClipMap
-		typedef char cbrushedge_t;
-
 		struct cbrush_t
 		{
 			unsigned __int16 numsides;
 			unsigned __int16 glassPieceIndex;
 			cbrushside_t* sides;
-			cbrushedge_t* edge;
+			unsigned char* baseAdjacentSide;
 			__int16 axialMaterialNum[2][3];
-			char firstAdjacentSideOffsets[2][3];
-			char edgeCount[2][3];
+			unsigned char firstAdjacentSideOffsets[2][3];
+			unsigned char edgeCount[2][3];
 		};
 
 		struct BrushWrapper
 		{
-			float mins[3];
-			float maxs[3];
-			unsigned int numPlaneSide;
-			cbrushside_t* side;
-			char* edge;
-			__int16 axialMaterialNum[2][3];
-			__int16 firstAdjacentSideOffsets[2][3];
-			int numEdge;
-			cplane_s* plane;
+			Bounds bounds;
+			cbrush_t brush;
+			int totalEdgeCount;
+			cplane_s* planes;
 		};
 
-		//struct BrushWrapper
-		//{
-		//	Bounds bounds; // 24
-		//	cbrush_t brush; // 36
-		//	cbrushside_t *side; // 4
-		//	int totalEdgeCount; // 4
-		//	cplane_s *plane; // 4
-		//	short numPlaneSide; // 2
-		//	char *edge; // 4
-		//	int numEdge; // 4
-		//}; // 82 bytes total
+		enum PhysicsGeomType : int
+		{
+			PHYS_GEOM_NONE = 0x0,
+			PHYS_GEOM_BOX = 0x1,
+			PHYS_GEOM_BRUSHMODEL = 0x2,
+			PHYS_GEOM_BRUSH = 0x3,
+			PHYS_GEOM_COLLMAP = 0x4,
+			PHYS_GEOM_CYLINDER = 0x5,
+			PHYS_GEOM_CAPSULE = 0x6,
+			PHYS_GEOM_GLASS = 0x7,
+			PHYS_GEOM_COUNT = 0x8,
+		};
 
 		struct PhysGeomInfo
 		{
@@ -2051,8 +2043,8 @@ namespace ZoneTool
 		struct PhysCollmap
 		{
 			const char* name;
-			unsigned int numInfo;
-			PhysGeomInfo* info;
+			unsigned int count;
+			PhysGeomInfo* geoms;
 			PhysMass mass;
 			Bounds bounds;
 		};
@@ -4245,7 +4237,7 @@ namespace ZoneTool
 			unsigned int numBrushSides;
 			cbrushside_t* brushsides;
 			unsigned int numBrushEdges;
-			char* brushEdges;
+			unsigned char* brushEdges;
 			unsigned int numNodes;
 			cNode_t* nodes;
 			unsigned int numLeafs;

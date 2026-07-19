@@ -1,7 +1,7 @@
 #include "stdafx.hpp"
 #include "IW4/Assets/XModel.hpp"
 #include "IW4/Assets/XSurface.hpp"
-#include "IW5/Assets/PhysCollmap.hpp"
+#include "IW4/Assets/PhysCollmap.hpp"
 
 #include <cfloat>
 #include <cmath>
@@ -12,43 +12,41 @@ namespace ZoneTool
 	{
 		namespace
 		{
-			IW5::cplane_s convert_plane(const cplane_s& src)
+			IW4::cplane_s convert_plane(const cplane_s& src)
 			{
-				IW5::cplane_s dst{};
+				IW4::cplane_s dst{};
 				dst.normal[0] = src.normal[0];
 				dst.normal[1] = src.normal[1];
 				dst.normal[2] = src.normal[2];
 				dst.dist = src.dist;
 				dst.type = static_cast<unsigned char>(src.type);
-				dst.pad[0] = 0;
-				dst.pad[1] = 0;
-				dst.pad[2] = 0;
+				dst.signbits = 0;
 				return dst;
 			}
 
 			// IW3 PhysGeomInfo::type is a raw int, but pretty much maps out to:
 			//   NONE=0, BOX=1, BRUSHMODEL=2, BRUSH=3, CYLINDER=4, CAPSULE=5.
-			// IW5 inserts COLLMAP=4, shifting CYLINDER->5 and CAPSULE->6.
-			IW5::PhysicsGeomType remap_geom_type(int type, const char* model_name)
+			// IW4 inserts COLLMAP=4, shifting CYLINDER->5 and CAPSULE->6.
+			IW4::PhysicsGeomType remap_geom_type(int type, const char* model_name)
 			{
 				switch (type)
 				{
-				case 0: return IW5::PHYS_GEOM_NONE;
-				case 1: return IW5::PHYS_GEOM_BOX;
-				case 2: return IW5::PHYS_GEOM_BRUSHMODEL;
-				case 3: return IW5::PHYS_GEOM_BRUSH;
-				case 4: return IW5::PHYS_GEOM_CYLINDER;
-				case 5: return IW5::PHYS_GEOM_CAPSULE;
+				case IW3::PHYS_GEOM_NONE: return IW4::PHYS_GEOM_NONE;
+				case IW3::PHYS_GEOM_BOX: return IW4::PHYS_GEOM_BOX;
+				case IW3::PHYS_GEOM_BRUSHMODEL: return IW4::PHYS_GEOM_BRUSHMODEL;
+				case IW3::PHYS_GEOM_BRUSH: return IW4::PHYS_GEOM_BRUSH;
+				case IW3::PHYS_GEOM_CYLINDER: return IW4::PHYS_GEOM_CYLINDER;
+				case IW3::PHYS_GEOM_CAPSULE: return IW4::PHYS_GEOM_CAPSULE;
 				default:
 					ZONETOOL_WARNING("XModel \"%s\": unknown IW3 phys geom type %d, passing through",
 						model_name, type);
-					return static_cast<IW5::PhysicsGeomType>(type);
+					return static_cast<IW4::PhysicsGeomType>(type);
 				}
 			}
 
-			IW5::BrushWrapper* convert_brush_wrapper(BrushWrapper* src, const char* model_name, allocator& mem)
+			IW4::BrushWrapper* convert_brush_wrapper(BrushWrapper* src, const char* model_name, allocator& mem)
 			{
-				auto* dst = mem.allocate<IW5::BrushWrapper>();
+				auto* dst = mem.allocate<IW4::BrushWrapper>();
 
 				bounds::compute(src->mins, src->maxs, &dst->bounds.midPoint);
 
@@ -64,10 +62,10 @@ namespace ZoneTool
 				dst->brush.glassPieceIndex = 0;
 
 				// convert planes (numsides entries)
-				IW5::cplane_s* new_planes = nullptr;
+				IW4::cplane_s* new_planes = nullptr;
 				if (side_count)
 				{
-					new_planes = mem.allocate<IW5::cplane_s>(side_count);
+					new_planes = mem.allocate<IW4::cplane_s>(side_count);
 					for (unsigned int i = 0; i < side_count; i++)
 					{
 						if (src->planes)
@@ -81,11 +79,11 @@ namespace ZoneTool
 				// convert sides
 				if (side_count && src->sides)
 				{
-					dst->brush.sides = mem.allocate<IW5::cbrushside_t>(side_count);
+					dst->brush.sides = mem.allocate<IW4::cbrushside_t>(side_count);
 					for (unsigned int i = 0; i < side_count; i++)
 					{
 						const cbrushside_t& s = src->sides[i];
-						IW5::cbrushside_t& d = dst->brush.sides[i];
+						IW4::cbrushside_t& d = dst->brush.sides[i];
 
 						// plane must point into the NEW planes array at the same index the
 						// old side's plane had in the old planes array.
@@ -101,7 +99,7 @@ namespace ZoneTool
 							{
 								ZONETOOL_WARNING("XModel \"%s\": brush side %u plane index out of range, "
 									"allocating standalone plane", model_name, i);
-								auto* p = mem.allocate<IW5::cplane_s>();
+								auto* p = mem.allocate<IW4::cplane_s>();
 								*p = convert_plane(*s.plane);
 								d.plane = p;
 							}
@@ -174,7 +172,7 @@ namespace ZoneTool
 				return dst;
 			}
 
-			IW5::PhysCollmap* GenerateIW5PhysCollmap(XModel* asset, allocator& mem)
+			IW4::PhysCollmap* GenerateIW4PhysCollmap(XModel* asset, allocator& mem)
 			{
 				auto* src = asset->physGeoms;
 				if (!src || !src->count)
@@ -182,13 +180,13 @@ namespace ZoneTool
 					return nullptr;
 				}
 
-				auto* collmap = mem.allocate<IW5::PhysCollmap>();
+				auto* collmap = mem.allocate<IW4::PhysCollmap>();
 				collmap->name = mem.duplicate_string(asset->name);
 				collmap->count = src->count;
-				collmap->geoms = mem.allocate<IW5::PhysGeomInfo>(src->count);
+				collmap->geoms = mem.allocate<IW4::PhysGeomInfo>(src->count);
 
-				// IW3 and IW5 PhysMass share an identical layout (3x vec3 floats).
-				memcpy(&collmap->mass, &src->mass, sizeof(IW5::PhysMass));
+				// IW3 and IW4 PhysMass share an identical layout (3x vec3 floats).
+				memcpy(&collmap->mass, &src->mass, sizeof(IW4::PhysMass));
 
 				// IW3/ODE authors inertia about the COM; Domino expects it about the model origin (parallel-axis shift, per unit mass)
 				{
@@ -209,9 +207,9 @@ namespace ZoneTool
 				for (unsigned int i = 0; i < src->count; i++)
 				{
 					const PhysGeomInfo& g = src->geoms[i];
-					IW5::PhysGeomInfo& d = collmap->geoms[i];
+					IW4::PhysGeomInfo& d = collmap->geoms[i];
 
-					d.brushWrapper = g.brush ? convert_brush_wrapper(g.brush, asset->name, mem) : nullptr;
+					d.brush = g.brush ? convert_brush_wrapper(g.brush, asset->name, mem) : nullptr;
 					d.type = remap_geom_type(g.type, asset->name);
 					memcpy(d.orientation, g.orientation, sizeof(float[3][3]));
 
@@ -223,7 +221,7 @@ namespace ZoneTool
 					d.bounds.halfSize[2] = g.halfLengths[2];
 
 					// IW3 packs cylinder/capsule as (halfHeight, radius, unused) with the symmetry axis along geom-local X (orientation maps it to model-up)
-					if ((d.type == IW5::PHYS_GEOM_CYLINDER || d.type == IW5::PHYS_GEOM_CAPSULE)
+					if ((d.type == IW4::PHYS_GEOM_CYLINDER || d.type == IW4::PHYS_GEOM_CAPSULE)
 						&& g.halfLengths[2] == 0.0f)
 					{
 						const float halfHeight = g.halfLengths[0];
@@ -368,11 +366,10 @@ namespace ZoneTool
 			xmodel->bad = asset->bad;
 			xmodel->physPreset = reinterpret_cast<IW4::PhysPreset*>(asset->physPreset);
 
-			// create a physcollmap asset for IW5 based off XModel physGeoms
+			// create a physcollmap asset for IW4 based off XModel physGeoms
 			if (asset->physGeoms && asset->physGeoms->count)
 			{
-				auto* iw5_collmap = GenerateIW5PhysCollmap(asset, mem);
-				xmodel->physCollmap = reinterpret_cast<IW4::PhysCollmap*>(iw5_collmap);
+				xmodel->physCollmap = GenerateIW4PhysCollmap(asset, mem);
 			}
 
 			bounds::compute(asset->mins, asset->maxs, &xmodel->bounds.midPoint);
@@ -391,7 +388,7 @@ namespace ZoneTool
 
 			if (iw4_model->physCollmap)
 			{
-				IW5::IPhysCollmap::dump(reinterpret_cast<IW5::PhysCollmap*>(iw4_model->physCollmap));
+				IW4::IPhysCollmap::dump(iw4_model->physCollmap);
 			}
 
 			// dump all xsurfaces

@@ -279,7 +279,7 @@ namespace ZoneTool
 					assert(iw4Brush->sides);
 				}
 
-				iw4Brush->edge = iw3Brush->baseAdjacentSide;
+				iw4Brush->baseAdjacentSide = iw3Brush->baseAdjacentSide;
 				for (size_t x = 0; x < 2; x++)
 				{
 					for (size_t y = 0; y < 3; y++)
@@ -475,7 +475,7 @@ namespace ZoneTool
 			iw4_clipmap->materials = reallocatedDMaterials;
 
 			// Brush edges
-			auto reallocatedBrushEdges = allocator.allocate<char>(iw4_clipmap->numBrushEdges + 1);
+			auto reallocatedBrushEdges = allocator.allocate<unsigned char>(iw4_clipmap->numBrushEdges + 1);
 			memcpy_s(reallocatedBrushEdges, iw4_clipmap->numBrushEdges, iw4_clipmap->brushEdges, iw4_clipmap->numBrushEdges);
 			reallocatedBrushEdges[brushEdgeIndex] = 2;
 
@@ -483,16 +483,16 @@ namespace ZoneTool
 			unsigned int offset = reinterpret_cast<unsigned int>(reallocatedBrushEdges) - reinterpret_cast<unsigned int>(iw4_clipmap->brushEdges);
 			for (size_t i = 0; i < iw4_clipmap->numBrushes; i++)
 			{
-				auto oldValue = *iw4_clipmap->brushes[i].edge;
+				auto oldValue = *iw4_clipmap->brushes[i].baseAdjacentSide;
 
-				iw4_clipmap->brushes[i].edge = reinterpret_cast<char*>(reinterpret_cast<int>(iw4_clipmap->brushes[i].edge) + offset);
+				iw4_clipmap->brushes[i].baseAdjacentSide = reinterpret_cast<unsigned char*>(reinterpret_cast<int>(iw4_clipmap->brushes[i].baseAdjacentSide) + offset);
 
-				if (*iw4_clipmap->brushes[i].edge != oldValue)
+				if (*iw4_clipmap->brushes[i].baseAdjacentSide != oldValue)
 				{
 					// Something wrong happened and i have no idea if this is normal behaviour or not
 					if (*iw4_clipmap->brushes[i].edgeCount[0] == 0 && *iw4_clipmap->brushes[i].edgeCount[1] == 0)
 					{
-						iw4_clipmap->brushes[i].edge = reallocatedBrushEdges;
+						iw4_clipmap->brushes[i].baseAdjacentSide = reallocatedBrushEdges;
 					}
 					else
 					{
@@ -570,7 +570,7 @@ namespace ZoneTool
 			auto bounds = MakeCarePackageBounds();
 			IW4::cbrush_t carePackageBrush{};
 			carePackageBrush.numsides = 0;
-			carePackageBrush.edge = &iw4_clipmap->brushEdges[brushEdgeIndex];
+			carePackageBrush.baseAdjacentSide = &iw4_clipmap->brushEdges[brushEdgeIndex];
 			carePackageBrush.sides = nullptr;
 
 			for (int x = 0; x < 2; ++x)

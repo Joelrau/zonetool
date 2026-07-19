@@ -22,8 +22,6 @@
 
 #include "IW4/Structs.hpp"
 
-#include "IW5/Structs.hpp"
-
 using namespace zonetool;
 
 #include "Json.hpp"

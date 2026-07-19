@@ -32,42 +32,103 @@ namespace ZoneTool
 			std::string techset[techset_map_type_e::count];
 		};
 
-		std::unordered_map<std::string, std::string> mapped_techsets =
-		{
-			{"mc_l_sm_r0c0",							"mo_l_sm_replace_i0c0"},
-			{"mc_l_sm_r0c0s0",							"mo_l_sm_replace_i0c0s0"},
-			{"mc_l_sm_r0c0n0s0",						"mo_l_sm_replace_i0c0s0n0"},
-
-			{"2d",										"2d"},
-
-			{"effect",									"eq_effect_blend_lin_ndw_nocast"},
-			{"effect_nofog",							"eq_effect_blend_lin_nofog_ndw_nocast"},
-			{"effect_zfeather_add",						"eq_effect_zfeather_add_lin_ct_ndw_nocast"},
-			{"effect_zfeather_add_nofog_eyeoffset",		"eq_effect_zfeather_add_lin_nofog_eyeoffset_ndw_nocast"},
-			{"effect_zfeather_add_nofog",				"eq_effect_zfeather_add_lin_nofog_ndw_nocast"},
-
-			{"distortion_scale",						"eq_distortion_scale"},
-			{"distortion_scale_zfeather",				"eq_distortion_scale_zfeather"},
-		};
-
-		std::unordered_map<std::string, techset_map_s> mapped_techsets_ =
+		std::unordered_map<std::string, techset_map_s> mapped_techsets =
 		{
 			{"mc_unlit",								{"mo_unlit_replace_lin", "mo_unlit_replace_lin_ct"}},
+
+			{"mc_l_sm_r0c0",							{"mo_l_sm_replace_i0c0"}},
+			{"mc_l_sm_r0c0s0",							{"mo_l_sm_replace_i0c0s0"}},
+			{"mc_l_sm_r0c0n0s0",						{"mo_l_sm_replace_i0c0s0n0"}},
+			{"2d",										{"2d", "2d|_ct"}},
+
+			{"effect",									{"eq_effect_blend_lin_ndw_nocast"}},
+			{"effect_nofog",							{"eq_effect_blend_lin_nofog_ndw_nocast"}},
+			{"effect_zfeather_add",						{"eq_effect_zfeather_add_lin_ct_ndw_nocast"}},
+			{"effect_zfeather_add_nofog_eyeoffset",		{"eq_effect_zfeather_add_lin_nofog_eyeoffset_ndw_nocast"}},
+			{"effect_zfeather_add_nofog",				{"eq_effect_zfeather_add_lin_nofog_ndw_nocast"}},
+
+			{"distortion_scale",						{"eq_distortion_scale"}},
+			{"distortion_scale_zfeather",				{"eq_distortion_scale_zfeather"}},
 		};
 
-		std::unordered_map<std::string, std::string> mapped_techsets_effect_vertlit =
+		std::unordered_map<std::string, techset_map_s> mapped_techsets_effect_vertlit =
 		{
-			{"effect",									"ev_effect_blend_lin_ct_ndw_nocast"},
+			{"effect",									{"ev_effect_blend_lin_ct_ndw_nocast"}},
 		};
 
 		enum MaterialType : std::uint8_t
 		{
 			MTL_TYPE_DEFAULT = 0x0, // ""
 			MTL_TYPE_MODEL = 1, // "m"
+			MLT_TYPE_MODEL_UNK2 = 2,
+			MTL_TYPE_MODEL_UNK3 = 3,
+			MTL_TYPE_MODEL_UNK4 = 4,
+			MTL_TYPE_MODEL_UNK5 = 5,
+			MTL_TYPE_MODEL_UNK6 = 6,
+			MTL_TYPE_MODEL_UNK7 = 7,
+			MTL_TYPE_MODEL_UNK8 = 8,
+			MTL_TYPE_MODEL_UNK9 = 9,
+			MTL_TYPE_MODEL_UNK10 = 10,
+			MTL_TYPE_MODEL_UNK11 = 11,
+			MTL_TYPE_MODEL_UNK12 = 12,
+			MTL_TYPE_MODEL_UNK13 = 13,
+			MTL_TYPE_MODEL_UNK14 = 14,
+			MTL_TYPE_MODEL_UNK15 = 15,
+			MTL_TYPE_MODEL_LMAP = 16, // "ml"
+			MTL_TYPE_MODEL_LMAP_VERTCOL = 17, // "mlc"
+			MTL_TYPE_MODEL_UNK18 = 18,
+			MTL_TYPE_MODEL_UNK19 = 19,
+			MTL_TYPE_MODEL_UNK20 = 20,
+			MTL_TYPE_MODEL_UNK21 = 21,
+			MTL_TYPE_MODEL_IMPACT = 22, // "mim"
 			MTL_TYPE_MODEL_SELFVIS = 23, // "mo"
 			MTL_TYPE_MODEL_VERTCOL_SELFVIS = 24, // "mco"
+			MTL_TYPE_MODEL_UNK25 = 25, // "mvo"
+			MTL_TYPE_MODEL_UNK26 = 26, // "mvco"
+			MTL_TYPE_MODEL_UNK27 = 27,
+			MTL_TYPE_MODEL_SECONDUV_SELFVIS = 28, // "m2o"
+			MTL_TYPE_MODEL_SECONDUV_VERTCOL_SELFVIS = 29, // "m2co"
+			MTL_TYPE_MODEL_UNK30 = 30, // "mop"
+			MTL_TYPE_MODEL_UNK31 = 31, // "m2op"
+			MTL_TYPE_MODEL_UNK32 = 32,
+			MTL_TYPE_MODEL_UNK33 = 33,
+			MTL_TYPE_MODEL_UNK34 = 34,
+			MTL_TYPE_MODEL_UNK35 = 35,
+			MTL_TYPE_MODEL_UNK36 = 36,
+			MTL_TYPE_MODEL_UNK37 = 37, // "mopw"
+			MTL_TYPE_MODEL_UNK38 = 38, // "m2opw"
+			MTL_TYPE_MODEL_UNK39 = 39, // "m2copw"
+			MTL_TYPE_MODEL_UNK40 = 40, // "mcopw"
+			MTL_TYPE_MODEL_UNK41 = 41, // "mvopw"
+			MTL_TYPE_MODEL_UNK42 = 42,
+			MTL_TYPE_MODEL_UNK43 = 43,
+			MTL_TYPE_MODEL_SUBDIV = 44, // "ms"
+			MTL_TYPE_MODEL_UNK45 = 45,
+			MTL_TYPE_MODEL_UNK46 = 46,
+			MTL_TYPE_MODEL_UNK47 = 47, // "msa"
+			MTL_TYPE_MODEL_UNK48 = 48,
+			MTL_TYPE_MODEL_UNK49 = 49,
+			MTL_TYPE_MODEL_UNK50 = 50,
+			MTL_TYPE_MODEL_UNK51 = 51,
+			MTL_TYPE_MODEL_UNK52 = 52,
+			MTL_TYPE_MODEL_SUBDIV_VERTCOL_SELFVIS = 53, // "msco"
+			MTL_TYPE_MODEL_UNK54 = 54, // "mszo"
+			MTL_TYPE_MODEL_UNK55 = 55, // "msvo"
+			MTL_TYPE_MODEL_UNK56 = 56, // "msvco"
+			MTL_TYPE_MODEL_SUBDIV_SELFVIS = 57, // "mso"
+			MTL_TYPE_MODEL_UNK58 = 58, // "msop"
+			MTL_TYPE_MODEL_UNK59 = 59,
+			MTL_TYPE_MODEL_UNK60 = 60,
+			MTL_TYPE_MODEL_UNK61 = 61,
+			MTL_TYPE_MODEL_UNK62 = 62,
+			MTL_TYPE_MODEL_UNK63 = 63, // "msopw"
+			MTL_TYPE_MODEL_UNK64 = 64, // "mscopw"
+			MTL_TYPE_MODEL_UNK65 = 65,
+			MTL_TYPE_MODEL_UNK66 = 66,
+			MTL_TYPE_MODEL_UNK67 = 67,
 			MTL_TYPE_WORLD = 68, // "w"
 			MTL_TYPE_WORLD_VERTCOL = 69, // "wc"
+			MTL_TYPE_WORLD_IMPACT = 70, // "wim"
 			MTL_TYPE_EFFECT_LMAP = 71, // "el"
 			MTL_TYPE_EFFECT_VERTLIT = 72, // "ev"
 			MTL_TYPE_EFFECT_QUAD = 73, // "eq"
@@ -91,17 +152,24 @@ namespace ZoneTool
 		{
 			if (!effect_vertlit)
 			{
-				const auto it = mapped_techsets_.find(techset);
-				if (it != mapped_techsets_.end())
+				const auto it = mapped_techsets.find(techset);
+				if (it != mapped_techsets.end())
+				{
+					auto tech = it->second.techset[color_tint ? techset_map_type_e::color_tint : techset_map_type_e::regular];
+					return tech.empty() ? it->second.techset[techset_map_type_e::regular] : tech;
+				}
+			}
+			else
+			{
+				const auto it = mapped_techsets_effect_vertlit.find(techset);
+				if (it != mapped_techsets_effect_vertlit.end())
 				{
 					auto tech = it->second.techset[color_tint ? techset_map_type_e::color_tint : techset_map_type_e::regular];
 					return tech.empty() ? it->second.techset[techset_map_type_e::regular] : tech;
 				}
 			}
 
-			const auto& map = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
-			const auto it = map.find(techset);
-			return (it != map.end()) ? it->second : "2d";
+			return "2d";
 		}
 
 		std::unordered_map<std::string, std::string> prefix_cache;
@@ -197,8 +265,10 @@ namespace ZoneTool
 			std::unordered_map<std::uint8_t, std::uint8_t> mapped_sortkeys =
 			{
 				{1, 2},		// Opaque
+				{2, 3},     // Sky
 				{43, 36},	// Distortion
 				{48, 35},	// Effect auto sort!
+				{52, 41},   // 2D
 			};
 
 			std::unordered_map<std::string, std::uint8_t> mapped_sortkeys_by_techset =
@@ -257,6 +327,7 @@ namespace ZoneTool
 
 			std::unordered_map<std::string, std::uint8_t> mapped_render_flags_by_techset =
 			{
+				{"2d", 0x1},
 				{"mc_shadowcaster_atest", 0x2},
 				{"wc_shadowcaster", 0x2},
 			};
@@ -364,7 +435,13 @@ namespace ZoneTool
 				matdata["stateFlags"] = asset->stateFlags; // convert
 				matdata["cameraRegion"] = IW7::get_IW7_camera_region(asset->cameraRegion, asset->name, iw7_techset);
 				matdata["materialType"] = IW7::get_material_type_from_techset(iw7_techset);
-				matdata["assetFlags"] = 0;//IW7::MTL_ASSETFLAG_NONE;
+				matdata["assetFlags"] = 0; // IW7::MTL_ASSETFLAG_NONE;
+
+				// fixes
+				if (matdata["cameraRegion"].get<uint8_t>() == 4 && matdata["sortKey"].get<uint8_t>() != 41)
+				{
+					matdata["cameraRegion"] = 11;
+				}
 
 				ordered_json constant_table;
 				for (int i = 0; i < asset->constantCount && techset != "2d"; i++)
@@ -384,7 +461,7 @@ namespace ZoneTool
 					}
 
 					table["name"] = constant_name.data();
-					table["nameHash"] = asset->constantTable[i].nameHash;
+					table["nameHash"] = constant_hash;
 
 					nlohmann::json literal_entry;
 					literal_entry[0] = asset->constantTable[i].literal[0];

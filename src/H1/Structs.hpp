@@ -320,9 +320,8 @@ namespace ZoneTool::H1
 
 	struct PhysBrushModelFields
 	{
-		short polytopeIndex;
-		short unk;
-		short worldIndex;
+		int polytopeIndex;
+		short polytopeCount;
 		short meshIndex;
 	};
 
