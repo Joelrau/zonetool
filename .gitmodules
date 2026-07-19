@@ -17,3 +17,12 @@
 [submodule "dep/gsc-tool"]
 	path = dep/gsc-tool
 	url = https://github.com/xensik/gsc-tool.git
+[submodule "dep/DirectXTex"]
+	path = dep/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
+[submodule "dep/minhook"]
+	path = dep/minhook
+	url = https://github.com/TsudaKageyu/minhook
+[submodule "dep/plutonium-sdk"]
+	path = dep/plutonium-sdk
+	url = https://github.com/plutoniummod/plutonium-sdk.git
