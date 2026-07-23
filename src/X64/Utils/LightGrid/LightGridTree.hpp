@@ -101,6 +101,23 @@ namespace lightgrid_tree
 	tree_data build_tree(const grid_sample* samples, size_t sample_count,
 		leaf_size_bits size_bits = leaf_size_bits::h1);
 
+	// fill empty grid cells adjacent to populated ones with a copy of the
+	// nearest populated sample, so near-wall / in-solid lookups resolve like
+	// the legacy clamped quad sampling instead of missing to the sun fallback.
+	//
+	// sample_classes (optional, parallel to `samples`) tags each input sample
+	// 0 = normal/indoor or 1 = sun. when supplied, donor selection prefers ANY
+	// non-sun donor over ANY sun donor; only within the same class does the
+	// weighted-distance rule (dx*dx + dy*dy + 4*dz*dz, deterministic first-best
+	// tie-break) decide. this stops empty wall-face cells adjacent to an indoor
+	// cell from being filled with a laterally-closer sun sample. a newly dilated
+	// cell inherits its donor's class, so multi-pass propagation stays
+	// class-consistent. duplicate input positions keep the last sample AND its
+	// class (matching build_tree). pass nullptr for the old class-agnostic
+	// behaviour.
+	void dilate_samples(std::vector<grid_sample>& samples, int passes = 1,
+		const unsigned char* sample_classes = nullptr);
+
 	// ---- decoder (game-exact mirror, for verification) -------------------
 
 	// returns false when the position holds no data (colorsIndex == 0 /

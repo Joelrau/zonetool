@@ -8,6 +8,8 @@
 #include "X64/Utils/LightGrid/LightGridSH.hpp"
 #include "X64/Utils/LightGrid/LightGridTree.hpp"
 
+#include <set>
+
 namespace ZoneTool::IW5
 {
 	namespace H1Converter
@@ -15,6 +17,20 @@ namespace ZoneTool::IW5
 		bool ret_true()
 		{
 			return true;
+		}
+
+		// a legacy entry is "sun" when its raw primaryLightIndex uses either sun
+		// encoding: the low range [1 .. lastSun] or the high range
+		// [256-lastSun .. 255] (lastSun == 0 leaves the low range empty). sun
+		// cells are remapped to the appended sentinel sun env: the engine treats
+		// only envs whose light index is >= 2048 - lastSunPrimaryLightIndex as sun
+		// (the shadow-mapped sun path), and those always lose the light-grid corner
+		// vote to real indoor envs (R_LightGridLookup) - so near-wall lookups never
+		// flicker to an unshadowed sun.
+		static bool is_sun_light(unsigned int pli, unsigned int last_sun)
+		{
+			return (last_sun != 0 && pli >= 1 && pli <= last_sun)
+				|| pli >= 256 - last_sun;
 		}
 
 		H1::GfxWorld* GenerateH1GfxWorld(GfxWorld* asset, allocator& mem)
@@ -252,27 +268,58 @@ namespace ZoneTool::IW5
 			REINTERPRET_CAST_SAFE(h1_asset->lightGrid.rowDataStart, asset->lightGrid.rowDataStart);
 			h1_asset->lightGrid.rawRowDataSize = asset->lightGrid.rawRowDataSize;
 			REINTERPRET_CAST_SAFE(h1_asset->lightGrid.rawRowData, asset->lightGrid.rawRowData);
+
+			// always append a duplicate of color set 0 (the legacy default set) as
+			// the LAST color/palette entry, matching original H1 layout (entry 0 =
+			// empty sentinel, entry 1 = sky, last = default/missing). it serves two
+			// purposes: missingGridColorIndex points at it for genuine lookup
+			// misses, and legacy colorsIndex-0 references are remapped to it - the
+			// H1 tree treats voxel color_index 0 as "no data" (R_GetLightGrid
+			// returns false), which would otherwise drop those cells' light env.
+			const auto lightgrid_refs = lightgrid_tree::enumerate_row_data(
+				asset->lightGrid.mins, asset->lightGrid.maxs,
+				asset->lightGrid.rowAxis, asset->lightGrid.colAxis,
+				asset->lightGrid.rowDataStart, asset->lightGrid.rawRowData);
+
+			const unsigned int orig_color_count = asset->lightGrid.colorCount;
+			bool extend_colors = orig_color_count > 0;
+			if (extend_colors && orig_color_count == 0xFFFF)
+			{
+				ZONETOOL_WARNING("GfxWorld \"%s\": light grid colorCount is 0xFFFF, "
+					"skipping default color entry append to avoid index overflow", asset->name);
+				extend_colors = false;
+			}
+			const unsigned int zero_remap_index = orig_color_count; // only valid when extend_colors
+
 			h1_asset->lightGrid.entryCount = asset->lightGrid.entryCount;
 			h1_asset->lightGrid.entries = mem.allocate<H1::GfxLightGridEntry>(h1_asset->lightGrid.entryCount);
 			for (unsigned int i = 0; i < h1_asset->lightGrid.entryCount; i++)
 			{
-				h1_asset->lightGrid.entries[i].colorsIndex = asset->lightGrid.entries[i].colorsIndex;
+				h1_asset->lightGrid.entries[i].colorsIndex =
+					(extend_colors && asset->lightGrid.entries[i].colorsIndex == 0)
+					? zero_remap_index
+					: asset->lightGrid.entries[i].colorsIndex;
 				h1_asset->lightGrid.entries[i].primaryLightEnvIndex = asset->lightGrid.entries[i].primaryLightIndex;
 				h1_asset->lightGrid.entries[i].unused = 0;
 				h1_asset->lightGrid.entries[i].needsTrace = asset->lightGrid.entries[i].needsTrace;
 
-				if (asset->lightGrid.entries[i].primaryLightIndex >= 256 - asset->lastSunPrimaryLightIndex)
+				// sun cells -> sentinel sun env (see is_sun_light); mirrored in the
+				// tree sample loop below
+				if (is_sun_light(asset->lightGrid.entries[i].primaryLightIndex, asset->lastSunPrimaryLightIndex))
 				{
 					h1_asset->lightGrid.entries[i].primaryLightEnvIndex = static_cast<unsigned short>(asset->primaryLightCount);
 				}
 			}
-			h1_asset->lightGrid.colorCount = asset->lightGrid.colorCount;
-			h1_asset->lightGrid.colors = mem.allocate<H1::GfxLightGridColors>(h1_asset->lightGrid.colorCount);
-			for (unsigned int i = 0; i < h1_asset->lightGrid.colorCount; i++)
+			const unsigned int dest_color_count = extend_colors ? orig_color_count + 1 : orig_color_count;
+			h1_asset->lightGrid.colorCount = dest_color_count;
+			h1_asset->lightGrid.colors = mem.allocate<H1::GfxLightGridColors>(dest_color_count);
+			for (unsigned int i = 0; i < dest_color_count; i++)
 			{
+				// the duplicated slot (index == orig_color_count) re-converts entry 0
+				const unsigned int src = (extend_colors && i == orig_color_count) ? 0 : i;
 				for (unsigned int j = 0; j < 56; j++)
 				{
-					auto& rgb = asset->lightGrid.colors[i].rgb[j];
+					auto& rgb = asset->lightGrid.colors[src].rgb[j];
 					auto& dest_rgb = h1_asset->lightGrid.colors[i].rgb[j];
 					dest_rgb[0] = float_to_half(rgb[0] / 255.f);
 					dest_rgb[1] = float_to_half(rgb[1] / 255.f);
@@ -282,10 +329,27 @@ namespace ZoneTool::IW5
 
 			// build the SH color palette + lightgrid tree from the legacy LDR data.
 			{
-				// palette: one SH entry per legacy color set, colorsIndex maps 1:1
+				// palette: one SH entry per legacy color set, colorsIndex maps 1:1.
+				// build from the (optionally extended) LDR colors so palette entry i
+				// stays aligned with colors[i] and colorsIndex i. build_palette_from_ldr
+				// sizes paletteEntryCount from the count we pass here.
+				std::vector<unsigned char> extended_ldr;
+				const unsigned char* palette_colors =
+					reinterpret_cast<const unsigned char*>(asset->lightGrid.colors);
+				unsigned int palette_color_count = orig_color_count;
+				if (extend_colors)
+				{
+					const size_t stride = sizeof(asset->lightGrid.colors[0]); // 168 bytes
+					extended_ldr.resize(static_cast<size_t>(orig_color_count + 1) * stride);
+					memcpy(extended_ldr.data(), palette_colors,
+						static_cast<size_t>(orig_color_count) * stride);
+					memcpy(extended_ldr.data() + static_cast<size_t>(orig_color_count) * stride,
+						palette_colors, stride); // duplicate entry 0 into the fresh slot
+					palette_colors = extended_ldr.data();
+					palette_color_count = orig_color_count + 1;
+				}
 				const auto palette = lightgrid_sh::build_palette_from_ldr(
-					reinterpret_cast<const unsigned char*>(asset->lightGrid.colors),
-					asset->lightGrid.colorCount);
+					palette_colors, palette_color_count);
 
 				h1_asset->lightGrid.tableVersion = 1;
 				h1_asset->lightGrid.paletteVersion = 1;
@@ -303,8 +367,11 @@ namespace ZoneTool::IW5
 				h1_asset->lightGrid.paletteBitstream = mem.allocate<unsigned char>(h1_asset->lightGrid.paletteBitstreamSize);
 				memcpy(h1_asset->lightGrid.paletteBitstream, palette.bitstream.data(), palette.bitstream.size());
 
-				// palette entry 0 = default colors, matching the old colorsIndex semantics
-				h1_asset->lightGrid.missingGridColorIndex = 0;
+				// point misses at the appended default entry (last palette index),
+				// matching original H1 layout; entry 0 stays the empty sentinel
+				h1_asset->lightGrid.missingGridColorIndex = extend_colors
+					? zero_remap_index
+					: (h1_asset->lightGrid.paletteEntryCount ? h1_asset->lightGrid.paletteEntryCount - 1 : 0);
 
 				h1_asset->lightGrid.stageCount = asset->primaryLightCount;
 				h1_asset->lightGrid.stageLightingContrastGain = mem.allocate<float>(h1_asset->lightGrid.stageCount);
@@ -336,16 +403,13 @@ namespace ZoneTool::IW5
 					}
 				}
 
-				// tree: enumerate every populated grid position from the legacy row data
-				// and rebuild the compressed octree that H1 walks in R_LightGridLookup
-				const auto refs = lightgrid_tree::enumerate_row_data(
-					asset->lightGrid.mins, asset->lightGrid.maxs,
-					asset->lightGrid.rowAxis, asset->lightGrid.colAxis,
-					asset->lightGrid.rowDataStart, asset->lightGrid.rawRowData);
-
+				// tree: rebuild the compressed octree that H1 walks in
+				// R_LightGridLookup from the populated grid positions enumerated above.
 				std::vector<lightgrid_tree::grid_sample> tree_samples;
-				tree_samples.reserve(refs.size());
-				for (const auto& ref : refs)
+				std::vector<unsigned char> sample_classes; // parallel: 0 = indoor, 1 = sun
+				tree_samples.reserve(lightgrid_refs.size());
+				sample_classes.reserve(lightgrid_refs.size());
+				for (const auto& ref : lightgrid_refs)
 				{
 					if (ref.entry_index >= asset->lightGrid.entryCount)
 					{
@@ -355,19 +419,74 @@ namespace ZoneTool::IW5
 
 					lightgrid_tree::grid_sample sample{};
 					memcpy(sample.pos, ref.pos, sizeof(sample.pos));
-					sample.color_index = entry.colorsIndex;
+					// remap colorsIndex 0 -> duplicate slot so the tree never stores
+					// real data at color_index 0 (see extend_colors above)
+					sample.color_index = (extend_colors && entry.colorsIndex == 0)
+						? zero_remap_index
+						: entry.colorsIndex;
 					sample.light_index = entry.primaryLightIndex;
 					// the old per-corner needsTrace mask becomes two z-half trace bits
 					sample.trace_lo = (entry.needsTrace & 0x55) != 0;
 					sample.trace_hi = (entry.needsTrace & 0xAA) != 0;
-					if (entry.primaryLightIndex >= 256 - asset->lastSunPrimaryLightIndex)
+
+					// classify from the ORIGINAL primaryLightIndex (see is_sun_light):
+					// drives both the dilation donor preference and the sentinel-env
+					// remap that must match the entries loop above
+					const bool is_sun = is_sun_light(entry.primaryLightIndex, asset->lastSunPrimaryLightIndex);
+					sample_classes.push_back(is_sun ? 1 : 0);
+					if (is_sun)
 					{
 						sample.light_index = static_cast<unsigned short>(asset->primaryLightCount);
 					}
 					tree_samples.push_back(sample);
 				}
 
+				// count unique populated cells before dilation (dilate_samples and
+				// build_tree both collapse duplicate positions to the last sample)
+				std::set<unsigned long long> unique_before;
+				for (const auto& s : tree_samples)
+				{
+					unique_before.insert(
+						(static_cast<unsigned long long>(s.pos[2]) << 42)
+						| (static_cast<unsigned long long>(s.pos[1]) << 21)
+						| static_cast<unsigned long long>(s.pos[0]));
+				}
+				const size_t populated_cell_count = unique_before.size();
+
+				// dilate populated cells into empty neighbors so near-wall / in-solid
+				// lookups clamp to real lighting instead of the sun fallback. run after
+				// the colorsIndex-0 remap so dilated copies never carry color_index 0.
+				// pass the class array so empty wall cells prefer an indoor donor over
+				// a laterally-closer sun donor (avoids indoor sun flicker).
+				lightgrid_tree::dilate_samples(tree_samples, 2, sample_classes.data());
+				const size_t dilated_cell_count = tree_samples.size() - populated_cell_count;
+
 				const auto tree = lightgrid_tree::build_tree(tree_samples.data(), tree_samples.size());
+
+				// verify the round-trip through the game-exact mirror decoder.
+				// tree_samples hold unique positions after dilation, so compare directly.
+				size_t roundtrip_mismatches = 0;
+				for (const auto& s : tree_samples)
+				{
+					lightgrid_tree::raw_result r{};
+					const bool ok = lightgrid_tree::lookup(tree, s.pos, r);
+					if (!ok || r.color_index != s.color_index || r.light_index != s.light_index
+						|| r.trace_lo != s.trace_lo || r.trace_hi != s.trace_hi)
+					{
+						roundtrip_mismatches++;
+					}
+				}
+				if (roundtrip_mismatches)
+				{
+					ZONETOOL_ERROR("GfxWorld \"%s\": light grid tree %zu samples (%zu dilated), "
+						"%zu round-trip mismatches", asset->name, populated_cell_count,
+						dilated_cell_count, roundtrip_mismatches);
+				}
+				else
+				{
+					ZONETOOL_INFO("GfxWorld \"%s\": light grid tree %zu samples (%zu dilated), round-trip OK",
+						asset->name, populated_cell_count, dilated_cell_count);
+				}
 				for (auto i = 0; i < 3; i++)
 				{
 					auto& h1_tree = h1_asset->lightGrid.tree[i];

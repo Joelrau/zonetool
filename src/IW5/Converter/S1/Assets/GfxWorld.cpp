@@ -5,11 +5,29 @@
 
 #include "X64/Utils/Umbra/umbra.hpp"
 #include "X64/Utils/Utils.hpp"
+#include "X64/Utils/LightGrid/LightGridSH.hpp"
+#include "X64/Utils/LightGrid/LightGridTree.hpp"
+
+#include <set>
 
 namespace ZoneTool::IW5
 {
 	namespace S1Converter
 	{
+		// a legacy entry is "sun" when its raw primaryLightIndex uses either sun
+		// encoding: the low range [1 .. lastSun] or the high range
+		// [256-lastSun .. 255] (lastSun == 0 leaves the low range empty). sun
+		// cells are remapped to the appended sentinel sun env: the engine treats
+		// only envs whose light index is >= 2048 - lastSunPrimaryLightIndex as sun
+		// (the shadow-mapped sun path), and those always lose the light-grid corner
+		// vote to real indoor envs (R_LightGridLookup) - so near-wall lookups never
+		// flicker to an unshadowed sun.
+		static bool is_sun_light(unsigned int pli, unsigned int last_sun)
+		{
+			return (last_sun != 0 && pli >= 1 && pli <= last_sun)
+				|| pli >= 256 - last_sun;
+		}
+
 		S1::GfxWorld* GenerateS1GfxWorld(GfxWorld* asset, allocator& mem)
 		{
 			// allocate S1 GfxWorld structure
@@ -249,22 +267,58 @@ namespace ZoneTool::IW5
 			REINTERPRET_CAST_SAFE(s1_asset->lightGrid.rowDataStart, asset->lightGrid.rowDataStart);
 			s1_asset->lightGrid.rawRowDataSize = asset->lightGrid.rawRowDataSize;
 			REINTERPRET_CAST_SAFE(s1_asset->lightGrid.rawRowData, asset->lightGrid.rawRowData);
+
+			// always append a duplicate of color set 0 (the legacy default set) as
+			// the LAST color/palette entry, matching original H1 layout (entry 0 =
+			// empty sentinel, entry 1 = sky, last = default/missing). it serves two
+			// purposes: missingGridColorIndex points at it for genuine lookup
+			// misses, and legacy colorsIndex-0 references are remapped to it - the
+			// tree treats voxel color_index 0 as "no data" (R_GetLightGrid
+			// returns false), which would otherwise drop those cells' light env.
+			const auto lightgrid_refs = lightgrid_tree::enumerate_row_data(
+				asset->lightGrid.mins, asset->lightGrid.maxs,
+				asset->lightGrid.rowAxis, asset->lightGrid.colAxis,
+				asset->lightGrid.rowDataStart, asset->lightGrid.rawRowData);
+
+			const unsigned int orig_color_count = asset->lightGrid.colorCount;
+			bool extend_colors = orig_color_count > 0;
+			if (extend_colors && orig_color_count == 0xFFFF)
+			{
+				ZONETOOL_WARNING("GfxWorld \"%s\": light grid colorCount is 0xFFFF, "
+					"skipping default color entry append to avoid index overflow", asset->name);
+				extend_colors = false;
+			}
+			const unsigned int zero_remap_index = orig_color_count; // only valid when extend_colors
+
 			s1_asset->lightGrid.entryCount = asset->lightGrid.entryCount;
 			s1_asset->lightGrid.entries = mem.allocate<S1::GfxLightGridEntry>(s1_asset->lightGrid.entryCount);
 			for (unsigned int i = 0; i < s1_asset->lightGrid.entryCount; i++)
 			{
-				s1_asset->lightGrid.entries[i].colorsIndex = asset->lightGrid.entries[i].colorsIndex;
+				s1_asset->lightGrid.entries[i].colorsIndex =
+					(extend_colors && asset->lightGrid.entries[i].colorsIndex == 0)
+					? zero_remap_index
+					: asset->lightGrid.entries[i].colorsIndex;
 				s1_asset->lightGrid.entries[i].primaryLightEnvIndex = asset->lightGrid.entries[i].primaryLightIndex;
 				s1_asset->lightGrid.entries[i].unused = 0;
 				s1_asset->lightGrid.entries[i].needsTrace = asset->lightGrid.entries[i].needsTrace;
+
+				// sun cells -> sentinel sun env (see is_sun_light); mirrored in the
+				// tree sample loop below
+				if (is_sun_light(asset->lightGrid.entries[i].primaryLightIndex, asset->lastSunPrimaryLightIndex))
+				{
+					s1_asset->lightGrid.entries[i].primaryLightEnvIndex = static_cast<unsigned short>(asset->primaryLightCount);
+				}
 			}
-			s1_asset->lightGrid.colorCount = asset->lightGrid.colorCount;
-			s1_asset->lightGrid.colors = mem.allocate<S1::GfxLightGridColors>(s1_asset->lightGrid.colorCount);
-			for (unsigned int i = 0; i < s1_asset->lightGrid.colorCount; i++)
+			const unsigned int dest_color_count = extend_colors ? orig_color_count + 1 : orig_color_count;
+			s1_asset->lightGrid.colorCount = dest_color_count;
+			s1_asset->lightGrid.colors = mem.allocate<S1::GfxLightGridColors>(dest_color_count);
+			for (unsigned int i = 0; i < dest_color_count; i++)
 			{
+				// the duplicated slot (index == orig_color_count) re-converts entry 0
+				const unsigned int src = (extend_colors && i == orig_color_count) ? 0 : i;
 				for (unsigned int j = 0; j < 56; j++)
 				{
-					auto& rgb = asset->lightGrid.colors[i].rgb[j];
+					auto& rgb = asset->lightGrid.colors[src].rgb[j];
 					auto& dest_rgb = s1_asset->lightGrid.colors[i].rgb[j];
 					dest_rgb[0] = float_to_half(rgb[0] / 255.f);
 					dest_rgb[1] = float_to_half(rgb[1] / 255.f);
@@ -272,47 +326,193 @@ namespace ZoneTool::IW5
 				}
 			}
 
-			// --experimental--
+			// build the SH color palette + lightgrid tree from the legacy LDR data.
 			{
-				// iw6 mp_character_room
-				[[maybe_unused]] const std::uint8_t skyLightGridColors_bytes[] = { 0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63,0,0,59,63,0,0,63,63,0,0,81,63 };
-				[[maybe_unused]] const std::uint8_t defaultLightGridColors_bytes[] = { 0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63,0,0,65,63,0,0,69,63,0,0,86,63 };
-				[[maybe_unused]] const std::uint8_t p_nodeTable_bytes[] = { 1,0,0,255,9,0,0,136,11,0,0,68,13,0,0,34,15,0,0,17,17,0,0,136,19,0,0,68,21,0,0,34,23,0,0,17,0,0,0,240,47,0,0,255,134,0,0,240,172,0,0,255,0,1,0,240,41,1,0,255,136,1,0,240,186,1,0,255,26,2,0,255,95,2,0,15,124,2,0,255,193,2,0,15,222,2,0,255,35,3,0,15,64,3,0,255,129,3,0,15 };
-				[[maybe_unused]] const std::uint8_t p_leafTable_bytes[] = { 43,200,178,32,26,91,212,113,63,110,254,190,224,239,3,89,15,100,0,252,15,224,43,211,47,48,207,0,100,192,195,15,30,34,219,254,131,150,22,48,178,254,36,217,86,210,6,59,202,210,28,202,178,8,26,71,69,29,63,254,254,190,192,223,7,178,30,200,122,236,0,252,7,0,252,195,60,3,243,12,244,192,195,99,240,48,25,255,65,75,11,45,45,32,2,117,151,182,137,5,254,254,190,192,223,7,178,30,200,122,236,0,252,7,0,252,195,60,3,243,12,236,192,195,7,192,195,163,165,133,150,22,8,1,59,73,66,32,90,199,196,45,108,0,252,7,0,252,195,60,3,126,0,248,10,0,240,5,211,22,32,30,247,2,108,63,79,240,243,160,165,5,59,203,66,40,203,66,40,26,75,69,25,63,236,0,252,23,0,252,195,60,3,243,12,254,0,248,42,0,240,5,211,22,76,91,32,110,205,22,236,63,79,241,243,160,165,133,150,22,252,0,252,7,1,248,135,121,6,230,25,254,0,248,10,0,240,5,211,22,76,91,48,241,152,17,252,63,79,240,231,65,75,11,45,45,59,137,145,36,122,199,196,37,108,192,195,7,192,195,163,165,5,48,42,158,160,255,0,126,128,135,9,0,15,131,182,12,100,31,143,96,152,21,0,230,25,59,203,177,52,14,177,48,26,11,197,245,3,236,192,195,31,192,195,163,165,133,150,22,48,211,121,128,36,146,2,254,128,135,57,0,15,131,182,12,218,50,228,31,143,100,152,183,1,0,204,51,48,207,0,244,192,195,99,128,240,90,42,11,180,180,208,210,2,32,219,7,8,254,128,135,57,0,15,131,182,12,218,50,228,31,143,64,216,7,4,128,121,6,230,25,43,7,195,36,26,95,148,221,246,3,48,23,40,123,107,215,3,116,63,143,68,218,94,160,9,2,180,180,0,116,31,15,53,202,110,39,64,0,152,103,0,124,124,77,4,249,154,192,107,2,59,135,227,44,132,194,44,26,199,69,217,109,63,48,23,56,187,42,187,27,244,63,143,4,250,15,36,75,16,160,165,133,150,22,228,31,143,249,219,230,70,2,0,204,51,48,207,0,236,124,77,4,124,77,224,53,129,215,4,32,70,119,14,236,63,79,240,243,160,165,133,150,22,228,31,143,4,152,7,0,48,207,192,60,3,236,124,77,4,124,77,224,53,129,215,4,27,138,162,0,138,162,0,26,4,246,254,62,127,31,200,122,32,235,1,228,0,252,3,240,15,243,12,204,51,228,192,195,3,15,143,150,22,90,90,246,254,62,127,31,200,122,32,235,1,228,0,252,3,240,15,243,12,204,51,228,192,195,3,15,143,150,22,90,90,27,7,130,0,26,4,182,254,62,127,31,200,122,164,0,252,3,240,15,243,12,164,192,195,3,15,143,150,22,27,202,2,36,202,2,36,26,4,228,0,252,3,240,15,243,12,204,51,246,0,248,2,192,23,76,91,48,109,1,228,63,207,207,131,150,22,90,90,228,0,252,3,240,15,243,12,204,51,246,0,248,2,192,23,76,91,48,109,1,228,63,207,207,131,150,22,90,90,27,8,2,28,26,4,164,0,252,3,240,15,243,12,182,0,248,2,192,23,76,91,164,63,207,207,131,150,22,27,10,176,36,10,176,36,26,4,228,192,195,3,15,143,150,22,90,90,246,128,135,1,60,12,218,50,104,203,0,228,31,207,199,3,243,12,204,51,228,192,195,3,15,143,150,22,90,90,246,128,135,1,60,12,218,50,104,203,0,228,31,207,199,3,243,12,204,51,27,8,128,28,26,4,164,192,195,3,15,143,150,22,182,128,135,1,60,12,218,50,164,31,207,199,3,243,12,27,64,146,40,64,146,40,26,4,228,63,207,207,131,150,22,90,90,228,31,207,199,3,243,12,204,51,228,124,77,240,53,129,215,4,94,19,228,63,207,207,131,150,22,90,90,228,31,207,199,3,243,12,204,51,228,124,77,240,53,129,215,4,94,19,27,192,113,32,26,4,164,63,207,207,131,150,22,164,31,207,199,3,243,12,164,124,77,240,53,129,215,4 };
-				[[maybe_unused]] const std::uint8_t paletteBitStream_bytes[] ={ 8, 33, 195, 128, 128, 124, 128, 128, 128, 129, 128, 199, 128, 128, 124, 128, 128, 128, 129, 128, 216, 128, 128, 124, 128, 128, 128, 129, 128, 0, 8, 33, 187, 128, 128, 130, 128, 128, 128, 128, 128, 191, 128, 128, 130, 128, 128, 128, 128, 128, 209, 128, 128, 130, 128, 128, 128, 128, 128, 0, 0, 0, 82, 80, 18, 64, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 214, 106, 18, 64, 1, 0, 0, 0, 8, 33, 195, 128, 128, 124, 128, 128, 128, 129, 128, 199, 128, 128, 124, 128, 128, 128, 129, 128, 216, 128, 128, 124, 128, 128, 128, 129, 128, 0, 198, 24, 241, 248, 8, 128, 128, 128, 128, 90, 128, 241, 8, 128, 248, 128, 128, 128, 147, 184, 241, 128, 248, 8, 128, 128, 128, 147, 72, 0 };
+				// palette: one SH entry per legacy color set, colorsIndex maps 1:1.
+				// build from the (optionally extended) LDR colors so palette entry i
+				// stays aligned with colors[i] and colorsIndex i. build_palette_from_ldr
+				// sizes paletteEntryCount from the count we pass here.
+				std::vector<unsigned char> extended_ldr;
+				const unsigned char* palette_colors =
+					reinterpret_cast<const unsigned char*>(asset->lightGrid.colors);
+				unsigned int palette_color_count = orig_color_count;
+				if (extend_colors)
+				{
+					const size_t stride = sizeof(asset->lightGrid.colors[0]); // 168 bytes
+					extended_ldr.resize(static_cast<size_t>(orig_color_count + 1) * stride);
+					memcpy(extended_ldr.data(), palette_colors,
+						static_cast<size_t>(orig_color_count) * stride);
+					memcpy(extended_ldr.data() + static_cast<size_t>(orig_color_count) * stride,
+						palette_colors, stride); // duplicate entry 0 into the fresh slot
+					palette_colors = extended_ldr.data();
+					palette_color_count = orig_color_count + 1;
+				}
+				const auto palette = lightgrid_sh::build_palette_from_ldr(
+					palette_colors, palette_color_count);
 
 				s1_asset->lightGrid.tableVersion = 1;
 				s1_asset->lightGrid.paletteVersion = 1;
-				s1_asset->lightGrid.paletteEntryCount = asset->lightGrid.entryCount;
+
+				s1_asset->lightGrid.rangeExponent8BitsEncoding = palette.config.range_exp_8bits;
+				s1_asset->lightGrid.rangeExponent12BitsEncoding = palette.config.range_exp_12bits;
+				s1_asset->lightGrid.rangeExponent16BitsEncoding = palette.config.range_exp_16bits;
+
+				s1_asset->lightGrid.paletteEntryCount = static_cast<unsigned int>(palette.entry_address.size());
 				s1_asset->lightGrid.paletteEntryAddress = mem.allocate<int>(s1_asset->lightGrid.paletteEntryCount);
-				for (unsigned int i = 0; i < s1_asset->lightGrid.paletteEntryCount; i++)
+				memcpy(s1_asset->lightGrid.paletteEntryAddress, palette.entry_address.data(),
+					palette.entry_address.size() * sizeof(int));
+
+				s1_asset->lightGrid.paletteBitstreamSize = static_cast<unsigned int>(palette.bitstream.size());
+				s1_asset->lightGrid.paletteBitstream = mem.allocate<unsigned char>(s1_asset->lightGrid.paletteBitstreamSize);
+				memcpy(s1_asset->lightGrid.paletteBitstream, palette.bitstream.data(), palette.bitstream.size());
+
+				// point misses at the appended default entry (last palette index),
+				// matching original H1 layout; entry 0 stays the empty sentinel
+				s1_asset->lightGrid.missingGridColorIndex = extend_colors
+					? zero_remap_index
+					: (s1_asset->lightGrid.paletteEntryCount ? s1_asset->lightGrid.paletteEntryCount - 1 : 0);
+
+				s1_asset->lightGrid.stageCount = asset->primaryLightCount;
+				s1_asset->lightGrid.stageLightingContrastGain = mem.allocate<float>(s1_asset->lightGrid.stageCount);
+				for (auto i = 0; i < s1_asset->lightGrid.stageCount; i++)
 				{
-					s1_asset->lightGrid.paletteEntryAddress[i] = 30; // 0, 30, 86, 116 //asset->lightGrid.entries[i].colorsIndex;
+					s1_asset->lightGrid.stageLightingContrastGain[i] = 0.3f;
 				}
 
-				s1_asset->lightGrid.paletteBitstreamSize = sizeof(paletteBitStream_bytes);
-				s1_asset->lightGrid.paletteBitstream = mem.allocate<unsigned char>(s1_asset->lightGrid.paletteBitstreamSize);
-				memcpy(s1_asset->lightGrid.paletteBitstream, paletteBitStream_bytes, sizeof(paletteBitStream_bytes));
+				// sky/default grid colors are linear HDR values stored as half floats
+				float hdr_colors[56][3];
+				if (asset->lightGrid.colorCount > 0)
+				{
+					lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[0].rgb, hdr_colors);
+					for (unsigned int j = 0; j < 56; j++)
+					{
+						s1_asset->lightGrid.defaultLightGridColors.rgb[j][0] = float_to_half(hdr_colors[j][0]);
+						s1_asset->lightGrid.defaultLightGridColors.rgb[j][1] = float_to_half(hdr_colors[j][1]);
+						s1_asset->lightGrid.defaultLightGridColors.rgb[j][2] = float_to_half(hdr_colors[j][2]);
+					}
+				}
+				if (asset->lightGrid.colorCount > 1)
+				{
+					lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[1].rgb, hdr_colors);
+					for (unsigned int j = 0; j < 56; j++)
+					{
+						s1_asset->lightGrid.skyLightGridColors.rgb[j][0] = float_to_half(hdr_colors[j][0]);
+						s1_asset->lightGrid.skyLightGridColors.rgb[j][1] = float_to_half(hdr_colors[j][1]);
+						s1_asset->lightGrid.skyLightGridColors.rgb[j][2] = float_to_half(hdr_colors[j][2]);
+					}
+				}
 
-				s1_asset->lightGrid.missingGridColorIndex = s1_asset->lightGrid.paletteEntryCount - 1;
+				// tree: rebuild the compressed octree that the engine walks in
+				// R_LightGridLookup from the populated grid positions enumerated above.
+				std::vector<lightgrid_tree::grid_sample> tree_samples;
+				std::vector<unsigned char> sample_classes; // parallel: 0 = indoor, 1 = sun
+				tree_samples.reserve(lightgrid_refs.size());
+				sample_classes.reserve(lightgrid_refs.size());
+				for (const auto& ref : lightgrid_refs)
+				{
+					if (ref.entry_index >= asset->lightGrid.entryCount)
+					{
+						continue;
+					}
+					const auto& entry = asset->lightGrid.entries[ref.entry_index];
 
-				s1_asset->lightGrid.rangeExponent8BitsEncoding = 0;
-				s1_asset->lightGrid.rangeExponent12BitsEncoding = 4;
-				s1_asset->lightGrid.rangeExponent16BitsEncoding = 23;
+					lightgrid_tree::grid_sample sample{};
+					memcpy(sample.pos, ref.pos, sizeof(sample.pos));
+					// remap colorsIndex 0 -> duplicate slot so the tree never stores
+					// real data at color_index 0 (see extend_colors above)
+					sample.color_index = (extend_colors && entry.colorsIndex == 0)
+						? zero_remap_index
+						: entry.colorsIndex;
+					sample.light_index = entry.primaryLightIndex;
+					// the old per-corner needsTrace mask becomes two z-half trace bits
+					sample.trace_lo = (entry.needsTrace & 0x55) != 0;
+					sample.trace_hi = (entry.needsTrace & 0xAA) != 0;
 
-				s1_asset->lightGrid.stageCount = 1;
-				s1_asset->lightGrid.stageLightingContrastGain = mem.allocate<float>(1);
-				s1_asset->lightGrid.stageLightingContrastGain[0] = 0.3f;
+					// classify from the ORIGINAL primaryLightIndex (see is_sun_light):
+					// drives both the dilation donor preference and the sentinel-env
+					// remap that must match the entries loop above
+					const bool is_sun = is_sun_light(entry.primaryLightIndex, asset->lastSunPrimaryLightIndex);
+					sample_classes.push_back(is_sun ? 1 : 0);
+					if (is_sun)
+					{
+						sample.light_index = static_cast<unsigned short>(asset->primaryLightCount);
+					}
+					tree_samples.push_back(sample);
+				}
 
-				//memcpy(&s1_asset->lightGrid.skyLightGridColors, skyLightGridColors_bytes, sizeof(skyLightGridColors_bytes));
-				//memcpy(&s1_asset->lightGrid.defaultLightGridColors, defaultLightGridColors_bytes, sizeof(defaultLightGridColors_bytes));
+				// count unique populated cells before dilation (dilate_samples and
+				// build_tree both collapse duplicate positions to the last sample)
+				std::set<unsigned long long> unique_before;
+				for (const auto& s : tree_samples)
+				{
+					unique_before.insert(
+						(static_cast<unsigned long long>(s.pos[2]) << 42)
+						| (static_cast<unsigned long long>(s.pos[1]) << 21)
+						| static_cast<unsigned long long>(s.pos[0]));
+				}
+				const size_t populated_cell_count = unique_before.size();
 
+				// dilate populated cells into empty neighbors so near-wall / in-solid
+				// lookups clamp to real lighting instead of the sun fallback. run after
+				// the colorsIndex-0 remap so dilated copies never carry color_index 0.
+				// pass the class array so empty wall cells prefer an indoor donor over
+				// a laterally-closer sun donor (avoids indoor sun flicker).
+				lightgrid_tree::dilate_samples(tree_samples, 2, sample_classes.data());
+				const size_t dilated_cell_count = tree_samples.size() - populated_cell_count;
+
+				const auto tree = lightgrid_tree::build_tree(tree_samples.data(), tree_samples.size());
+
+				// verify the round-trip through the game-exact mirror decoder.
+				// tree_samples hold unique positions after dilation, so compare directly.
+				size_t roundtrip_mismatches = 0;
+				for (const auto& s : tree_samples)
+				{
+					lightgrid_tree::raw_result r{};
+					const bool ok = lightgrid_tree::lookup(tree, s.pos, r);
+					if (!ok || r.color_index != s.color_index || r.light_index != s.light_index
+						|| r.trace_lo != s.trace_lo || r.trace_hi != s.trace_hi)
+					{
+						roundtrip_mismatches++;
+					}
+				}
+				if (roundtrip_mismatches)
+				{
+					ZONETOOL_ERROR("GfxWorld \"%s\": light grid tree %zu samples (%zu dilated), "
+						"%zu round-trip mismatches", asset->name, populated_cell_count,
+						dilated_cell_count, roundtrip_mismatches);
+				}
+				else
+				{
+					ZONETOOL_INFO("GfxWorld \"%s\": light grid tree %zu samples (%zu dilated), round-trip OK",
+						asset->name, populated_cell_count, dilated_cell_count);
+				}
 				for (auto i = 0; i < 3; i++)
 				{
-					s1_asset->lightGrid.tree[i].index = i;
+					auto& s1_tree = s1_asset->lightGrid.tree[i];
+
+					memset(&s1_tree, 0, sizeof(s1_tree));
+					s1_tree.index = static_cast<unsigned char>(i);
+
+					if (i > 0) continue;
+
+					s1_tree.maxDepth = tree.max_depth;
+					s1_tree.nodeCount = tree.node_count;
+					s1_tree.leafCount = tree.leaf_count;
+					memcpy(s1_tree.coordMinGridSpace, tree.coord_min_grid_space, sizeof(int[3]));
+					memcpy(s1_tree.coordMaxGridSpace, tree.coord_max_grid_space, sizeof(int[3]));
+					memcpy(s1_tree.coordHalfSizeGridSpace, tree.coord_half_size_grid_space, sizeof(int[3]));
+					s1_tree.defaultColorIndexBitCount = tree.default_color_index_bit_count;
+					s1_tree.defaultLightIndexBitCount = tree.default_light_index_bit_count;
+					s1_tree.p_nodeTable = mem.allocate<unsigned int>(static_cast<std::uint32_t>(tree.node_table.size()));
+					memcpy(s1_tree.p_nodeTable, tree.node_table.data(), tree.node_table.size() * sizeof(unsigned int));
+					s1_tree.leafTableSize = static_cast<int>(tree.leaf_table.size());
+					if (!tree.leaf_table.empty())
+					{
+						s1_tree.p_leafTable = mem.allocate<unsigned char>(s1_tree.leafTableSize);
+						memcpy(s1_tree.p_leafTable, tree.leaf_table.data(), tree.leaf_table.size());
+					}
 				}
 			}
-			// ----
 
 			s1_asset->modelCount = asset->modelCount;
 			s1_asset->models = mem.allocate<S1::GfxBrushModel>(s1_asset->modelCount);

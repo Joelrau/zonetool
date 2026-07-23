@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstring>
 #include <map>
+#include <set>
 #include <stdexcept>
 
 namespace lightgrid_tree
@@ -855,6 +856,153 @@ namespace lightgrid_tree
 
 		tree.node_count = static_cast<int>(tree.node_table.size());
 		return tree;
+	}
+
+	void dilate_samples(std::vector<grid_sample>& samples, int passes, const unsigned char* sample_classes)
+	{
+		if (samples.empty() || passes <= 0)
+		{
+			return;
+		}
+
+		// packed position -> (sample, class). later duplicates overwrite earlier
+		// ones for both fields, matching build_tree's "duplicate positions keep
+		// the last sample". class 0 = normal/indoor, 1 = sun.
+		struct cell
+		{
+			grid_sample sample;
+			unsigned char cls;
+		};
+		std::map<unsigned long long, cell> cells;
+		for (size_t i = 0; i < samples.size(); i++)
+		{
+			const auto& s = samples[i];
+			const unsigned char cls = sample_classes ? sample_classes[i] : 0;
+			cells[pack_coord(s.pos[0], s.pos[1], s.pos[2])] = { s, cls };
+		}
+
+		for (int pass = 0; pass < passes; pass++)
+		{
+			// every empty cell touching at least one populated cell this pass;
+			// donors are the snapshot at pass start, so cells added below only
+			// donate on the next pass (cumulative dilation)
+			std::set<unsigned long long> candidates;
+			for (const auto& [key, c] : cells)
+			{
+				const int cx = static_cast<int>(key & 0x1FFFFF);
+				const int cy = static_cast<int>((key >> 21) & 0x1FFFFF);
+				const int cz = static_cast<int>((key >> 42) & 0x1FFFFF);
+				for (int dz = -1; dz <= 1; dz++)
+				{
+					for (int dy = -1; dy <= 1; dy++)
+					{
+						for (int dx = -1; dx <= 1; dx++)
+						{
+							if (!dx && !dy && !dz)
+							{
+								continue;
+							}
+							const int nx = cx + dx;
+							const int ny = cy + dy;
+							const int nz = cz + dz;
+							if (nx < 0 || ny < 0 || nz < 0 || nx > 0xFFFF || ny > 0xFFFF || nz > 0xFFFF)
+							{
+								continue;
+							}
+							const unsigned long long nkey = pack_coord(nx, ny, nz);
+							if (!cells.count(nkey))
+							{
+								candidates.insert(nkey);
+							}
+						}
+					}
+				}
+			}
+
+			std::map<unsigned long long, cell> added;
+			for (const unsigned long long ckey : candidates)
+			{
+				const int cx = static_cast<int>(ckey & 0x1FFFFF);
+				const int cy = static_cast<int>((ckey >> 21) & 0x1FFFFF);
+				const int cz = static_cast<int>((ckey >> 42) & 0x1FFFFF);
+
+				// pick the best populated neighbor. any non-sun donor beats any
+				// sun donor; within the same class the nearest wins (z cells are
+				// 64 units vs 32 for x/y, hence weighted 4x). the fixed dz/dy/dx
+				// iteration order + strict < gives a deterministic first-best
+				// tie-break within a class.
+				int best_weight = 0x7FFFFFFF;
+				unsigned char best_cls = 0xFF;
+				const cell* best = nullptr;
+				for (int dz = -1; dz <= 1; dz++)
+				{
+					for (int dy = -1; dy <= 1; dy++)
+					{
+						for (int dx = -1; dx <= 1; dx++)
+						{
+							if (!dx && !dy && !dz)
+							{
+								continue;
+							}
+							const int nx = cx + dx;
+							const int ny = cy + dy;
+							const int nz = cz + dz;
+							if (nx < 0 || ny < 0 || nz < 0 || nx > 0xFFFF || ny > 0xFFFF || nz > 0xFFFF)
+							{
+								continue;
+							}
+							const auto it = cells.find(pack_coord(nx, ny, nz));
+							if (it == cells.end())
+							{
+								continue;
+							}
+							const int weight = dx * dx + dy * dy + 4 * dz * dz;
+							const unsigned char cls = it->second.cls;
+							if (!best
+								|| cls < best_cls
+								|| (cls == best_cls && weight < best_weight))
+							{
+								best_cls = cls;
+								best_weight = weight;
+								best = &it->second;
+							}
+						}
+					}
+				}
+
+				if (best)
+				{
+					cell nc{};
+					nc.sample = best->sample;
+					nc.sample.pos[0] = static_cast<unsigned short>(cx);
+					nc.sample.pos[1] = static_cast<unsigned short>(cy);
+					nc.sample.pos[2] = static_cast<unsigned short>(cz);
+					// nc.sample already copied the donor's trace flags verbatim.
+					// forcing synthetic wall cells to "needs trace" sounds right, but
+					// the compressed-tree path resolves a failed corner trace to the
+					// sun/sky default (the legacy path skipped instead), so forcing
+					// them re-introduces wall flicker.
+					nc.cls = best->cls; // inherit donor class for later passes
+					added[ckey] = nc;
+				}
+			}
+
+			if (added.empty())
+			{
+				break;
+			}
+			for (const auto& [key, c] : added)
+			{
+				cells[key] = c;
+			}
+		}
+
+		samples.clear();
+		samples.reserve(cells.size());
+		for (const auto& [key, c] : cells)
+		{
+			samples.push_back(c.sample);
+		}
 	}
 
 	// ---- decoder ---------------------------------------------------------------
