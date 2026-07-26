@@ -611,6 +611,13 @@ namespace ZoneTool
 			reallocatedContents[brushIndex] = carePackageBrushNode.contents;
 
 			iw4_clipmap->brushes = reallocatedBrushes;
+			// brushBounds and brushContents were reallocated (grown by one) above, but the
+			// clipMap pointers were never updated. As a result, any code that accessed
+			// brushBounds[numBrushes - 1] (e.g. the IW8 brush-to-cmesh converter) read past
+			// the old array into uninitialized memory, producing garbage AABBs (e.g. 4e37).
+			// Update these pointers alongside brushes.
+			iw4_clipmap->brushBounds = reallocatedBounds;
+			iw4_clipmap->brushContents = reallocatedContents;
 
 			iw4_clipmap->numBrushes++;
 		}

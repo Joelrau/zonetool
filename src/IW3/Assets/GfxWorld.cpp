@@ -401,7 +401,12 @@ namespace ZoneTool
 				}
 			}
 
-			if (world->lightmapPrimaryTextures->data)
+			// Maps with no baked lightmaps (e.g. lightmapCount == 0) leave
+			// lightmapPrimaryTextures and lightmapSecondaryTextures null.
+			// Check the pointer before accessing ->data; otherwise a null
+			// dereference will crash the dump. If either pointer is null,
+			// fall back to an empty texture stub.
+			if (world->lightmapPrimaryTextures && world->lightmapPrimaryTextures->data)
 			{
 				map.worldDraw.lightmapPrimaryTextures = (IW4::GfxTexture*)world->lightmapPrimaryTextures;
 			}
@@ -410,7 +415,7 @@ namespace ZoneTool
 				map.worldDraw.lightmapPrimaryTextures = allocator.allocate<IW4::GfxTexture>();
 			}
 
-			if (world->lightmapSecondaryTextures->data)
+			if (world->lightmapSecondaryTextures && world->lightmapSecondaryTextures->data)
 			{
 				map.worldDraw.lightmapSecondaryTextures = (IW4::GfxTexture*)world->lightmapSecondaryTextures;
 			}
