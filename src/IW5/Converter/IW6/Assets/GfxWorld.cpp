@@ -14,18 +14,13 @@ namespace ZoneTool::IW5
 {
 	namespace IW6Converter
 	{
-		// a legacy entry is "sun" when its raw primaryLightIndex uses either sun
-		// encoding: the low range [1 .. lastSun] or the high range
-		// [256-lastSun .. 255] (lastSun == 0 leaves the low range empty). sun
-		// cells are remapped to the appended sentinel sun env: the engine treats
-		// only envs whose light index is >= 2048 - lastSunPrimaryLightIndex as sun
-		// (the shadow-mapped sun path), and those always lose the light-grid corner
-		// vote to real indoor envs (R_LightGridLookup) - so near-wall lookups never
-		// flicker to an unshadowed sun.
+		// sun cells encode primaryLightIndex in the high range [256-lastSun .. 255]
+		// (all source games); low indices are real local lights. these get remapped
+		// to the sentinel sun env so near-wall lookups can't flicker to an unshadowed
+		// sun. don't also match the low range - that renders local lights as sun.
 		static bool is_sun_light(unsigned int pli, unsigned int last_sun)
 		{
-			return (last_sun != 0 && pli >= 1 && pli <= last_sun)
-				|| pli >= 256 - last_sun;
+			return pli >= 256 - last_sun;
 		}
 
 		IW6::GfxWorld* GenerateIW6GfxWorld(GfxWorld* asset, allocator& mem)
