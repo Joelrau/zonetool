@@ -14,13 +14,23 @@ namespace ZoneTool::IW5
 {
 	namespace IW6Converter
 	{
-		// sun cells encode primaryLightIndex in the high range [256-lastSun .. 255]
-		// (all source games); low indices are real local lights. these get remapped
-		// to the sentinel sun env so near-wall lookups can't flicker to an unshadowed
-		// sun. don't also match the low range - that renders local lights as sun.
+		// which legacy cells become H1 sentinel-sun cells (routed to the shadow-mapped
+		// sun env that loses near-wall corner votes, killing the unshadowed-sun flicker).
+		// the encoding differs by source game (verified against each engine's
+		// R_LightGridLookup corner-vote):
+		//  - IW4/IW5 deprioritize primaryLightIndex in [256-lastSun .. 255]; low indices
+		//    are real lights that win by weight (mp_rust: 10 DIR fill lights in [1..10],
+		//    dominant terrain at pli=2). so match ONLY the high range.
+		//  - IW3 only deprioritizes 0xFF in its own vote, but its sun is authored as raw
+		//    index 1 (mp_test: 88% of cells) and shadowed via a SEPARATE global sun pass
+		//    H1 doesn't have - so a raw env[1] would render as unshadowed sun near walls.
+		//    route the low range [1..lastSun] to the sentinel too; lastSun==1 on IW3 maps
+		//    keeps that to exactly the sun. the high term also catches IW3's 0xFF cells.
 		static bool is_sun_light(unsigned int pli, unsigned int last_sun)
 		{
-			return pli >= 256 - last_sun;
+			const bool low_range_is_sun = ZoneTool::get_linker_mode() == ZoneTool::linker_mode::iw3;
+			return (low_range_is_sun && last_sun != 0 && pli >= 1 && pli <= last_sun)
+				|| pli >= 256 - last_sun;
 		}
 
 		IW6::GfxWorld* GenerateIW6GfxWorld(GfxWorld* asset, allocator& mem)
