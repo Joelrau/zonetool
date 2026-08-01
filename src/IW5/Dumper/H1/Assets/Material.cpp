@@ -416,7 +416,7 @@ namespace ZoneTool
 		techset_map wc_l_sm_b0c0n0s0o0 = { "wc_l_sm_lmpb_ndw_b0c0n0sd0om0_nfwpf", "wc_l_sm_lmpb_ndw_b0c0n0sd0om0_nfwpf_frt_aat", "", "wc_l_sm_lmpb_ndw_b0c0n0sd0om0_cltrans" };
 
 		techset_map wc_l_sm_ua_b0c0 = { "", "", "", "wc_l_sm_ndw_ua_b0c0_cltrans_nocast" };
-		techset_map wc_l_sm_ua_b0c0n0s0p0 = { "", "", "", "wc_l_sm_ndw_ua_b0c0n0sd0p0_cltrans_nocast_frt_aat" };
+		techset_map wc_l_sm_ua_b0c0n0s0 = { "wc_l_sm_lmpb_ndw_ua_b0c0n0sd0sr0_nfwpf", "wc_l_sm_lmpb_ndw_ua_b0c0n0sd0sr0_nfwpf_nocast_frt_aat", "", "wc_l_sm_lmpb_ndw_ua_b0c0n0sd0_cltrans_nocast" };
 
 		techset_map wc_l_sm_t0c0 = { "wc_l_sm_t0c0_nfwpf", "wc_l_sm_t0c0_nfwpf_frt_aat", "", "" };
 		techset_map wc_l_sm_t0c0s0 = { "wc_l_sm_t0c0sd0_nfwpf", "wc_l_sm_t0c0sd0_nfwpf_frt_aat", "", "" };
@@ -485,15 +485,15 @@ namespace ZoneTool
 			{"wc_l_sm_b0c0q0n0s0_nocast",				wc_l_sm_b0c0n0s0},
 			{"wc_l_sm_b0c0q0n0s0p0",					wc_l_sm_b0c0n0s0},
 
-			{"wc_l_sm_ua_b0c0s0p0_nocast",				wc_l_sm_ua_b0c0n0s0p0},
-			{"wc_l_sm_ua_b0c0n0s0",						{"wc_l_sm_lmpb_ndw_ua_b0c0n0sd0sr0_nfwpf_nocast_frt_aat", "wc_l_sm_lmpb_ndw_ua_b0c0n0sd0sr0_nfwpf_nocast_frt_aat", "wc_l_sm_lmpb_ndw_ua_b0c0n0sd0sr0_nfwpf_nocast_frt_aat", "wc_l_sm_lmpb_ndw_ua_b0c0n0sd0_cltrans_nocast"}},
-			{"wc_l_sm_ua_b0c0n0s0p0",					wc_l_sm_ua_b0c0n0s0p0},
-			{"wc_l_sm_ua_b0c0n0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0p0},
-			{"wc_l_sm_ua_b0c0nf0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0p0},
-			{"wc_l_sm_ua_b0c0q0n0s0",					wc_l_sm_ua_b0c0n0s0p0},
-			{"wc_l_sm_ua_b0c0q0n0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0p0},
+			{"wc_l_sm_ua_b0c0s0p0_nocast",				wc_l_sm_ua_b0c0n0s0},
+			{"wc_l_sm_ua_b0c0n0s0",						wc_l_sm_ua_b0c0n0s0},
+			{"wc_l_sm_ua_b0c0n0s0p0",					wc_l_sm_ua_b0c0n0s0},
+			{"wc_l_sm_ua_b0c0n0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0},
+			{"wc_l_sm_ua_b0c0nf0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0},
+			{"wc_l_sm_ua_b0c0q0n0s0",					wc_l_sm_ua_b0c0n0s0},
+			{"wc_l_sm_ua_b0c0q0n0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0},
 
-			{"wc_l_sm_nofog_ua_b0c0n0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0p0},
+			{"wc_l_sm_nofog_ua_b0c0n0s0p0_nocast",			wc_l_sm_ua_b0c0n0s0},
 
 			{"wc_l_sm_b0c0n0s0_custom_growing_ice_cracks", wc_l_sm_b0c0n0s0},
 			{"wc_l_sm_b0c0n0s0p0_custom_blood_pool",	wc_l_sm_b0c0n0s0},
@@ -506,8 +506,8 @@ namespace ZoneTool
 			{"wc_l_b0c0n0s0p0_nocast",					wc_l_sm_b0c0n0s0},
 
 			{"wc_l_ua_b0c0_nocast",						wc_l_sm_ua_b0c0},
-			{"wc_l_ua_b0c0nf0s0p0_nocast",				wc_l_sm_ua_b0c0n0s0p0},
-			{"wc_l_ua_b0c0n0s0p0_nocast",				wc_l_sm_ua_b0c0n0s0p0},
+			{"wc_l_ua_b0c0nf0s0p0_nocast",				wc_l_sm_ua_b0c0n0s0},
+			{"wc_l_ua_b0c0n0s0p0_nocast",				wc_l_sm_ua_b0c0n0s0},
 
 			// t0
 
@@ -1064,6 +1064,19 @@ namespace ZoneTool
 						matdata["sortKey"] = 35;
 				}
 
+				// fix sortkey for effects
+				if (matdata["materialType"].get<int>() == H1::MTL_TYPE_DEFAULT)
+				{
+					if (matdata["sortKey"].get<int>() != 60) // sortkey is not 2d
+					{
+						if (matdata["sortKey"].get<int>() < 52) // sortkey is not effect
+						{
+							matdata["sortKey"] = 52;
+							ZONETOOL_INFO("Fixing sortkey for material \"%s\" to effect sortkey (52)", asset->name);
+						}
+					}
+				}
+
 				ordered_json constant_table = json::array();
 				for (int i = 0; i < asset->constantCount && techset != "2d"; i++)
 				{
@@ -1171,7 +1184,7 @@ namespace ZoneTool
 
 				{
 					const auto pos = h1_techset.find("d0");
-					if (pos != std::string::npos && pos != h1_techset.find("sd0") - 1)
+					if (pos != std::string::npos && pos != h1_techset.find("sd0") + 1)
 					{
 						CONSTANT_TABLE_ADD_IF_NOT_FOUND("detailScale", 148072969, 64.0f, 64.0f, 0.0f, 0.0f);
 					}
@@ -1184,6 +1197,11 @@ namespace ZoneTool
 				if (h1_techset.find("sd0") != std::string::npos)
 				{
 					CONSTANT_TABLE_ADD_IF_NOT_FOUND("envMapParms", 1033475292, 0.0f, 0.0f, 0.0f, 0.0f);
+				}
+
+				if (h1_techset.find("sr0") != std::string::npos)
+				{
+					CONSTANT_TABLE_ADD_IF_NOT_FOUND("reflectionRa", 3344177073, 8096.0f, 1.0f, 0.0f, 0.0f);
 				}
 
 				if (h1_techset.find("_flag_") != std::string::npos)
