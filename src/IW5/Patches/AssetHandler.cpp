@@ -1,11 +1,3 @@
-// ======================= ZoneTool =======================
-// zonetool, a fastfile linker for various
-// Call of Duty titles. 
-//
-// Project: https://github.com/ZoneTool/zonetool
-// Author: RektInator (https://github.com/RektInator)
-// License: GNU GPL v3.0
-// ========================================================
 #include "stdafx.hpp"
 
 namespace ZoneTool
@@ -136,9 +128,6 @@ namespace ZoneTool
 		
 		void AssetHandler::DB_LogLoadedAsset(void* ptr, std::int32_t type)
 		{
-#ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::DB_LogLoadedAsset");
-#endif
 			static std::vector<std::pair<XAssetType, std::string>> referencedAssets;
 
 			fastfile = static_cast<std::string>(reinterpret_cast<const char*>(*reinterpret_cast<DWORD*>(0x1294A00)
@@ -282,10 +271,6 @@ namespace ZoneTool
 				ZONETOOL_INFO("Loading asset \"%s\" of type %s.", GetAssetName(type, ptr), reinterpret_cast<char**>(
 0x7C6208)[type]);
 			}
-
-#ifdef USE_VMPROTECT
-			VMProtectEnd();
-#endif
 		}
 
 		bool AssetHandler::IsCommonAsset(std::int32_t type, const std::string& name)
@@ -564,10 +549,6 @@ namespace ZoneTool
 
 		AssetHandler::AssetHandler()
 		{
-#ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::AssetHandler");
-#endif
-
 			// Alloc zonememory
 			// mem = std::make_shared < ZoneMemory >();
 
@@ -661,10 +642,6 @@ namespace ZoneTool
 
 			// Remove check for me_pictureframes (messes up dumping)
 			Memory(0x004CC493).set<std::uint8_t>(0xEB);
-
-#ifdef USE_VMPROTECT
-			VMProtectEnd();
-#endif
 		}
 
 		AssetHandler::~AssetHandler()

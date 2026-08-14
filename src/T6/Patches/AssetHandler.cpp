@@ -1,11 +1,3 @@
-// ======================= ZoneTool =======================
-// zonetool, a fastfile linker for various
-// Call of Duty titles. 
-//
-// Project: https://github.com/ZoneTool/zonetool
-// Author: RektInator (https://github.com/RektInator)
-// License: GNU GPL v3.0
-// ========================================================
 #include "stdafx.hpp"
 
 namespace ZoneTool
@@ -36,8 +28,6 @@ namespace ZoneTool
 		XAssetListT6** AssetHandler::varXAssetList = (XAssetListT6**)SELECT(0x12E7804,0x12BC684);
 
 		//static Function < XAssetHeader(XAssetType, const char*, bool, int)> DB_FindXAssetHeader = 0x43F460;
-
-		// std::shared_ptr < ZoneMemory > mem;
 
 		XAssetHeader AssetHandler::FindXAsset(std::int32_t type, const char* name, std::uint32_t unk)
 		{
@@ -125,43 +115,8 @@ namespace ZoneTool
 					__interface__::dump(asset); \
 				} \
 
-				//DUMPCASE(attachment, IAttachmentDef, AttachmentDef);
-				//DUMPCASE(leaderboard, ILeaderBoardDef, XAssetHeader::leaderboardDef);
-				DUMPCASE(material, IMaterial, XAssetHeader::material);
-
-				DUMPCASE(comworld, IComWorld, XAssetHeader::comWorld);
-				//DUMPCASE(gfx_map, IGfxWorld, GfxWorld);
-				//DUMPCASE(fx_map, IFxWorld, FxWorld);
-				//DUMPCASE(glass_map, IGlassWorld, GlassWorld);
-				//DUMPCASE(col_map_mp, IClipMap, clipMap_t);
-				DUMPCASE(map_ents, IMapEnts, XAssetHeader::mapEnts);
-				DUMPCASE(addon_map_ents, IAddonMapEnts, XAssetHeader::addonMapEnts);
-				//DUMPCASE(lightdef, ILightDef, GfxLightDef);
-				DUMPCASE(clipmap_pvs, IClipMap, XAssetHeader::clipMap);
-				//DUMPCASE(xanimparts, IXAnimParts, XAssetHeader::parts);
-				DUMPCASE(xmodel, IXModel, XAssetHeader::model);
-				//DUMPCASE(xmodelsurfs, IXSurface, ModelSurface);
-				//DUMPCASE(fx, IFxEffectDef, FxEffectDef);
-				//DUMPCASE(sound, ISound, snd_alias_list_t);
 				DUMPCASE(stringtable, IStringTable, XAssetHeader::stringTable);
 				DUMPCASE(rawfile, IRawFile, XAssetHeader::rawfile);
-				//DUMPCASE(scriptparsetree, IScriptParseTree, XAssetHeader::scriptParseTree);
-				//DUMPCASE(weapon, IWeaponVariantDef, XAssetHeader::weapon); //Needs fixing
-				//DUMPCASE(image, IGfxImage, XAssetHeader::image);
-				//DUMPCASE(phys_collmap, IPhysCollmap, PhysCollmap);
-				//DUMPCASE(loaded_sound, ILoadedSound, LoadedSound);
-				//DUMPCASE(structureddatadef, IStructuredDataDef, StructuredDataDefSet);
-
-				DUMPCASE(technique_set, ITechset, XAssetHeader::techniqueSet);
-				//DUMPCASE(pixelshader, IPixelShader, PixelShader);
-				//DUMPCASE(vertexdecl, IVertexDecl, VertexDecl);
-				//DUMPCASE(font, IFontDef, Font_s);
-				//DUMPCASE(localize_entry, ILocalizeEntry, XAssetHeader::localize);
-				//DUMPCASE(zbarrier, IZBarrierDef, XAssetHeader::zbarrierDef);
-				DUMPCASE(physpreset, IPhysPreset, XAssetHeader::physPreset);
-				//DUMPCASE(vehicledef, IVehicleDef, XAssetHeader::vehicleDef);
-				//DUMPCASE(slug, ISlug, XAssetHeader::slug);
-				//DUMPCASE(font, IFontDef, XAssetHeader::font);
 			}
 		}
 

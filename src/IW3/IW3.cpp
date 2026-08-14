@@ -1,11 +1,3 @@
-// ======================= ZoneTool =======================
-// zonetool, a fastfile linker for various
-// Call of Duty titles. 
-//
-// Project: https://github.com/ZoneTool/zonetool
-// Author: RektInator (https://github.com/RektInator)
-// License: GNU GPL v3.0
-// ========================================================
 #include "stdafx.hpp"
 
 namespace ZoneTool
@@ -397,18 +389,6 @@ namespace ZoneTool
 			}
 		}
 
-		std::shared_ptr<IZone> Linker::alloc_zone(const std::string& zone)
-		{
-			ZONETOOL_ERROR("AllocZone called but IW3 is not intended to compile zones!");
-			return nullptr;
-		}
-
-		std::shared_ptr<ZoneBuffer> Linker::alloc_buffer()
-		{
-			ZONETOOL_ERROR("AllocBuffer called but IW3 is not intended to compile zones!");
-			return nullptr;
-		}
-
 		void Linker::load_zone(const std::string& name)
 		{
 			static XZoneInfo zone;
@@ -451,12 +431,6 @@ namespace ZoneTool
         {
             return false;
         }
-
-		bool Linker::supports_version(const zone_target_version version)
-		{
-			return version == zone_target_version::iw3_alpha_253 || version == zone_target_version::iw3_alpha_290 || 
-				version == zone_target_version::iw3_alpha_328;
-		}
 
         void Linker::dump_zone(const std::string& name, zonetool::dump_target target)
 		{

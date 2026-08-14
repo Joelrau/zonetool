@@ -34,7 +34,7 @@ namespace compression
 
 				z_stream& get()
 				{
-					return stream_; //
+					return stream_;
 				}
 
 				bool is_valid() const

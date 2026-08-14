@@ -1,11 +1,3 @@
-// ======================= ZoneTool =======================
-// zonetool, a fastfile linker for various
-// Call of Duty titles. 
-//
-// Project: https://github.com/ZoneTool/zonetool
-// Author: RektInator (https://github.com/RektInator)
-// License: GNU GPL v3.0
-// ========================================================
 #pragma once
 
 #include <Windows.h>
@@ -27,113 +19,15 @@ using Json = nlohmann::json;
 #undef xor
 #undef and
 
-#define MAX_ZONE_SIZE 1024 * 1024 * 200 * 8
-
 namespace ZoneTool
 {
 #pragma push(pack, 1)
-	struct XFileHeader
-	{
-		char header[8];
-		std::int32_t version;
-		std::uint8_t allowOnlineUpdate;
-		std::uint32_t dwHighDateTime;
-		std::uint32_t dwLowDateTime;
-	};
-
-	template <std::size_t num_streams>
-	struct XZoneMemory
-	{
-		std::uint32_t size;
-		std::uint32_t externalsize;
-		std::uint32_t streams[num_streams];
-	};
-
-	struct XAssetStreamFile
-	{
-		unsigned int fileIndex;
-		unsigned int offset;
-		unsigned int offsetEnd;
-	};
-
 	struct XZoneInfo
 	{
 		const char* zone;
 		std::int32_t loadFlags;
 		std::int32_t unloadFlags;
 	};
-
-	struct ScriptStringList
-	{
-		int count;
-		const char** strings;
-	};
-
-	struct XAssetList
-	{
-		ScriptStringList stringList;
-		int assetCount;
-		void* assets;
-	};
-
-	enum class zone_target
-	{
-		pc,
-		xbox360,
-		ps3,
-	};
-	enum class zone_target_version
-	{
-		iw3_alpha_253,
-		iw3_alpha_290,
-		iw3_alpha_328,
-		iw4_alpha_482,
-		iw4_alpha_491,
-		iw4_release,
-		iw4_release_console,
-		iw5_release,
-		t6_release,
-		max,
-	};
-
-	static std::string zone_target_version_str[8] = 
-	{
-		"iw3_alpha_253",
-		"iw3_alpha_290",
-		"iw3_alpha_328",
-		"iw4_alpha_482",
-		"iw4_alpha_491",
-		"iw4_release",
-		"iw4_release_console",
-		"iw5_release",
-	};
-	
-	static void endian_convert(void* data, const std::size_t size)
-	{
-		if (size <= 0)
-		{
-			return;
-		}
-		
-		// clone data
-		const auto data_clone = new char[size];
-		memcpy(data_clone, data, size);
-
-		// prepare pointers for magic
-		const auto data_clone_ptr = reinterpret_cast<std::uint8_t*>(data_clone);
-		const auto data_ptr = reinterpret_cast<std::uint8_t*>(data);
-
-		for (auto i = 0u; i < size; i++)
-		{
-			data_ptr[i] = data_clone_ptr[size - i - 1];
-		}
-
-		delete[] data_clone;
-	}
-	template <typename T> static void endian_convert(T* data)
-	{
-		return endian_convert((void*)data, sizeof(T));
-	}
 #pragma push(pop)
 }
 
@@ -263,18 +157,13 @@ static std::vector<std::string> split(const std::string& str, char delimiter)
 	return split(str, std::vector<char>({ delimiter }));
 }
 
-#include "IPatch.hpp"
-#include "CSV.hpp"
 #include "Zone/ZoneMemory.hpp"
-#include "Zone/ZoneBuffer.hpp"
-#include "Zone/Zone.hpp"
 #include "IAsset.hpp"
+#include "IPatch.hpp"
 #include "Utils/FileReader.hpp"
 #include "Utils/FileSystem.hpp"
 #include "Utils/Function.hpp"
 #include "Utils/Memory.hpp"
-#include "Utils/BinaryDumper.hpp"
-#include "Utils/Expressions.hpp"
 #include "Linker.hpp"
 
 #include "Compression.hpp"
@@ -306,75 +195,8 @@ static std::vector<std::string> split(const std::string& str, char delimiter)
 #define ZONETOOL_WARNING(__FMT__,...) \
 	printf("[ WARNING ][ " __FUNCTION__ " ]: " __FMT__ "\n", __VA_ARGS__)
 
-/*
- *	Debugging purposes
- */
-
-// #define FILEPOINTERS_DEBUG
-#ifdef FILEPOINTERS_DEBUG
-#define START_LOG_STREAM \
-		auto streamStartPos = buf->get_stream_pos();
-
-#define END_LOG_STREAM \
-		streamStartPos = buf->get_stream_pos() - streamStartPos; \
-		ZONETOOL_INFO("Streamsize consumed for asset is %u", streamStartPos);
-#else
-#define START_LOG_STREAM
-#define END_LOG_STREAM
-#endif
-
 template <typename T>
 static std::shared_ptr<T> RegisterPatch()
 {
 	return std::make_shared<T>();
 }
-
-class CSV
-{
-public:
-	CSV(const CSV& csv) : columns(csv.columns)
-	{
-	}
-
-	CSV(const std::string& table)
-	{
-		std::ifstream iFile(table);
-
-		if (iFile.is_open())
-		{
-			while (!iFile.eof())
-			{
-				std::string row;
-				iFile >> row;
-
-				auto cols = split(row, ',');
-				columns.push_back(cols);
-			}
-
-			iFile.close();
-		}
-	}
-
-	std::string Get(const std::uint32_t& row, const std::uint32_t& column)
-	{
-		// if (columns.empty()) return "";
-		// if (columns.size() <= row) return "";
-		// if (columns[column].size() <= column) return "";
-
-		return columns[row][column];
-	}
-
-	std::uint32_t Rows()
-	{
-		return columns.size();
-	}
-
-	std::uint32_t Columns(std::uint32_t row = 0)
-	{
-		if (columns.empty()) return 0;
-		return columns[row].size();
-	}
-
-private:
-	std::vector<std::vector<std::string>> columns;
-};

@@ -1,15 +1,7 @@
-// ======================= ZoneTool =======================
-// zonetool, a fastfile linker for various
-// Call of Duty titles. 
-//
-// Project: https://github.com/ZoneTool/zonetool
-// Author: RektInator (https://github.com/RektInator)
-// License: GNU GPL v3.0
-// ========================================================
 #include "stdafx.hpp"
 #include <Dbghelp.h>
 
-// include zonetool linkers
+// includes
 #include <IW3/IW3.hpp>
 #include <IW4/IW4.hpp>
 #include <IW5/IW5.hpp>
@@ -145,10 +137,6 @@ namespace ZoneTool
 	
 	void create_console()
 	{
-#ifdef USE_VMPROTECT
-		VMProtectBeginUltra("CreateConsole");
-#endif
-
 		if (!IsDebuggerPresent())
 		{
 			// Catch exceptions
@@ -274,10 +262,6 @@ namespace ZoneTool
 				current_linker->dump_zone(args[1], target);
 			}
 		});
-
-#ifdef USE_VMPROTECT
-		VMProtectEnd();
-#endif
 	}
 
 	template <typename T>
@@ -383,11 +367,6 @@ namespace ZoneTool
 		}
 	}
 
-	bool is_custom_linker_present()
-	{
-		return std::filesystem::exists("linker.dll") && std::filesystem::is_regular_file("linker.dll");
-	}
-
 	void startup_default()
 	{
 		// Create stdout console
@@ -397,22 +376,6 @@ namespace ZoneTool
 		register_linker<IW3::Linker>();
 		register_linker<IW4::Linker>();
 		register_linker<IW5::Linker>();
-
-		// check if a custom linker is present in the current game directory
-		if (is_custom_linker_present())
-		{
-			const auto linker_module = LoadLibraryA("linker.dll");
-
-			if (linker_module != nullptr && linker_module != INVALID_HANDLE_VALUE)
-			{
-				const auto get_linker_func = GetProcAddress(linker_module, "GetLinker");
-
-				if (get_linker_func != nullptr && get_linker_func != INVALID_HANDLE_VALUE)
-				{
-					current_linker = Function<ILinker * ()>(get_linker_func)();
-				}
-			}
-		}
 
 		if (!current_linker)
 		{

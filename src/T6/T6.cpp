@@ -1,21 +1,12 @@
-// ======================= ZoneTool =======================
-// zonetool, a fastfile linker for various
-// Call of Duty titles. 
-//
-// Project: https://github.com/ZoneTool/zonetool
-// Author: RektInator (https://github.com/RektInator)
-// License: GNU GPL v3.0
-// ========================================================
 #include "stdafx.hpp"
 
 namespace ZoneTool
 {
 	namespace T6
 	{
-
 		bool is_dumping_complete = false;
 		bool is_dumping = false;
-		static Function<void(XZoneInfo*, std::uint32_t, std::uint32_t)> DB_LoadXAssets = SELECT(0x4174B0, 0x663090);
+		static Function<void(void*, std::uint32_t, std::uint32_t)> DB_LoadXAssets = SELECT(0x4174B0, 0x663090);
 		static Function<void()> DB_ShutDownXAssets = SELECT(0x4FF8E0, 0x440BA0);
 		int* g_zoneCount = (int*)0x132F2B4;
 		XZone* g_zones = (XZone*)0x16D9F00;

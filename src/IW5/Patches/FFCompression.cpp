@@ -1,11 +1,3 @@
-// ======================= ZoneTool =======================
-// zonetool, a fastfile linker for various
-// Call of Duty titles. 
-//
-// Project: https://github.com/ZoneTool/zonetool
-// Author: RektInator (https://github.com/RektInator)
-// License: GNU GPL v3.0
-// ========================================================
 #include "stdafx.hpp"
 
 namespace ZoneTool
@@ -16,9 +8,6 @@ namespace ZoneTool
 
 		std::int32_t FFCompression::z_inflateInit(const char* version, db_z_stream_s* strm, int stream_size)
 		{
-#ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression::z_inflateInit");
-#endif
 			// Allocate zstd context
 			strm->state = reinterpret_cast<db_zstd_context_s*>(malloc(sizeof(db_zstd_context_s)));
 			memset(strm->state, 0, sizeof(db_zstd_context_s));
@@ -26,10 +15,6 @@ namespace ZoneTool
 			// Create pointers needed for decompression
 			strm->state->DCtx = ZSTD_createDCtx();
 			strm->state->DStream = ZSTD_createDStream();
-
-#ifdef USE_VMPROTECT
-			VMProtectEnd();
-#endif
 
 			// return ZLIB ok state
 			return Z_OK;
@@ -126,18 +111,10 @@ namespace ZoneTool
 
 		std::int32_t FFCompression::z_inflateEnd(db_z_stream_s* strm)
 		{
-#ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression::z_inflateEnd");
-#endif
-
 			// free decompression stream
 			ZSTD_freeDCtx(strm->state->DCtx);
 			ZSTD_freeDStream(strm->state->DStream);
 			free(strm->state);
-
-#ifdef USE_VMPROTECT
-			VMProtectEnd();
-#endif
 
 			// return ZLIB ok state
 			return Z_OK;
@@ -353,21 +330,40 @@ namespace ZoneTool
 			}
 		}
 
+		template <typename T>
+		static void decrypt_data(T* _data, std::size_t _size)
+		{
+			auto fastfile = static_cast<std::string>(*reinterpret_cast<const char**>(0x1294A00) + 4);
+
+			auto encryptionKey = static_cast<std::string>(fastfile + ": This fastfile is property of the Plutonium Project."
+				);
+			auto dataptr = reinterpret_cast<char*>(_data);
+
+			auto keyPos = 0;
+			for (int rounds = 3; rounds >= 0; rounds--)
+			{
+				for (auto i = 0u; i < _size; i++)
+				{
+					if (keyPos >= encryptionKey.size())
+					{
+						keyPos = 0;
+					}
+
+					dataptr[i] = dataptr[i] ^ rounds;
+					dataptr[i] = dataptr[i] ^ encryptionKey[keyPos];
+					dataptr[i] = 0xFF - dataptr[i];
+					keyPos++;
+				}
+			}
+		}
+
 		void FFCompression::DecryptStream(char* data, std::size_t size)
 		{
-#ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression::DecryptStream");
-#endif
-
 			if (ff_version >= 2000)
 			{
-				//ZONETOOL_INFO("Decrypting data at ptr 0x%08X, size is %u", data, size);
+				ZONETOOL_INFO("Decrypting data at ptr 0x%08X, size is %u", data, size);
 				decrypt_data(data, size);
 			}
-
-#ifdef USE_VMPROTECT
-			VMProtectEnd();
-#endif
 		}
 
 		__declspec(naked) void FFCompression::EncryptedLoadStream()
@@ -390,10 +386,6 @@ namespace ZoneTool
 
 		FFCompression::FFCompression()
 		{
-#ifdef USE_VMPROTECT
-			VMProtectBeginUltra("IW5::FFCompression");
-#endif
-
 			// Allow loading of unsigned fastfiles
 			Memory(0x436B3D).nop(2);
 
@@ -416,10 +408,6 @@ namespace ZoneTool
 
 			// Encryption hooks
 			// Memory(0x00436B1F).Jump(FFCompression::ReadEncryptedKey);
-
-#ifdef USE_VMPROTECT
-			VMProtectEnd();
-#endif
 		}
 
 		FFCompression::~FFCompression()
