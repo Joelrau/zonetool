@@ -4,6 +4,7 @@
 #include "Converter/IW7/Assets/GfxWorld.hpp"
 #include "IW7/Assets/GfxWorld.hpp"
 #include "IW7/Assets/GfxWorldTr.hpp"
+#include "IW7/Assets/GfxLightMap.hpp"
 
 namespace ZoneTool::IW5::IW7Dumper
 {
@@ -16,7 +17,13 @@ namespace ZoneTool::IW5::IW7Dumper
 		// dump IW7 gfxworld
 		IW7::IGfxWorld::dump(iw7_asset);
 
-		// dump IW/ gfxworld_tr
+		// dump IW7 gfxworld_tr
 		IW7::IGfxWorldTr::dump(iw7_asset->draw.transientZones[0]);
+
+		// dump IW7 gfxlightmaps
+		for (int i = 0; i < asset->draw.lightmapCount; i++)
+		{
+			IW7::IGfxLightMap::dump(iw7_asset->draw.lightMaps[i]);
+		}
 	}
 }

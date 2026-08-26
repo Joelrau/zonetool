@@ -80,7 +80,7 @@ namespace ZoneTool::IW5
 
 		std::unordered_map<D3DFORMAT, DXGI_FORMAT> d3d_dxgi_map =
 		{
-			{D3DFMT_A8R8G8B8, DXGI_FORMAT_R8G8B8A8_UNORM},
+			{D3DFMT_A8R8G8B8, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB},
 			{D3DFMT_L8, DXGI_FORMAT_R8_UNORM},
 		};
 
@@ -93,31 +93,18 @@ namespace ZoneTool::IW5
 			return DXGI_FORMAT_UNKNOWN;
 		}
 
-		inline std::uint32_t from_argb(std::uint32_t argb)
+		// Convert D3DFMT_A8R8G8B8 (0xAARRGGBB) to DXGI_FORMAT_R8G8B8A8 (0xAABBGGRR)
+		void argb_to_rgba(const std::uint32_t* src, std::uint8_t* dest, std::size_t pixel_count)
 		{
-			return
-				// Source is in format: 0xAARRGGBB
-				((argb & 0x00FF0000) >> 16) | //______RR
-				((argb & 0x0000FF00)) | //____GG__
-				((argb & 0x000000FF) << 16)  | //___BB____
-				((argb & 0xFF000000));         //AA______
-				// Return value is in format:  0xAABBGGRR 
-		}
-
-		unsigned int argb_to_rgba(unsigned char* input, unsigned int size, unsigned char* output)
-		{
-			unsigned int offset = 0;
-
-			for (unsigned int i = 0; i < size / 4; i++)
+			for (std::size_t i = 0; i < pixel_count; ++i)
 			{
-				auto argb = *(unsigned int*)(&input[offset]);
-				auto rgba = from_argb(argb);
+				const auto pixel = src[i];
 
-				*(unsigned int*)&output[offset] = rgba;
-
-				offset += 4;
+				dest[i * 4 + 0] = (pixel >> 16) & 0xFF; // Red
+				dest[i * 4 + 1] = (pixel >> 8) & 0xFF;  // Green
+				dest[i * 4 + 2] = pixel & 0xFF;         // Blue
+				dest[i * 4 + 3] = (pixel >> 24) & 0xFF; // Alpha
 			}
-			return offset;
 		}
 
 		unsigned int Image_CountMipmaps(unsigned int imageFlags, unsigned int width, unsigned int height, unsigned int depth)
@@ -139,7 +126,7 @@ namespace ZoneTool::IW5
 			const auto IW7_asset = mem.allocate<IW7::GfxImage>();
 
 			IW7_asset->name = asset->name;
-			IW7_asset->imageFormat = get_d3d_to_dxgi(asset->texture.loadDef->format); //IW7_asset->imageFormat = MFMapDX9FormatToDXGIFormat(asset->texture->format);
+			IW7_asset->imageFormat = get_d3d_to_dxgi(asset->texture.loadDef->format);
 			IW7_asset->mapType = static_cast<IW7::MapType>(asset->mapType);
 			IW7_asset->semantic = (IW7::TextureSemantic)IW7::convert_semantic(asset->semantic);
 			IW7_asset->category = (IW7::GfxImageCategory)asset->category;
@@ -160,15 +147,21 @@ namespace ZoneTool::IW5
 				ZONETOOL_FATAL("Unknown DXGIFORMAT for image \"%s\" (%d)", asset->name, asset->texture.loadDef->format);
 			}
 
-			if (asset->texture.loadDef->format == D3DFMT_A8R8G8B8 && IW7_asset->imageFormat == DXGI_FORMAT_R8G8B8A8_UNORM)
+			if (asset->texture.loadDef->format == D3DFMT_A8R8G8B8 &&
+				(IW7_asset->imageFormat == DXGI_FORMAT_R8G8B8A8_UNORM ||
+				 IW7_asset->imageFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB))
 			{
-				auto* new_pixels = mem.allocate<unsigned char>(asset->texture.loadDef->resourceSize);
-				argb_to_rgba(IW7_asset->pixelData, asset->texture.loadDef->resourceSize, new_pixels);
+				auto* new_pixels = mem.allocate<unsigned char>(IW7_asset->dataLen1);
+				argb_to_rgba(reinterpret_cast<std::uint32_t*>(IW7_asset->pixelData), new_pixels, IW7_asset->dataLen1 / 4);
 				IW7_asset->pixelData = new_pixels;
+			}
+			else if (asset->texture.loadDef->format == D3DFMT_L8 && IW7_asset->imageFormat == DXGI_FORMAT_R8_UNORM)
+			{
+				// single channel, pixel data can be used as-is
 			}
 			else
 			{
-				//ZONETOOL_FATAL("No known conversion for image \"%s\"", asset->name);
+				ZONETOOL_FATAL("No known conversion for image \"%s\"", asset->name);
 			}
 
 			return IW7_asset;

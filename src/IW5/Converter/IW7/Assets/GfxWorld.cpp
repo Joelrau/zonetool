@@ -3,7 +3,6 @@
 
 #include "GfxWorld.hpp"
 
-#include "X64/Utils/Umbra/umbra.hpp"
 #include "X64/Utils/Utils.hpp"
 
 #include <set>
@@ -101,6 +100,95 @@ namespace ZoneTool::IW5
 			auto* image = allocator.allocate<IW7::GfxImage>();
 			image->name = allocator.duplicate_string(image_name);
 			return image;
+		}
+
+		// Umbra 3 tome version accepted by IW7. Load_UmbraTome -> Umbra::Tome::init
+		// (iw7_ship_dump.exe 0x140E92DB0) validates only four things: the magic's high
+		// word must be 0xD600, its low word must be in [0x12, 0x14], the tome must be
+		// 16-byte aligned, and umbraTomeSize must be >= m_size. Shipped IW7 maps use
+		// 0x14, which is also the version the 368-byte ImpTome layout belongs to.
+		constexpr unsigned int UMBRA_TOME_VERSION_MAGIC = 0xD6000014;
+
+		// The tome's view volume is deliberately parked outside anything reachable.
+		// IW5/IW7 BSP coordinates are bounded to +/-131072, so a 64-unit cube at
+		// +200000 on every axis can never contain the camera, while still sitting well
+		// inside the +/-262144 range Umbra itself uses for tree bounds.
+		constexpr float UMBRA_DEAD_VOLUME_ORIGIN = 200000.0f;
+		constexpr float UMBRA_DEAD_VOLUME_SIZE = 64.0f;
+
+		// CRC-32C (Castagnoli, reflected polynomial 0x82F63B78), init 0xFFFFFFFF with a
+		// final complement. The tome stores it over the bytes from m_size onwards, i.e.
+		// the whole blob minus its own m_versionMagic and m_crc32 fields. Verified
+		// against both shipped mp_paris tomes (0xB9729593 and 0xC24D4414).
+		//
+		// IW7 does not actually verify this at load time, but it is cheap and something
+		// else may well check it.
+		unsigned int compute_umbra_tome_crc32(const void* data, std::size_t size)
+		{
+			const auto* bytes = static_cast<const unsigned char*>(data);
+			unsigned int crc = 0xFFFFFFFF;
+
+			for (std::size_t i = 0; i < size; i++)
+			{
+				crc ^= bytes[i];
+				for (int bit = 0; bit < 8; bit++)
+				{
+					crc = (crc & 1u) ? ((crc >> 1) ^ 0x82F63B78u) : (crc >> 1);
+				}
+			}
+
+			return ~crc;
+		}
+
+		// IW7 cannot draw a map that has no umbra tome. The static visibility worker
+		// (iw7_ship_dump.exe 0x1405FB6D0) only ever fills the dpvs vis-data buffers from
+		// inside its `if (g_world->umbraTomePtr)` block; with a null tome that block is
+		// skipped entirely, nothing is ever marked visible, and the world draws empty.
+		//
+		// Inside that block, *any* non-zero Umbra query error falls through to
+		// R_SetAllVisDataForScene (0x140DE3680), which memsets every vis buffer to 0xFF -
+		// "draw everything, cull nothing". The follow-up pass that expands umbra object
+		// IDs into vis bits (0x1405FAA30) only ORs bits in and returns immediately when
+		// m_numObjects is 0, so it cannot take that visibility away again.
+		//
+		// So a tome that loads cleanly but whose query always fails gives us a fully
+		// rendered, completely unculled map. That is the correct stopgap until a real
+		// occlusion tome can be generated: IW5-sized maps on IW7-era hardware can afford
+		// to draw everything, but they cannot afford to draw nothing.
+		//
+		// The failure is arranged by handing Umbra a structurally empty tome whose view
+		// volume sits outside any reachable position, so every query reports "Camera
+		// outside Umbra view volume".
+		IW7::Umbra::ImpTome* generate_umbra_tome(allocator& allocator)
+		{
+			// the allocator zero-fills, which is what we want for every count and every
+			// DataPtr offset in the tome: no tiles, no clusters, no objects, no gates.
+			auto* tome = allocator.allocate<IW7::Umbra::ImpTome>();
+
+			tome->m_versionMagic = UMBRA_TOME_VERSION_MAGIC;
+			tome->m_size = sizeof(IW7::Umbra::ImpTome);
+
+			// read by R_Umbra_QueryStaticCamera (0x1405FAFD0) to scale the LOD distance,
+			// so it has to be a sane positive value. 128 is what shipped maps use.
+			tome->m_lodBaseDistance = 128.0f;
+			tome->m_flags = 0;
+
+			tome->m_treeMin.x = UMBRA_DEAD_VOLUME_ORIGIN;
+			tome->m_treeMin.y = UMBRA_DEAD_VOLUME_ORIGIN;
+			tome->m_treeMin.z = UMBRA_DEAD_VOLUME_ORIGIN;
+			tome->m_treeMax.x = UMBRA_DEAD_VOLUME_ORIGIN + UMBRA_DEAD_VOLUME_SIZE;
+			tome->m_treeMax.y = UMBRA_DEAD_VOLUME_ORIGIN + UMBRA_DEAD_VOLUME_SIZE;
+			tome->m_treeMax.z = UMBRA_DEAD_VOLUME_ORIGIN + UMBRA_DEAD_VOLUME_SIZE;
+
+			tome->m_boundsMin = tome->m_treeMin;
+			tome->m_boundsMax = tome->m_treeMax;
+
+			tome->m_clusterCoordScale = 1.0f;
+
+			tome->m_crc32 = compute_umbra_tome_crc32(
+				&tome->m_size, tome->m_size - offsetof(IW7::Umbra::ImpTome, m_size));
+
+			return tome;
 		}
 
 		IW7::GfxWorld* GenerateIW7GfxWorld(GfxWorld* asset, allocator& allocator)
@@ -214,7 +302,7 @@ namespace ZoneTool::IW5
 				// Index buffer size must match instance count
 				auto* globalProbeInstanceIndices = allocator.allocate<unsigned int>(totalInstanceCount);
 
-				// 2. Build pass — one instance per source probe
+				// 2. Build pass ï¿½ one instance per source probe
 				for (unsigned int i = 0; i < probeCount; i++)
 				{
 					auto& srcProbe = asset->draw.reflectionProbeOrigins[i];
@@ -260,7 +348,7 @@ namespace ZoneTool::IW5
 				}
 
 				// NOTE: instances[probeCount] (the reserved "+1" slot) is allocated but
-				// never initialized here — currently left as raw allocator memory.
+				// never initialized here ï¿½ currently left as raw allocator memory.
 			}
 
 			// todo...
@@ -722,53 +810,33 @@ namespace ZoneTool::IW5
 			COPY_VALUE(heroOnlyLightCount);
 			REINTERPRET_CAST_SAFE(heroOnlyLights);
 
-			// Umbra needs to have valid data...
-			new_asset->numUmbraGates = 0;
-			new_asset->umbraGates = nullptr;
-			new_asset->umbraTomeSize = 0;
-			new_asset->umbraTomeData = nullptr;
-			new_asset->umbraTomePtr = nullptr;
+			// IW7 renders nothing at all without a tome here - see generate_umbra_tome.
+			{
+				auto* tome = generate_umbra_tome(allocator);
 
+				new_asset->numUmbraGates = 0;
+				new_asset->umbraGates = nullptr;
+				new_asset->umbraTomeSize = tome->m_size;
+				new_asset->umbraTomeData = reinterpret_cast<char*>(tome);
+
+				// runtime pointer, filled in by Load_UmbraTome once the zone is streamed.
+				new_asset->umbraTomePtr = nullptr;
+			}
+
+			// the second tome is the gate tome, and gates are a T7/IW7 authoring concept
+			// with no IW5 equivalent. It is only consulted by the gate-state queries, not
+			// by the static visibility path that decides what gets drawn, so a converted
+			// map does not need one.
 			new_asset->numUmbraGates2 = 0;
 			new_asset->umbraGates2 = nullptr;
 			new_asset->umbraTomeSize2 = 0;
 			new_asset->umbraTomeData2 = nullptr;
 			new_asset->umbraTomePtr2 = nullptr;
+
+			// 4 bytes holding a float (2400.0 in shipped maps). Consumer not identified,
+			// and shipped content is happy to have none of it.
 			new_asset->umbraUnkSize = 0;
 			new_asset->umbraUnkData = nullptr;
-
-			// FIXME! THIS IS NEEDED FOR IW7 TO RENDER THE MAP
-			{
-				//float gfx_mins[3]
-				//{
-				//	asset->bounds.midPoint[0] - asset->bounds.halfSize[0],
-				//	asset->bounds.midPoint[1] - asset->bounds.halfSize[1],
-				//	asset->bounds.midPoint[2] - asset->bounds.halfSize[2]
-				//};
-				//float gfx_maxs[3]
-				//{
-				//	asset->bounds.midPoint[0] + asset->bounds.halfSize[0],
-				//	asset->bounds.midPoint[1] + asset->bounds.halfSize[1],
-				//	asset->bounds.midPoint[2] + asset->bounds.halfSize[2]
-				//};
-				//
-				//static char buffer[sizeof(Umbra::ImpTome)];
-				//memset(buffer, 0, sizeof(buffer));
-				//auto* new_tome = reinterpret_cast<Umbra::ImpTome*>(buffer);
-				//new_tome->m_versionMagic = 0xD6000012;
-				//new_tome->m_crc32 = 0xD15AB1ED;
-				//new_tome->m_size = sizeof(buffer);
-				//new_tome->m_lodBaseDistance = 512.0f;
-				//memcpy(&new_tome->m_treeMin, gfx_mins, sizeof(float[3]));
-				//memcpy(&new_tome->m_treeMax, gfx_maxs, sizeof(float[3]));
-				//
-				//new_tome->m_crc32 = Umbra::ImpTome::computeCRC32(new_tome);
-				//
-				//new_asset->umbraTomeSize = new_tome->m_size;
-				//new_asset->umbraTomeData = allocator.allocate<char>(new_asset->umbraTomeSize);
-				//memcpy(new_asset->umbraTomeData, buffer, new_asset->umbraTomeSize);
-				//new_asset->umbraTomePtr = reinterpret_cast<void*>(new_asset->umbraTomeData);
-			}
 
 			{
 				// re-calculate values

@@ -19,6 +19,7 @@ using namespace zonetool;
 #include "Assets/FxEffectDef.hpp"
 #include "Assets/FxWorld.hpp"
 #include "Assets/GfxImage.hpp"
+#include "Assets/GfxLightMap.hpp"
 #include "Assets/GfxWorld.hpp"
 #include "Assets/GfxWorldTr.hpp"
 #include "Assets/GlassWorld.hpp"
