@@ -1,6 +1,8 @@
 #include "stdafx.hpp"
 #include "IW5/Assets/ClipMap.hpp"
 
+#include "MapEnts.hpp"
+
 namespace ZoneTool
 {
 	namespace IW4
@@ -76,7 +78,7 @@ namespace ZoneTool
 			iw5_clipmap->info.brushBounds = (IW5::Bounds*)asset->brushBounds;
 			iw5_clipmap->info.brushContents = asset->brushContents;
 
-			iw5_clipmap->mapEnts = (IW5::MapEnts*)asset->mapEnts;
+			iw5_clipmap->mapEnts = IMapEnts::GenerateIW5MapEnts(asset->mapEnts, mem);
 			iw5_clipmap->stageCount = asset->mapEnts->stageCount;
 			iw5_clipmap->stages = (IW5::Stage*)asset->mapEnts->stages;
 

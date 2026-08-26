@@ -2,6 +2,7 @@
 
 #include "Dumper/H1/Assets/GfxWorld.hpp"
 #include "Dumper/IW6/Assets/GfxWorld.hpp"
+#include "Dumper/IW7/Assets/GfxWorld.hpp"
 #include "Dumper/S1/Assets/GfxWorld.hpp"
 
 namespace ZoneTool::IW5
@@ -15,6 +16,10 @@ namespace ZoneTool::IW5
 		else if (zonetool::dumping_target == zonetool::dump_target::iw6)
 		{
 			return IW6Dumper::dump(asset);
+		}
+		else if (zonetool::dumping_target == zonetool::dump_target::iw7)
+		{
+			return IW7Dumper::dump(asset);
 		}
 		else if (zonetool::dumping_target == zonetool::dump_target::s1)
 		{

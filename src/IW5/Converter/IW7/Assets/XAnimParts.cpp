@@ -33,11 +33,11 @@ namespace ZoneTool::IW5
 			{
 				IW7_asset->names[i] = static_cast<IW7::scr_string_t>(asset->names[i]);
 			}
-			IW7_asset->dataByte = reinterpret_cast<unsigned char* __ptr64>(asset->dataByte);
+			IW7_asset->dataByte = reinterpret_cast<char* __ptr64>(asset->dataByte);
 			IW7_asset->dataShort = reinterpret_cast<short* __ptr64>(asset->dataShort);
 			IW7_asset->dataInt = reinterpret_cast<int* __ptr64>(asset->dataInt);
 			IW7_asset->randomDataShort = reinterpret_cast<short* __ptr64>(asset->randomDataShort);
-			IW7_asset->randomDataByte = reinterpret_cast<unsigned char* __ptr64>(asset->randomDataByte);
+			IW7_asset->randomDataByte = reinterpret_cast<char* __ptr64>(asset->randomDataByte);
 			IW7_asset->randomDataInt = reinterpret_cast<int* __ptr64>(asset->randomDataInt);
 
 			IW7_asset->indices.data = reinterpret_cast<void*>(asset->indices.data);

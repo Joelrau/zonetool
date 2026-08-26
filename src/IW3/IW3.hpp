@@ -13,6 +13,7 @@
 #include "IW6/Structs.hpp"
 
 #include "IW4/Structs.hpp"
+#include "IW5/Structs.hpp"
 
 using namespace zonetool;
 

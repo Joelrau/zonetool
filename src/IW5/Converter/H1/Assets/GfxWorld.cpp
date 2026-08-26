@@ -57,7 +57,7 @@ namespace ZoneTool::IW5
 			for (int i = 0; i < h1_asset->skyCount; i++)
 			{
 				h1_asset->skies[i].skySurfCount = asset->skies[i].skySurfCount;
-				REINTERPRET_CAST_SAFE(h1_asset->skies[i].skyStartSurfs, asset->skies[i].skyStartSurfs);
+				REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->skies[i].skyStartSurfs, asset->skies[i].skyStartSurfs);
 				if (asset->skies[i].skyImage)
 				{
 					h1_asset->skies[i].skyImage = mem.allocate<H1::GfxImage>();
@@ -95,8 +95,8 @@ namespace ZoneTool::IW5
 			h1_asset->sortKeyEffectBlend = 33;
 
 			h1_asset->dpvsPlanes.cellCount = asset->dpvsPlanes.cellCount;
-			REINTERPRET_CAST_SAFE(h1_asset->dpvsPlanes.planes, asset->dpvsPlanes.planes);
-			REINTERPRET_CAST_SAFE(h1_asset->dpvsPlanes.nodes, asset->dpvsPlanes.nodes);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->dpvsPlanes.planes, asset->dpvsPlanes.planes);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->dpvsPlanes.nodes, asset->dpvsPlanes.nodes);
 
 			h1_asset->dpvsPlanes.sceneEntCellBits = mem.allocate<unsigned int>(asset->dpvsPlanes.cellCount << 9);
 			for (int i = 0; i < asset->dpvsPlanes.cellCount << 9; i++)
@@ -118,7 +118,7 @@ namespace ZoneTool::IW5
 					h1_asset->aabbTrees[i].aabbTree[j].surfaceCount = asset->aabbTrees[i].aabbTree[j].surfaceCount;
 
 					h1_asset->aabbTrees[i].aabbTree[j].smodelIndexCount = asset->aabbTrees[i].aabbTree[j].smodelIndexCount;
-					REINTERPRET_CAST_SAFE(h1_asset->aabbTrees[i].aabbTree[j].smodelIndexes, asset->aabbTrees[i].aabbTree[j].smodelIndexes);
+					REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->aabbTrees[i].aabbTree[j].smodelIndexes, asset->aabbTrees[i].aabbTree[j].smodelIndexes);
 
 					h1_asset->aabbTrees[i].aabbTree[j].childCount = asset->aabbTrees[i].aabbTree[j].childCount;
 					// re-calculate childrenOffset
@@ -255,10 +255,10 @@ namespace ZoneTool::IW5
 			}
 
 			h1_asset->draw.vertexLayerDataSize = asset->draw.vertexLayerDataSize;
-			REINTERPRET_CAST_SAFE(h1_asset->draw.vld.data, asset->draw.vld.data);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->draw.vld.data, asset->draw.vld.data);
 
 			h1_asset->draw.indexCount = asset->draw.indexCount;
-			REINTERPRET_CAST_SAFE(h1_asset->draw.indices, asset->draw.indices);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->draw.indices, asset->draw.indices);
 
 			h1_asset->draw.displacementParmsCount = 0;
 			h1_asset->draw.displacementParms = nullptr;
@@ -270,9 +270,9 @@ namespace ZoneTool::IW5
 			memcpy(&h1_asset->lightGrid.maxs, &asset->lightGrid.maxs, sizeof(short[3]));
 			h1_asset->lightGrid.rowAxis = asset->lightGrid.rowAxis;
 			h1_asset->lightGrid.colAxis = asset->lightGrid.colAxis;
-			REINTERPRET_CAST_SAFE(h1_asset->lightGrid.rowDataStart, asset->lightGrid.rowDataStart);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->lightGrid.rowDataStart, asset->lightGrid.rowDataStart);
 			h1_asset->lightGrid.rawRowDataSize = asset->lightGrid.rawRowDataSize;
-			REINTERPRET_CAST_SAFE(h1_asset->lightGrid.rawRowData, asset->lightGrid.rawRowData);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->lightGrid.rawRowData, asset->lightGrid.rawRowData);
 
 			// always append a duplicate of color set 0 (the legacy default set) as
 			// the LAST color/palette entry, matching original H1 layout (entry 0 =
@@ -575,7 +575,7 @@ namespace ZoneTool::IW5
 			//	h1_asset->sceneDynModel[i].info.surfId = asset->sceneDynModel[i].info.surfId;
 			//	h1_asset->sceneDynModel[i].dynEntId = asset->sceneDynModel[i].dynEntId;
 			//}
-			REINTERPRET_CAST_SAFE(h1_asset->sceneDynBrush, asset->sceneDynBrush);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->sceneDynBrush, asset->sceneDynBrush);
 
 			//h1_asset->primaryLightEntityShadowVis = reinterpret_cast<unsigned int* __ptr64>(asset->primaryLightEntityShadowVis);
 			int count = ((h1_asset->primaryLightCount - h1_asset->lastSunPrimaryLightIndex) << 13) - 0x2000;
@@ -608,7 +608,7 @@ namespace ZoneTool::IW5
 					{
 						h1_asset->shadowGeom[i].sortedSurfIndex[j] = asset->shadowGeom[i].sortedSurfIndex[j];
 					}
-					REINTERPRET_CAST_SAFE(h1_asset->shadowGeom[i].smodelIndex, asset->shadowGeom[i].smodelIndex);
+					REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->shadowGeom[i].smodelIndex, asset->shadowGeom[i].smodelIndex);
 				}
 			}
 			h1_asset->shadowGeomOptimized = nullptr;
@@ -624,7 +624,7 @@ namespace ZoneTool::IW5
 					memcpy(&h1_asset->lightRegion[i].hulls[j].kdopHalfSize, &asset->lightRegion[i].hulls[j].kdopHalfSize, sizeof(float[9]));
 
 					h1_asset->lightRegion[i].hulls[j].axisCount = asset->lightRegion[i].hulls[j].axisCount;
-					REINTERPRET_CAST_SAFE(h1_asset->lightRegion[i].hulls[j].axis, asset->lightRegion[i].hulls[j].axis);
+					REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->lightRegion[i].hulls[j].axis, asset->lightRegion[i].hulls[j].axis);
 				}
 			}
 
@@ -699,7 +699,7 @@ namespace ZoneTool::IW5
 				h1_asset->dpvs.sortedSurfIndex[i] = asset->dpvs.sortedSurfIndex[i];
 			}
 
-			REINTERPRET_CAST_SAFE(h1_asset->dpvs.smodelInsts, asset->dpvs.smodelInsts);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->dpvs.smodelInsts, asset->dpvs.smodelInsts);
 
 			h1_asset->dpvs.surfaces = mem.allocate<H1::GfxSurface>(h1_asset->surfaceCount);
 			for (unsigned int i = 0; i < h1_asset->surfaceCount; i++)
@@ -880,7 +880,7 @@ namespace ZoneTool::IW5
 				h1_asset->dpvs.surfaceMaterials[i].fields.unused = asset->dpvs.surfaceMaterials[i].fields.unused;
 			}
 
-			REINTERPRET_CAST_SAFE(h1_asset->dpvs.surfaceCastsSunShadow, asset->dpvs.surfaceCastsSunShadow);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->dpvs.surfaceCastsSunShadow, asset->dpvs.surfaceCastsSunShadow);
 			//h1_asset->dpvs.sunShadowOptCount = h1_asset->shadowGeomOptimized ? 1 : 0;
 			//h1_asset->dpvs.sunSurfVisDataCount = h1_asset->dpvs.sunShadowOptCount * h1_asset->dpvs.surfaceVisDataCount;
 			//h1_asset->dpvs.surfaceCastsSunShadowOpt = mem.allocate<unsigned int>(h1_asset->dpvs.sunShadowOptCount * h1_asset->dpvs.sunSurfVisDataCount);
@@ -907,7 +907,7 @@ namespace ZoneTool::IW5
 			h1_asset->mapVtxChecksum = asset->mapVtxChecksum;
 
 			h1_asset->heroOnlyLightCount = asset->heroOnlyLightCount;
-			REINTERPRET_CAST_SAFE(h1_asset->heroOnlyLights, asset->heroOnlyLights);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->heroOnlyLights, asset->heroOnlyLights);
 
 			h1_asset->fogTypesAllowed = asset->fogTypesAllowed;
 

@@ -95,7 +95,7 @@ namespace ZoneTool::IW5
 		void GenerateH1ClipInfo(H1::ClipInfo* info, clipMap_t* asset, allocator& mem)
 		{
 			info->planeCount = asset->info.planeCount;
-			REINTERPRET_CAST_SAFE(info->planes, asset->info.planes);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->planes, asset->info.planes);
 
 			info->numMaterials = asset->info.numMaterials;
 			info->materials = mem.allocate<H1::ClipMaterial>(info->numMaterials);
@@ -115,7 +115,7 @@ namespace ZoneTool::IW5
 				info->bCollisionTree.leafbrushNodes[i].contents = asset->info.leafbrushNodes[i].contents;
 				if (info->bCollisionTree.leafbrushNodes[i].leafBrushCount > 0)
 				{
-					REINTERPRET_CAST_SAFE(info->bCollisionTree.leafbrushNodes[i].data.leaf.brushes, asset->info.leafbrushNodes[i].data.leaf.brushes);
+					REINTERPRET_CAST_SAFE_TO_FROM(info->bCollisionTree.leafbrushNodes[i].data.leaf.brushes, asset->info.leafbrushNodes[i].data.leaf.brushes);
 				}
 				else
 				{
@@ -128,7 +128,7 @@ namespace ZoneTool::IW5
 			}
 
 			info->bCollisionTree.numLeafBrushes = asset->info.numLeafBrushes;
-			REINTERPRET_CAST_SAFE(info->bCollisionTree.leafbrushes, asset->info.leafbrushes);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->bCollisionTree.leafbrushes, asset->info.leafbrushes);
 
 			info->pCollisionTree.aabbTreeCount = asset->aabbTreeCount;
 			info->pCollisionTree.aabbTrees = mem.allocate<H1::CollisionAabbTree>(info->pCollisionTree.aabbTreeCount);
@@ -145,7 +145,7 @@ namespace ZoneTool::IW5
 
 			info->sCollisionTree.numStaticModels = asset->numStaticModels;
 			info->sCollisionTree.smodelNodeCount = asset->smodelNodeCount;
-			REINTERPRET_CAST_SAFE(info->sCollisionTree.smodelNodes, asset->smodelNodes);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->sCollisionTree.smodelNodes, asset->smodelNodes);
 
 			std::unordered_map<cbrushside_t*, H1::cbrushside_t*> mapped_brush_sides;
 
@@ -166,7 +166,7 @@ namespace ZoneTool::IW5
 			}
 
 			info->bCollisionData.numBrushEdges = asset->info.numBrushEdges;
-			REINTERPRET_CAST_SAFE(info->bCollisionData.brushEdges, asset->info.brushEdges);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->bCollisionData.brushEdges, asset->info.brushEdges);
 
 			info->bCollisionData.numBrushes = asset->info.numBrushes;
 			info->bCollisionData.brushes = mem.allocate<H1::cbrush_t>(asset->info.numBrushes);
@@ -178,23 +178,23 @@ namespace ZoneTool::IW5
 				if (asset->info.brushes[i].sides)
 					info->bCollisionData.brushes[i].sides = mapped_brush_sides.find(asset->info.brushes[i].sides)->second;
 
-				REINTERPRET_CAST_SAFE(info->bCollisionData.brushes[i].baseAdjacentSide, asset->info.brushes[i].baseAdjacentSide);
+				REINTERPRET_CAST_SAFE_TO_FROM(info->bCollisionData.brushes[i].baseAdjacentSide, asset->info.brushes[i].baseAdjacentSide);
 
 				memcpy(&info->bCollisionData.brushes[i].axialMaterialNum, &asset->info.brushes[i].axialMaterialNum, sizeof(short[2][3]));
 				memcpy(&info->bCollisionData.brushes[i].firstAdjacentSideOffsets, &asset->info.brushes[i].firstAdjacentSideOffsets, sizeof(char[2][3]));
 				memcpy(&info->bCollisionData.brushes[i].edgeCount, &asset->info.brushes[i].edgeCount, sizeof(char[2][3]));
 			}
 
-			REINTERPRET_CAST_SAFE(info->bCollisionData.brushBounds, asset->info.brushBounds);
-			REINTERPRET_CAST_SAFE(info->bCollisionData.brushContents, asset->info.brushContents);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->bCollisionData.brushBounds, asset->info.brushBounds);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->bCollisionData.brushContents, asset->info.brushContents);
 
 			info->pCollisionData.vertCount = asset->vertCount;
-			REINTERPRET_CAST_SAFE(info->pCollisionData.verts, asset->verts);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->pCollisionData.verts, asset->verts);
 			info->pCollisionData.triCount = asset->triCount;
-			REINTERPRET_CAST_SAFE(info->pCollisionData.triIndices, asset->triIndices);
-			REINTERPRET_CAST_SAFE(info->pCollisionData.triEdgeIsWalkable, asset->triEdgeIsWalkable);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->pCollisionData.triIndices, asset->triIndices);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->pCollisionData.triEdgeIsWalkable, asset->triEdgeIsWalkable);
 			info->pCollisionData.borderCount = asset->borderCount;
-			REINTERPRET_CAST_SAFE(info->pCollisionData.borders, asset->borders);
+			REINTERPRET_CAST_SAFE_TO_FROM(info->pCollisionData.borders, asset->borders);
 			info->pCollisionData.partitionCount = asset->partitionCount;
 			info->pCollisionData.partitions = mem.allocate<H1::CollisionPartition>(info->pCollisionData.partitionCount);
 			for (int i = 0; i < info->pCollisionData.partitionCount; i++)
@@ -203,7 +203,7 @@ namespace ZoneTool::IW5
 				info->pCollisionData.partitions[i].borderCount = asset->partitions[i].borderCount;
 				info->pCollisionData.partitions[i].firstVertSegment = asset->partitions[i].firstVertSegment;
 				info->pCollisionData.partitions[i].firstTri = asset->partitions[i].firstTri;
-				REINTERPRET_CAST_SAFE(info->pCollisionData.partitions[i].borders, asset->partitions[i].borders);
+				REINTERPRET_CAST_SAFE_TO_FROM(info->pCollisionData.partitions[i].borders, asset->partitions[i].borders);
 			}
 
 			info->sCollisionData.numStaticModels = asset->numStaticModels;
@@ -234,7 +234,7 @@ namespace ZoneTool::IW5
 			h1_asset->nodes = mem.allocate<H1::cNode_t>(h1_asset->numNodes);
 			for (unsigned int i = 0; i < h1_asset->numNodes; i++)
 			{
-				REINTERPRET_CAST_SAFE(h1_asset->nodes[i].plane, asset->nodes[i].plane);
+				REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->nodes[i].plane, asset->nodes[i].plane);
 				h1_asset->nodes[i].children[0] = asset->nodes[i].children[0];
 				h1_asset->nodes[i].children[1] = asset->nodes[i].children[1];
 			}

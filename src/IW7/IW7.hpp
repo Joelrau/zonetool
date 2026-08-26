@@ -14,8 +14,15 @@ using namespace zonetool;
 
 #include "Structs.hpp"
 
+#include "Assets/ClipMap.hpp"
+#include "Assets/ComWorld.hpp"
 #include "Assets/FxEffectDef.hpp"
+#include "Assets/FxWorld.hpp"
 #include "Assets/GfxImage.hpp"
+#include "Assets/GfxWorld.hpp"
+#include "Assets/GfxWorldTr.hpp"
+#include "Assets/GlassWorld.hpp"
+#include "Assets/MapEnts.hpp"
 #include "Assets/ParticleSystem.hpp"
 #include "Assets/RawFile.hpp"
 #include "Assets/XAnimParts.hpp"

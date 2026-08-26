@@ -137,7 +137,7 @@ namespace ZoneTool::IW5
 			iw7_elem->velIntervalCount = elem->velIntervalCount;
 			iw7_elem->visStateIntervalCount = elem->visStateIntervalCount;
 
-			REINTERPRET_CAST_SAFE(iw7_elem->velSamples, elem->velSamples);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw7_elem->velSamples, elem->velSamples);
 
 			if (elem->visSamples)
 			{
@@ -254,10 +254,10 @@ namespace ZoneTool::IW5
 				}
 
 				iw7_elem->extended.trailDef->indCount = elem->extended.trailDef->indCount;
-				REINTERPRET_CAST_SAFE(iw7_elem->extended.trailDef->inds, elem->extended.trailDef->inds);
+				REINTERPRET_CAST_SAFE_TO_FROM(iw7_elem->extended.trailDef->inds, elem->extended.trailDef->inds);
 				break;
 			case FX_ELEM_TYPE_SPARKFOUNTAIN:
-				REINTERPRET_CAST_SAFE(iw7_elem->extended.sparkFountainDef, elem->extended.sparkFountainDef);
+				REINTERPRET_CAST_SAFE_TO_FROM(iw7_elem->extended.sparkFountainDef, elem->extended.sparkFountainDef);
 				break;
 			case FX_ELEM_TYPE_SPOT_LIGHT:
 				iw7_elem->extended.spotLightDef = mem.allocate<IW7::FxSpotLightDef>();

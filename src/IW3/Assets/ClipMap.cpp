@@ -2,6 +2,8 @@
 #include "IW4/Assets/ClipMap.hpp"
 #include "H1/Utils/PhysWorld/generate.hpp"
 
+#include "MapEnts.hpp"
+
 namespace ZoneTool
 {
 	namespace IW3
@@ -140,7 +142,7 @@ namespace ZoneTool
 			COPY_MEMBER(name);
 			COPY_MEMBER(isInUse);
 			COPY_MEMBER(planeCount);
-			REINTERPRET_CAST_SAFE(iw4_clipmap->planes, clipmap->planes);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw4_clipmap->planes, clipmap->planes);
 
 			iw4_clipmap->numStaticModels = clipmap->numStaticModels;
 			iw4_clipmap->staticModelList = allocator.allocate<IW4::cStaticModel_t>(iw4_clipmap->numStaticModels);
@@ -179,7 +181,7 @@ namespace ZoneTool
 			COPY_MEMBER(brushEdges);
 
 			COPY_MEMBER(numNodes);
-			REINTERPRET_CAST_SAFE(iw4_clipmap->nodes, clipmap->nodes);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw4_clipmap->nodes, clipmap->nodes);
 
 			COPY_MEMBER(numLeafs);
 			iw4_clipmap->leafs = allocator.allocate<IW4::cLeaf_t>(clipmap->numLeafs);
@@ -197,7 +199,7 @@ namespace ZoneTool
 			}
 
 			COPY_MEMBER(leafbrushNodesCount);
-			REINTERPRET_CAST_SAFE(iw4_clipmap->leafbrushNodes, clipmap->leafbrushNodes);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw4_clipmap->leafbrushNodes, clipmap->leafbrushNodes);
 
 			COPY_MEMBER(numLeafBrushes);
 			COPY_MEMBER(leafbrushes);
@@ -213,10 +215,10 @@ namespace ZoneTool
 			COPY_MEMBER(triEdgeIsWalkable);
 
 			COPY_MEMBER(borderCount);
-			REINTERPRET_CAST_SAFE(iw4_clipmap->borders, clipmap->borders);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw4_clipmap->borders, clipmap->borders);
 
 			COPY_MEMBER(partitionCount);
-			REINTERPRET_CAST_SAFE(iw4_clipmap->partitions, clipmap->partitions);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw4_clipmap->partitions, clipmap->partitions);
 
 			COPY_MEMBER(aabbTreeCount);
 			iw4_clipmap->aabbTrees = allocator.allocate<IW4::CollisionAabbTree>(clipmap->aabbTreeCount);
@@ -294,7 +296,7 @@ namespace ZoneTool
 				iw4_clipmap->brushContents[i] = iw3Brush->contents;
 			}
 
-			iw4_clipmap->mapEnts = (IW4::MapEnts*)clipmap->mapEnts;
+			iw4_clipmap->mapEnts = IMapEnts::GenerateIW4MapEnts(clipmap->mapEnts, allocator);
 
 			iw4_clipmap->smodelNodes = BuildSimpleSModelNodes(iw4_clipmap, &iw4_clipmap->smodelNodeCount, allocator);
 

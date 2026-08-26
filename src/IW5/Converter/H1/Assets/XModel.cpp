@@ -121,11 +121,11 @@ namespace ZoneTool::IW5
 #endif
 			}
 
-			REINTERPRET_CAST_SAFE(h1_asset->parentList, asset->parentList);
-			REINTERPRET_CAST_SAFE(h1_asset->tagAngles, asset->quats);
-			REINTERPRET_CAST_SAFE(h1_asset->tagPositions, asset->trans);
-			REINTERPRET_CAST_SAFE(h1_asset->partClassification, asset->partClassification);
-			REINTERPRET_CAST_SAFE(h1_asset->baseMat, asset->baseMat);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->parentList, asset->parentList);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->tagAngles, asset->quats);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->tagPositions, asset->trans);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->partClassification, asset->partClassification);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->baseMat, asset->baseMat);
 			h1_asset->reactiveMotionParts = nullptr;
 			h1_asset->reactiveMotionTweaks = nullptr;
 
@@ -174,7 +174,7 @@ namespace ZoneTool::IW5
 
 			h1_asset->contents = asset->contents;
 
-			REINTERPRET_CAST_SAFE(h1_asset->boneInfo, asset->boneInfo);
+			REINTERPRET_CAST_SAFE_TO_FROM(h1_asset->boneInfo, asset->boneInfo);
 
 			h1_asset->radius = asset->radius;
 			memcpy(&h1_asset->bounds, &asset->bounds, sizeof(asset->bounds));

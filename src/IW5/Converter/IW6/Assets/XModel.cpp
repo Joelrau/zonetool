@@ -110,11 +110,11 @@ namespace ZoneTool::IW5
 				iw6_asset->boneNames[i] = static_cast<IW6::scr_string_t>(asset->boneNames[i]);
 			}
 
-			REINTERPRET_CAST_SAFE(iw6_asset->parentList, asset->parentList);
-			REINTERPRET_CAST_SAFE(iw6_asset->tagAngles, asset->quats);
-			REINTERPRET_CAST_SAFE(iw6_asset->tagPositions, asset->trans);
-			REINTERPRET_CAST_SAFE(iw6_asset->partClassification, asset->partClassification);
-			REINTERPRET_CAST_SAFE(iw6_asset->baseMat, asset->baseMat);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->parentList, asset->parentList);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->tagAngles, asset->quats);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->tagPositions, asset->trans);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->partClassification, asset->partClassification);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->baseMat, asset->baseMat);
 			iw6_asset->reactiveMotionParts = nullptr;
 
 			iw6_asset->materialHandles = mem.allocate<IW6::Material* __ptr64>(asset->numsurfs);
@@ -161,7 +161,7 @@ namespace ZoneTool::IW5
 
 			iw6_asset->contents = asset->contents;
 
-			REINTERPRET_CAST_SAFE(iw6_asset->boneInfo, asset->boneInfo);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->boneInfo, asset->boneInfo);
 
 			iw6_asset->radius = asset->radius;
 			memcpy(&iw6_asset->bounds, &asset->bounds, sizeof(asset->bounds));

@@ -75,8 +75,8 @@ namespace ZoneTool::IW5
 			iw6_asset->sortKeyDistortion = 43;
 
 			iw6_asset->dpvsPlanes.cellCount = asset->dpvsPlanes.cellCount;
-			REINTERPRET_CAST_SAFE(iw6_asset->dpvsPlanes.planes, asset->dpvsPlanes.planes);
-			REINTERPRET_CAST_SAFE(iw6_asset->dpvsPlanes.nodes, asset->dpvsPlanes.nodes);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->dpvsPlanes.planes, asset->dpvsPlanes.planes);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->dpvsPlanes.nodes, asset->dpvsPlanes.nodes);
 
 			iw6_asset->dpvsPlanes.sceneEntCellBits = mem.allocate<unsigned int>(asset->dpvsPlanes.cellCount << 9);
 			for (int i = 0; i < asset->dpvsPlanes.cellCount << 9; i++)
@@ -98,7 +98,7 @@ namespace ZoneTool::IW5
 					iw6_asset->aabbTrees[i].aabbTree[j].surfaceCount = asset->aabbTrees[i].aabbTree[j].surfaceCount;
 
 					iw6_asset->aabbTrees[i].aabbTree[j].smodelIndexCount = asset->aabbTrees[i].aabbTree[j].smodelIndexCount;
-					REINTERPRET_CAST_SAFE(iw6_asset->aabbTrees[i].aabbTree[j].smodelIndexes, asset->aabbTrees[i].aabbTree[j].smodelIndexes);
+					REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->aabbTrees[i].aabbTree[j].smodelIndexes, asset->aabbTrees[i].aabbTree[j].smodelIndexes);
 
 					// has some problems?
 					//iw6_asset->aabbTrees[i].aabbTree[j].childCount = asset->aabbTrees[i].aabbTree[j].childCount;
@@ -235,10 +235,10 @@ namespace ZoneTool::IW5
 			iw6_asset->draw.vd.worldVb = nullptr;
 
 			iw6_asset->draw.vertexLayerDataSize = asset->draw.vertexLayerDataSize;
-			REINTERPRET_CAST_SAFE(iw6_asset->draw.vld.data, asset->draw.vld.data);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->draw.vld.data, asset->draw.vld.data);
 
 			iw6_asset->draw.indexCount = asset->draw.indexCount;
-			REINTERPRET_CAST_SAFE(iw6_asset->draw.indices, asset->draw.indices);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->draw.indices, asset->draw.indices);
 
 			iw6_asset->lightGrid.hasLightRegions = asset->lightGrid.hasLightRegions;
 			iw6_asset->lightGrid.useSkyForLowZ = 0;
@@ -247,9 +247,9 @@ namespace ZoneTool::IW5
 			memcpy(&iw6_asset->lightGrid.maxs, &asset->lightGrid.maxs, sizeof(short[3]));
 			iw6_asset->lightGrid.rowAxis = asset->lightGrid.rowAxis;
 			iw6_asset->lightGrid.colAxis = asset->lightGrid.colAxis;
-			REINTERPRET_CAST_SAFE(iw6_asset->lightGrid.rowDataStart, asset->lightGrid.rowDataStart);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->lightGrid.rowDataStart, asset->lightGrid.rowDataStart);
 			iw6_asset->lightGrid.rawRowDataSize = asset->lightGrid.rawRowDataSize;
-			REINTERPRET_CAST_SAFE(iw6_asset->lightGrid.rawRowData, asset->lightGrid.rawRowData);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->lightGrid.rawRowData, asset->lightGrid.rawRowData);
 
 			// always append a duplicate of color set 0 (the legacy default set) as
 			// the LAST color/palette entry, matching original layout (entry 0 =
@@ -555,7 +555,7 @@ namespace ZoneTool::IW5
 				iw6_asset->sceneDynModel[i].info.surfId = asset->sceneDynModel[i].info.surfId;
 				iw6_asset->sceneDynModel[i].dynEntId = asset->sceneDynModel[i].dynEntId;
 			}
-			REINTERPRET_CAST_SAFE(iw6_asset->sceneDynBrush, asset->sceneDynBrush);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->sceneDynBrush, asset->sceneDynBrush);
 
 			//iw6_asset->primaryLightEntityShadowVis = reinterpret_cast<unsigned int* __ptr64>(asset->primaryLightEntityShadowVis);
 			int count = ((iw6_asset->primaryLightCount - iw6_asset->lastSunPrimaryLightIndex) << 13) - 0x2000;
@@ -588,7 +588,7 @@ namespace ZoneTool::IW5
 					{
 						iw6_asset->shadowGeom[i].sortedSurfIndex[j] = asset->shadowGeom[i].sortedSurfIndex[j];
 					}
-					REINTERPRET_CAST_SAFE(iw6_asset->shadowGeom[i].smodelIndex, asset->shadowGeom[i].smodelIndex);
+					REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->shadowGeom[i].smodelIndex, asset->shadowGeom[i].smodelIndex);
 				}
 			}
 			iw6_asset->shadowGeomOptimized = nullptr;
@@ -604,7 +604,7 @@ namespace ZoneTool::IW5
 					memcpy(&iw6_asset->lightRegion[i].hulls[j].kdopHalfSize, &asset->lightRegion[i].hulls[j].kdopHalfSize, sizeof(float[9]));
 
 					iw6_asset->lightRegion[i].hulls[j].axisCount = asset->lightRegion[i].hulls[j].axisCount;
-					REINTERPRET_CAST_SAFE(iw6_asset->lightRegion[i].hulls[j].axis, asset->lightRegion[i].hulls[j].axis);
+					REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->lightRegion[i].hulls[j].axis, asset->lightRegion[i].hulls[j].axis);
 				}
 			}
 
@@ -665,7 +665,7 @@ namespace ZoneTool::IW5
 				iw6_asset->dpvs.sortedSurfIndex[i] = asset->dpvs.sortedSurfIndex[i];
 			}
 
-			REINTERPRET_CAST_SAFE(iw6_asset->dpvs.smodelInsts, asset->dpvs.smodelInsts);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->dpvs.smodelInsts, asset->dpvs.smodelInsts);
 
 			iw6_asset->dpvs.surfaces = mem.allocate<IW6::GfxSurface>(iw6_asset->surfaceCount);
 			for (unsigned int i = 0; i < iw6_asset->surfaceCount; i++)
@@ -775,7 +775,7 @@ namespace ZoneTool::IW5
 				iw6_asset->dpvs.surfaceMaterials[i].fields.unused = asset->dpvs.surfaceMaterials[i].fields.unused;
 			}
 
-			REINTERPRET_CAST_SAFE(iw6_asset->dpvs.surfaceCastsSunShadow, asset->dpvs.surfaceCastsSunShadow);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->dpvs.surfaceCastsSunShadow, asset->dpvs.surfaceCastsSunShadow);
 			iw6_asset->dpvs.sunShadowOptCount = 0;
 			iw6_asset->dpvs.sunSurfVisDataCount = 0;
 			iw6_asset->dpvs.surfaceCastsSunShadowOpt = nullptr;
@@ -799,7 +799,7 @@ namespace ZoneTool::IW5
 			iw6_asset->mapVtxChecksum = asset->mapVtxChecksum;
 
 			iw6_asset->heroOnlyLightCount = asset->heroOnlyLightCount;
-			REINTERPRET_CAST_SAFE(iw6_asset->heroOnlyLights, asset->heroOnlyLights);
+			REINTERPRET_CAST_SAFE_TO_FROM(iw6_asset->heroOnlyLights, asset->heroOnlyLights);
 
 			iw6_asset->fogTypesAllowed = asset->fogTypesAllowed;
 

@@ -5,7 +5,7 @@ namespace ZoneTool
 {
 	namespace IW3
 	{
-		IW4::MapEnts* GenerateIW4MapEnts(MapEnts* asset, allocator& mem)
+		IW4::MapEnts* IMapEnts::GenerateIW4MapEnts(MapEnts* asset, allocator& mem)
 		{
 			auto* mapents = mem.allocate<IW4::MapEnts>();
 			memset(mapents, 0, sizeof(IW4::MapEnts));

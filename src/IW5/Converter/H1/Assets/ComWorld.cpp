@@ -121,15 +121,7 @@ namespace ZoneTool::IW5
 			for (unsigned int i = 1; i < h1_asset->primaryLightCount; i++)
 			{
 				h1_asset->primaryLightEnvs[i].numIndices = 1;
-
-				//if (h1_asset->primaryLights[i].type == H1::GFX_LIGHT_TYPE_SPOT || h1_asset->primaryLights[i].type == H1::GFX_LIGHT_TYPE_OMNI)
-				//{
-				//	h1_asset->primaryLightEnvs[i].primaryLightIndices[0] = 1; // always use first primary light index, since this no no work
-				//}
-				//else
-				{
-					h1_asset->primaryLightEnvs[i].primaryLightIndices[0] = i;
-				}
+				h1_asset->primaryLightEnvs[i].primaryLightIndices[0] = i;
 			}
 
 			h1_asset->primaryLightEnvs[h1_asset->primaryLightEnvCount - 1].numIndices = 1;
