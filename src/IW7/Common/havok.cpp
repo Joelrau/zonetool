@@ -57,9 +57,11 @@ namespace ZoneTool::IW7
 					return false;
 				}
 
-				if (header->pointerSize != sizeof(std::uintptr_t))
+				constexpr auto expected_pointer_size = 8;
+				if (header->pointerSize != expected_pointer_size)
 				{
-					ZONETOOL_ERROR("Trying to process a binary file with a different pointer size than this platform.");
+					ZONETOOL_ERROR("Packfile pointer size is %u, expected %d.",
+						header->pointerSize, expected_pointer_size);
 					return false;
 				}
 

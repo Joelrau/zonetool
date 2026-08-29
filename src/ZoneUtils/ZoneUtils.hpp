@@ -203,7 +203,7 @@ static std::shared_ptr<T> RegisterPatch()
 		new_asset->__name__ = asset->__name__;
 
 #define COPY_VALUE_CAST(__name__) \
-		new_asset->__name__ = *reinterpret_cast<decltype(new_asset->__name__)*>(&asset->__name__);
+		new_asset->__name__ = (decltype(new_asset->__name__))(asset->__name__);
 
 #define COPY_ARR(__name__) \
 		static_assert(sizeof(new_asset->__name__) == sizeof(asset->__name__)); \

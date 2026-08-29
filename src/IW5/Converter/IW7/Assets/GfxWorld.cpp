@@ -246,7 +246,7 @@ namespace ZoneTool::IW5
 				auto add_portal = [](IW7::GfxPortal* iw7_portal, IW5::GfxPortal* iw5_portal)
 				{
 					memcpy(&iw7_portal->plane, &iw5_portal->plane, sizeof(float[4]));
-					iw7_portal->vertices = reinterpret_cast<float(*__ptr64)[3]>(iw5_portal->vertices);
+					iw7_portal->vertices = reinterpret_cast<float(PTR64)[3]>(iw5_portal->vertices);
 					iw7_portal->cellIndex = iw5_portal->cellIndex;
 					iw7_portal->closeDistance = 0;
 					iw7_portal->vertexCount = iw5_portal->vertexCount;
@@ -625,7 +625,29 @@ namespace ZoneTool::IW5
 				new_asset->materialMemory[i].memory = asset->materialMemory[i].memory;
 			}
 
-			COPY_VALUE_CAST(sun);
+			COPY_VALUE(sun.hasValidData);
+			COPY_ASSET(sun.spriteMaterial);
+			COPY_ASSET(sun.flareMaterial);
+			COPY_VALUE(sun.spriteSize);
+			COPY_VALUE(sun.flareMinSize);
+			COPY_VALUE(sun.flareMinDot);
+			COPY_VALUE(sun.flareMaxSize);
+			COPY_VALUE(sun.flareMaxDot);
+			COPY_VALUE(sun.flareMaxAlpha);
+			COPY_VALUE(sun.flareFadeInTime);
+			COPY_VALUE(sun.flareFadeOutTime);
+			COPY_VALUE(sun.blindMinDot);
+			COPY_VALUE(sun.blindMaxDot);
+			COPY_VALUE(sun.blindMaxDarken);
+			COPY_VALUE(sun.blindFadeInTime);
+			COPY_VALUE(sun.blindFadeOutTime);
+			COPY_VALUE(sun.glareMinDot);
+			COPY_VALUE(sun.glareMaxDot);
+			COPY_VALUE(sun.glareMaxLighten);
+			COPY_VALUE(sun.glareFadeInTime);
+			COPY_VALUE(sun.glareFadeOutTime);
+			COPY_ARR(sun.sunFxPosition);
+
 			COPY_ARR(outdoorLookupMatrix);
 			COPY_ASSET(outdoorImage);
 			new_asset->dustMaterial = nullptr;
@@ -703,7 +725,7 @@ namespace ZoneTool::IW5
 					COPY_VALUE(dpvs.surfaces[i].tris.vertexCount);
 					COPY_VALUE(dpvs.surfaces[i].tris.triCount);
 					COPY_VALUE(dpvs.surfaces[i].tris.baseIndex);
-					new_asset->dpvs.surfaces[i].material = reinterpret_cast<IW7::Material*>(asset->dpvs.surfaces[i].material);
+					new_asset->dpvs.surfaces[i].material = reinterpret_cast<IW7::Material PTR64>(asset->dpvs.surfaces[i].material);
 					new_asset->dpvs.surfaces[i].lightmapIndex = asset->dpvs.surfaces[i].laf.fields.lightmapIndex;
 					new_asset->dpvs.surfaces[i].flags = asset->dpvs.surfaces[i].laf.fields.flags;
 
@@ -724,10 +746,10 @@ namespace ZoneTool::IW5
 				new_asset->dpvs.smodelDrawInsts = allocator.allocate<IW7::GfxStaticModelDrawInst>(asset->dpvs.smodelCount);
 				for (unsigned int i = 0; i < asset->dpvs.smodelCount; i++)
 				{
-					COPY_VALUE_CAST(dpvs.smodelDrawInsts[i].placement);
+					COPY_ARR(dpvs.smodelDrawInsts[i].placement);
 
 					new_asset->dpvs.smodelDrawInsts[i].model =
-						reinterpret_cast<IW7::XModel*>(asset->dpvs.smodelDrawInsts[i].model);
+						reinterpret_cast<IW7::XModel PTR64>(asset->dpvs.smodelDrawInsts[i].model);
 
 					auto& src_draw_inst = asset->dpvs.smodelDrawInsts[i];
 
