@@ -4,6 +4,12 @@
 #include "GfxWorld.hpp"
 
 #include "X64/Utils/Utils.hpp"
+#include "X64/Utils/LightGrid/LightGridSH.hpp"
+#include "X64/Utils/LightGrid/LightGridProbes.hpp"
+#include "X64/Utils/LightGrid/LightGridTree.hpp"
+#include <unordered_map>
+
+#include "ComWorld.hpp"
 
 #include <set>
 
@@ -11,6 +17,229 @@ namespace ZoneTool::IW5
 {
 	namespace IW7Converter
 	{
+		// ---- primary light proxy hulls ------------------------------------------------------
+		//
+		// IW7 uses GfxWorld::frustumLights for exactly two things: R_IsCameraInsideLightMeshVolume
+		// walks the vertices to get the light's view-space z extent, which is what places the light
+		// in the z-binned frustum grid, and an optional per-face camera test behind
+		// r_frustumLightProxyUseMeshCheck. Both only need a convex volume that *contains* the light,
+		// so we circumscribe it rather than reproduce IW7's own tessellation - too large costs a few
+		// extra bins, too small loses the light. A light with vertexCount 0 keeps the inverted range
+		// (FLT_MAX, 0) that function starts from and drops out of the grid entirely.
+		//
+		// Shipped IW7 proxies give the conventions: vertex 0 is the light origin, the hull extends
+		// along -dir (dir points toward the light), and only SPOT/OMNI carry one.
+		namespace
+		{
+			constexpr float light_proxy_pi = 3.14159265358979f;
+			constexpr unsigned int light_proxy_segments = 8;
+			constexpr unsigned int light_proxy_spot_rings = 3;
+			constexpr unsigned int light_proxy_omni_rings = 5;
+
+			constexpr unsigned char light_type_spot = 2;
+			constexpr unsigned char light_type_omni = 3;
+
+			// 80 degrees
+			constexpr float light_proxy_wide_spot_cutoff = 1.3962634f;
+
+			struct proxy_mesh
+			{
+				std::vector<float> vertices; // xyz triplets
+				std::vector<unsigned short> indices;
+
+				unsigned short add_vertex(const float* p)
+				{
+					vertices.push_back(p[0]);
+					vertices.push_back(p[1]);
+					vertices.push_back(p[2]);
+					return static_cast<unsigned short>((vertices.size() / 3) - 1);
+				}
+
+				void add_triangle(const unsigned short a, const unsigned short b, const unsigned short c)
+				{
+					indices.push_back(a);
+					indices.push_back(b);
+					indices.push_back(c);
+				}
+			};
+
+			void normalize_proxy_axis(float v[3])
+			{
+				const auto len = std::sqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
+				if (len > 0.0f)
+				{
+					v[0] /= len;
+					v[1] /= len;
+					v[2] /= len;
+				}
+			}
+
+			// any orthonormal pair perpendicular to axis
+			void build_proxy_basis(const float axis[3], float u[3], float v[3])
+			{
+				float helper[3] = { 0.0f, 0.0f, 1.0f };
+				if (std::fabs(axis[2]) > 0.9f)
+				{
+					helper[0] = 1.0f;
+					helper[2] = 0.0f;
+				}
+
+				u[0] = (helper[1] * axis[2]) - (helper[2] * axis[1]);
+				u[1] = (helper[2] * axis[0]) - (helper[0] * axis[2]);
+				u[2] = (helper[0] * axis[1]) - (helper[1] * axis[0]);
+				normalize_proxy_axis(u);
+
+				v[0] = (axis[1] * u[2]) - (axis[2] * u[1]);
+				v[1] = (axis[2] * u[0]) - (axis[0] * u[2]);
+				v[2] = (axis[0] * u[1]) - (axis[1] * u[0]);
+				normalize_proxy_axis(v);
+			}
+
+			// every vertex sits on a sphere of radius `dist`, so a face of the hull sits at
+			// dist * cos(half the angular gap between its vertices). Scaling the sample distance by
+			// 1 / cos(gap) keeps every face outside the true light volume.
+			float proxy_circumscribe_scale(const float polar_gap)
+			{
+				return 1.0f / (std::cos(light_proxy_pi / light_proxy_segments) * std::cos(polar_gap * 0.5f));
+			}
+
+			// The distance scale above only covers the spherical cap. It does nothing for the cone's
+			// side faces, because pushing the ring further from the apex widens the hull without
+			// widening its aperture - a rim point half way between two ring vertices still ends up
+			// outside by 1 / cos(pi / segments). Widening the cone angle instead is what makes the
+			// pyramid circumscribe the cone: a face at `expanded` has half-angle `half_angle` at its
+			// mid-azimuth. Verified against the rim circle, which is the worst case.
+			float expand_spot_cone(const float half_angle)
+			{
+				return std::atan(std::tan(half_angle) / std::cos(light_proxy_pi / light_proxy_segments));
+			}
+
+			void add_proxy_ring(proxy_mesh& mesh, const float origin[3], const float axis[3],
+				const float u[3], const float v[3], const float theta, const float dist,
+				std::vector<unsigned short>& out)
+			{
+				const auto sin_theta = std::sin(theta);
+				const auto cos_theta = std::cos(theta);
+
+				for (unsigned int s = 0; s < light_proxy_segments; s++)
+				{
+					const auto phi = (2.0f * light_proxy_pi * s) / light_proxy_segments;
+					const auto cos_phi = std::cos(phi);
+					const auto sin_phi = std::sin(phi);
+
+					float p[3];
+					for (int c = 0; c < 3; c++)
+					{
+						p[c] = origin[c] + (((axis[c] * cos_theta)
+							+ (((u[c] * cos_phi) + (v[c] * sin_phi)) * sin_theta)) * dist);
+					}
+					out.push_back(mesh.add_vertex(p));
+				}
+			}
+
+			void bridge_proxy_rings(proxy_mesh& mesh, const std::vector<unsigned short>& inner,
+				const std::vector<unsigned short>& outer)
+			{
+				for (unsigned int s = 0; s < light_proxy_segments; s++)
+				{
+					const auto n = (s + 1) % light_proxy_segments;
+					mesh.add_triangle(inner[s], outer[s], outer[n]);
+					mesh.add_triangle(inner[s], outer[n], inner[n]);
+				}
+			}
+
+			void cap_proxy_ring(proxy_mesh& mesh, const unsigned short pole,
+				const std::vector<unsigned short>& ring, const bool flip)
+			{
+				for (unsigned int s = 0; s < light_proxy_segments; s++)
+				{
+					const auto n = (s + 1) % light_proxy_segments;
+					if (flip)
+					{
+						mesh.add_triangle(pole, ring[n], ring[s]);
+					}
+					else
+					{
+						mesh.add_triangle(pole, ring[s], ring[n]);
+					}
+				}
+			}
+
+			// apex at the light origin, a tip on the axis and light_proxy_spot_rings rings out to the
+			// outer cone angle - the same apex + axial + rings topology the shipped hulls use.
+			void build_spot_proxy(proxy_mesh& mesh, const float origin[3], const float axis[3],
+				const float half_angle, const float range)
+			{
+				float u[3], v[3];
+				build_proxy_basis(axis, u, v);
+
+				const auto ring_step = expand_spot_cone(half_angle) / light_proxy_spot_rings;
+				const auto dist = range * proxy_circumscribe_scale(ring_step);
+
+				float tip[3];
+				for (int c = 0; c < 3; c++)
+				{
+					tip[c] = origin[c] + (axis[c] * dist);
+				}
+
+				const auto apex = mesh.add_vertex(origin);
+				const auto axial = mesh.add_vertex(tip);
+
+				std::vector<std::vector<unsigned short>> rings;
+				for (unsigned int k = 1; k <= light_proxy_spot_rings; k++)
+				{
+					std::vector<unsigned short> ring;
+					add_proxy_ring(mesh, origin, axis, u, v, ring_step * k, dist, ring);
+					rings.push_back(ring);
+				}
+
+				cap_proxy_ring(mesh, axial, rings.front(), false);
+				for (std::size_t k = 0; k + 1 < rings.size(); k++)
+				{
+					bridge_proxy_rings(mesh, rings[k], rings[k + 1]);
+				}
+				cap_proxy_ring(mesh, apex, rings.back(), true);
+			}
+
+			void build_omni_proxy(proxy_mesh& mesh, const float origin[3], const float range)
+			{
+				constexpr float axis[3] = { 0.0f, 0.0f, 1.0f };
+				float u[3], v[3];
+				build_proxy_basis(axis, u, v);
+
+				const auto ring_step = light_proxy_pi / (light_proxy_omni_rings + 1);
+				const auto dist = range * proxy_circumscribe_scale(ring_step);
+
+				float pole[3];
+				for (int c = 0; c < 3; c++)
+				{
+					pole[c] = origin[c] + (axis[c] * dist);
+				}
+				const auto north = mesh.add_vertex(pole);
+
+				for (int c = 0; c < 3; c++)
+				{
+					pole[c] = origin[c] - (axis[c] * dist);
+				}
+				const auto south = mesh.add_vertex(pole);
+
+				std::vector<std::vector<unsigned short>> rings;
+				for (unsigned int k = 1; k <= light_proxy_omni_rings; k++)
+				{
+					std::vector<unsigned short> ring;
+					add_proxy_ring(mesh, origin, axis, u, v, ring_step * k, dist, ring);
+					rings.push_back(ring);
+				}
+
+				cap_proxy_ring(mesh, north, rings.front(), false);
+				for (std::size_t k = 0; k + 1 < rings.size(); k++)
+				{
+					bridge_proxy_rings(mesh, rings[k], rings[k + 1]);
+				}
+				cap_proxy_ring(mesh, south, rings.back(), true);
+			}
+		}
+
 		IW7::GfxImage* generate_reflection_probe_array_image(GfxWorldDraw* draw, allocator& allocator)
 		{
 			const std::string image_name = "*reflection_probe_array";
@@ -460,62 +689,462 @@ namespace ZoneTool::IW5
 				new_asset->draw.volumetrics.volumetrics = nullptr;
 				constexpr int unk_values[] = { 0, 0, 5, 5, 6, 32, 32, 64, 0 };
 				memcpy(new_asset->lightGrid.unk, unk_values, sizeof(unk_values));
-				new_asset->lightGrid.tableVersion = 0;
-				new_asset->lightGrid.paletteVersion = 0;
+				// every authentic IW7 map ships these, probe-based ones included
+				new_asset->lightGrid.tableVersion = 1;
+				new_asset->lightGrid.paletteVersion = 1;
 				new_asset->lightGrid.rangeExponent8BitsEncoding = 0;
-				new_asset->lightGrid.rangeExponent12BitsEncoding = 0;
-				new_asset->lightGrid.rangeExponent16BitsEncoding = 0;
+				new_asset->lightGrid.rangeExponent12BitsEncoding = 4;
+				new_asset->lightGrid.rangeExponent16BitsEncoding = 23;
 				new_asset->lightGrid.stageCount = 0;
 				new_asset->lightGrid.stageLightingContrastGain = 0;
-				new_asset->lightGrid.paletteEntryCount = 0;
-				new_asset->lightGrid.paletteEntryAddress = 0;
-				new_asset->lightGrid.paletteBitstreamSize = 0;
-				new_asset->lightGrid.paletteBitstream = 0;
-				for (unsigned int j = 0; j < 56; j++)
+				// IW7's own compiler never emits a real octree light grid - every authentic map
+				// (mp_paris, mp_afghan, mp_breakneck, cp_zmb, mp_dome_dusk, mp_frontend) ships this
+				// exact 3-entry palette and 2-node tree stub alongside a full probe volume. Emit it
+				// verbatim rather than zeros, so anything that expects a light grid to exist finds one.
+				static const int stub_palette_addresses[3] = { 0, 30, 86 };
+				static const unsigned char stub_palette_bitstream[116] = {
+					0xE7,0x1C,0x00,0xF8,0x08,0x80,0x80,0x80,0x80,0x80,0xF1,0x00,0x08,0x80,0xF8,0x80,
+					0x80,0x80,0xB8,0x48,0x00,0x80,0xF8,0x08,0x80,0x80,0x80,0x48,0x48,0x00,0x00,0x00,
+					0x00,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x00,0x80,0x80,0x80,0x80,0x80,0x80,
+					0x80,0x80,0x00,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x00,0x5C,0x5E,0x4A,0x3F,
+					0xFF,0xFF,0x7F,0x7F,0xFF,0xFF,0x7F,0x7F,0xFF,0xFF,0x7F,0xFF,0xFF,0xFF,0x7F,0xFF,
+					0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x00,0x80,0x80,0x80,0x80,0x80,0x80,0x80,
+					0x80,0x00,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x80,0x00,0x80,0x80,0x80,0x80,0x80,
+					0x80,0x80,0x80,0x00,
+				};
+
+				new_asset->lightGrid.paletteEntryCount = 3;
+				new_asset->lightGrid.paletteEntryAddress = allocator.allocate<int>(3);
+				memcpy(new_asset->lightGrid.paletteEntryAddress, stub_palette_addresses,
+					sizeof(stub_palette_addresses));
+				new_asset->lightGrid.paletteBitstreamSize = sizeof(stub_palette_bitstream);
+				new_asset->lightGrid.paletteBitstream =
+					allocator.allocate<unsigned char>(sizeof(stub_palette_bitstream));
+				memcpy(new_asset->lightGrid.paletteBitstream, stub_palette_bitstream,
+					sizeof(stub_palette_bitstream));
+				// IW5's GfxLightGridColors (unsigned char rgb[56][3]) and IW7's GfxLightGridColorsHDR
+				// (float rgb[56][3]) are the same 56 directional bins, so these tables convert 1:1 -
+				// only the storage changes, LDR bytes to linear floats. Palette entry 0 is the default
+				// set and entry 1 the sky set, the same mapping the H1 converter uses. Anything the
+				// source map does not provide stays zeroed.
+				memset(&new_asset->lightGrid.skyLightGridColors, 0, sizeof(IW7::GfxLightGridColorsHDR));
+				memset(&new_asset->lightGrid.defaultLightGridColors, 0, sizeof(IW7::GfxLightGridColorsHDR));
+
+				if (asset->lightGrid.colors)
 				{
-					auto& dest_rgb = new_asset->lightGrid.skyLightGridColors.rgb[j];
-					dest_rgb[0] = 0;
-					dest_rgb[1] = 0;
-					dest_rgb[2] = 0;
+					float hdr_colors[56][3];
+					if (asset->lightGrid.colorCount > 0)
+					{
+						lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[0].rgb, hdr_colors);
+						memcpy(new_asset->lightGrid.defaultLightGridColors.rgb, hdr_colors, sizeof(hdr_colors));
+					}
+					if (asset->lightGrid.colorCount > 1)
+					{
+						lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[1].rgb, hdr_colors);
+						memcpy(new_asset->lightGrid.skyLightGridColors.rgb, hdr_colors, sizeof(hdr_colors));
+					}
 				}
-				for (unsigned int j = 0; j < 56; j++)
-				{
-					auto& dest_rgb = new_asset->lightGrid.defaultLightGridColors.rgb[j];
-					dest_rgb[0] = 0;
-					dest_rgb[1] = 0;
-					dest_rgb[2] = 0;
-				}
-				new_asset->lightGrid.tree.maxDepth = 0;
-				new_asset->lightGrid.tree.nodeCount = 0;
-				new_asset->lightGrid.tree.leafCount = 0;
-				memset(&new_asset->lightGrid.tree.coordMinGridSpace, 0, sizeof(int[3]));
-				memset(&new_asset->lightGrid.tree.coordMaxGridSpace, 0, sizeof(int[3]));
-				memset(&new_asset->lightGrid.tree.coordHalfSizeGridSpace, 0, sizeof(int[3]));
-				new_asset->lightGrid.tree.defaultColorIndexBitCount = 0;
-				new_asset->lightGrid.tree.defaultLightIndexBitCount = 0;
-				new_asset->lightGrid.tree.p_nodeTable = nullptr;
-				new_asset->lightGrid.tree.leafTableSize = 0;
-				new_asset->lightGrid.tree.p_leafTable = nullptr;
+				// the matching one-leaf tree stub, also verbatim from shipped maps
+				static const unsigned int stub_node_table[2] = { 16777217u, 2147483648u };
+				static const unsigned char stub_leaf_table[6] = { 0x01, 0x83, 0x00, 0x04, 0x06, 0x11 };
+
+				new_asset->lightGrid.tree.maxDepth = 1;
+				new_asset->lightGrid.tree.nodeCount = 2;
+				new_asset->lightGrid.tree.leafCount = 1;
+				new_asset->lightGrid.tree.coordMinGridSpace[0] = 4092;
+				new_asset->lightGrid.tree.coordMinGridSpace[1] = 4092;
+				new_asset->lightGrid.tree.coordMinGridSpace[2] = 2047;
+				new_asset->lightGrid.tree.coordMaxGridSpace[0] = 4100;
+				new_asset->lightGrid.tree.coordMaxGridSpace[1] = 4100;
+				new_asset->lightGrid.tree.coordMaxGridSpace[2] = 2049;
+				new_asset->lightGrid.tree.coordHalfSizeGridSpace[0] = 4;
+				new_asset->lightGrid.tree.coordHalfSizeGridSpace[1] = 4;
+				new_asset->lightGrid.tree.coordHalfSizeGridSpace[2] = 1;
+				new_asset->lightGrid.tree.defaultColorIndexBitCount = 2;
+				new_asset->lightGrid.tree.defaultLightIndexBitCount = 32;
+				new_asset->lightGrid.tree.p_nodeTable = allocator.allocate<unsigned int>(2);
+				memcpy(new_asset->lightGrid.tree.p_nodeTable, stub_node_table, sizeof(stub_node_table));
+				new_asset->lightGrid.tree.leafTableSize = sizeof(stub_leaf_table);
+				new_asset->lightGrid.tree.p_leafTable =
+					allocator.allocate<unsigned char>(sizeof(stub_leaf_table));
+				memcpy(new_asset->lightGrid.tree.p_leafTable, stub_leaf_table, sizeof(stub_leaf_table));
 
 				memset(&new_asset->lightGrid.probeData, 0, sizeof(IW7::GfxLightGridProbeData));
-				// fixme somehow...
 				new_asset->lightGrid.probeData.zoneCount = 1;
 				new_asset->lightGrid.probeData.zones = allocator.allocate<IW7::GfxGpuLightGridZone>(1);
-				new_asset->lightGrid.probeData.zones->numProbes = 0;
-				new_asset->lightGrid.probeData.zones->firstProbe = 0;
-				new_asset->lightGrid.probeData.zones->numTetrahedrons = 0;
-				new_asset->lightGrid.probeData.zones->firstTetrahedron = 0;
-				new_asset->lightGrid.probeData.zones->firstVoxelTetrahedronIndex = 0;
-				new_asset->lightGrid.probeData.zones->numVoxelTetrahedronIndices = 0;
-				memset(new_asset->lightGrid.probeData.zones->fallbackProbeData.coeffs, 0, sizeof(new_asset->lightGrid.probeData.zones->fallbackProbeData.coeffs));
-				memset(new_asset->lightGrid.probeData.zones->fallbackProbeData.pad, 0, sizeof(new_asset->lightGrid.probeData.zones->fallbackProbeData.pad));
+				// probeData is IW7's only working static model lighting path: a GPU tetrahedral volume
+				// of L2 SH probes, walked in the shader from a per-voxel seed tetrahedron. The
+				// octree/palette light grid IW7 inherited from the IW6/H1 lineage is vestigial - every
+				// authentic map ships a 3-entry stub palette and a 2-node stub tree - so without a real
+				// volume here every XModel renders black, viewhands included.
+				//
+				// See X64/Utils/LightGrid/LightGridProbes.hpp for the format notes this builds against.
+				float ambient[3] = { 0.0f, 0.0f, 0.0f };
+				if (asset->lightGrid.colorCount && asset->lightGrid.colors)
+				{
+					// weight each palette entry by how many grid cells actually use it - averaging colors[]
+					// flat would give a rarely referenced entry the same say as the dominant one.
+					std::vector<double> usage(asset->lightGrid.colorCount, 0.0);
+					double total_usage = 0.0;
+					for (unsigned int i = 0; asset->lightGrid.entries && i < asset->lightGrid.entryCount; i++)
+					{
+						const auto colors_index = asset->lightGrid.entries[i].colorsIndex;
+						if (colors_index < asset->lightGrid.colorCount)
+						{
+							usage[colors_index] += 1.0;
+							total_usage += 1.0;
+						}
+					}
+
+					if (total_usage == 0.0)
+					{
+						// octree-only grid (no legacy entries): fall back to a flat palette average
+						std::fill(usage.begin(), usage.end(), 1.0);
+						total_usage = static_cast<double>(asset->lightGrid.colorCount);
+					}
+
+					double accum[3] = { 0.0, 0.0, 0.0 };
+					float hdr_colors[56][3];
+					for (unsigned int i = 0; i < asset->lightGrid.colorCount; i++)
+					{
+						if (usage[i] == 0.0)
+						{
+							continue;
+						}
+
+						// the 56 directional bins are shared between IW5 and IW7, so the mean over the
+						// sphere is the entry's ambient radiance.
+						lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[i].rgb, hdr_colors);
+						double entry[3] = { 0.0, 0.0, 0.0 };
+						for (unsigned int j = 0; j < 56; j++)
+						{
+							entry[0] += hdr_colors[j][0];
+							entry[1] += hdr_colors[j][1];
+							entry[2] += hdr_colors[j][2];
+						}
+
+						for (int c = 0; c < 3; c++)
+						{
+							accum[c] += (entry[c] / 56.0) * usage[i];
+						}
+					}
+
+					for (int c = 0; c < 3; c++)
+					{
+						ambient[c] = static_cast<float>(accum[c] / total_usage);
+					}
+				}
+
+				// Constant radiance projects onto the DC basis function scaled by 2*sqrt(pi) = 3.545,
+				// but that lands roughly 9x below the only shipped reference: mp_frontend's probes are
+				// DC (6.03, 7.82, 9.29) while the same derivation over mp_test_h1 gives (0.70, 0.74,
+				// 0.84). Either IW7 evaluates SH on a different convention or the shipped maps are far
+				// brighter, so this is calibrated empirically to land a typical map in the shipped
+				// range. This is the one knob if converted maps read too dark or too bright.
+				constexpr float sh_ambient_scale = 32.0f;
+
+				lightgrid_probes::build_params probe_params{};
+				for (int i = 0; i < 3; i++)
+				{
+					probe_params.bounds_min[i] = asset->bounds.midPoint[i] - asset->bounds.halfSize[i];
+					probe_params.bounds_max[i] = asset->bounds.midPoint[i] + asset->bounds.halfSize[i];
+				}
+
+				// Per-probe lighting out of the IW5 grid. The legacy row data gives every populated
+				// grid position and the entry it points at; each entry's colorsIndex selects one of
+				// the 56-bin colour tables, whose mean over the sphere is that cell's ambient
+				// radiance. Grid space is the usual legacy one: 32-unit cells in x/y, 64 in z,
+				// biased by 131072 (4096 cells in x/y, 2048 in z).
+				// one projected SH set per palette entry, keyed by grid cell
+				using probe_sh = std::array<float, 27>;
+				std::unordered_map<unsigned long long, probe_sh> grid_samples;
+				{
+					std::vector<probe_sh> colour_cache;
+					std::vector<char> colour_cached;
+					if (asset->lightGrid.colorCount)
+					{
+						colour_cache.resize(asset->lightGrid.colorCount, probe_sh{});
+						colour_cached.resize(asset->lightGrid.colorCount, 0);
+					}
+
+					std::vector<lightgrid_tree::grid_entry_ref> refs;
+					if (asset->lightGrid.rowDataStart && asset->lightGrid.rawRowData)
+					{
+						refs = lightgrid_tree::enumerate_row_data(
+							asset->lightGrid.mins, asset->lightGrid.maxs,
+							asset->lightGrid.rowAxis, asset->lightGrid.colAxis,
+							asset->lightGrid.rowDataStart, asset->lightGrid.rawRowData);
+					}
+
+					float bins[56][3];
+					for (const auto& ref : refs)
+					{
+						if (ref.entry_index >= asset->lightGrid.entryCount || !asset->lightGrid.entries)
+						{
+							continue;
+						}
+						const auto colors_index = asset->lightGrid.entries[ref.entry_index].colorsIndex;
+						if (colors_index >= asset->lightGrid.colorCount || !asset->lightGrid.colors)
+						{
+							continue;
+						}
+
+						if (!colour_cached[colors_index])
+						{
+							// project the 56 directional bins onto IW7's SH basis rather than
+							// averaging them away - the average is what made every model flat
+							lightgrid_sh::ldr_colors_to_hdr(asset->lightGrid.colors[colors_index].rgb, bins);
+							lightgrid_probes::project_sh(bins, lightgrid_sh::grid_basis_dirs, 56,
+								sh_ambient_scale, colour_cache[colors_index].data());
+							colour_cached[colors_index] = 1;
+						}
+
+						const auto key = (static_cast<unsigned long long>(ref.pos[0]) << 32)
+							| (static_cast<unsigned long long>(ref.pos[1]) << 16)
+							| static_cast<unsigned long long>(ref.pos[2]);
+						grid_samples[key] = colour_cache[colors_index];
+					}
+
+					ZONETOOL_INFO("GfxWorld \"%s\": %zu populated light grid cells for probe sampling",
+						asset->name, grid_samples.size());
+				}
+
+				const auto volume = lightgrid_probes::build(probe_params,
+					[&](const float* pos, float* out_sh)
+					{
+						const auto gx = static_cast<int>(std::floor(pos[0] / 32.0f)) + 4096;
+						const auto gy = static_cast<int>(std::floor(pos[1] / 32.0f)) + 4096;
+						const auto gz = static_cast<int>(std::floor(pos[2] / 64.0f)) + 2048;
+
+						// probes land on cell corners and plenty of cells are empty (walls, solid),
+						// so widen the search until something is found rather than going black
+						for (int radius = 0; radius <= 4; radius++)
+						{
+							const float* best = nullptr;
+							int best_dist = 0x7FFFFFFF;
+							for (int dz = -radius; dz <= radius; dz++)
+							{
+								for (int dy = -radius; dy <= radius; dy++)
+								{
+									for (int dx = -radius; dx <= radius; dx++)
+									{
+										if (std::max(std::max(std::abs(dx), std::abs(dy)), std::abs(dz)) != radius)
+										{
+											continue; // only the new shell
+										}
+										const auto x = gx + dx, y = gy + dy, z = gz + dz;
+										if (x < 0 || y < 0 || z < 0 || x > 0xFFFF || y > 0xFFFF || z > 0xFFFF)
+										{
+											continue;
+										}
+										const auto key = (static_cast<unsigned long long>(x) << 32)
+											| (static_cast<unsigned long long>(y) << 16)
+											| static_cast<unsigned long long>(z);
+										const auto it = grid_samples.find(key);
+										if (it == grid_samples.end())
+										{
+											continue;
+										}
+										// weight z harder, matching how the legacy sampler treats
+										// vertical distance
+										const auto dist = dx * dx + dy * dy + 4 * dz * dz;
+										if (dist < best_dist)
+										{
+											best_dist = dist;
+											best = it->second.data();
+										}
+									}
+								}
+							}
+							if (best)
+							{
+								memcpy(out_sh, best, sizeof(float) * 27);
+								return;
+							}
+						}
+
+						// nothing within reach - fall back to the map average, DC only
+						lightgrid_probes::constant_sh(ambient, sh_ambient_scale, out_sh);
+					}, sh_ambient_scale);
+
+				auto& zone = *new_asset->lightGrid.probeData.zones;
+				if (volume.valid)
+				{
+					auto& pd = new_asset->lightGrid.probeData;
+
+					// gpuVisibleProbes is load-bearing: zeroing it on a stock map makes everything go
+					// black (tested in game). It is a second, independently populated probe set - in
+					// mp_dome_dusk its 21152 positions share nothing with the 44092 grid probes and sit
+					// at irregular coordinates - and its data array is sized (count + 0x2000), so a zero
+					// count also under-sizes the GPU buffer the runtime streams through. Mirror our grid
+					// probes into it so the buffer is the right size and starts with sane contents.
+					pd.gpuVisibleProbesCount = volume.probe_count;
+					pd.gpuVisibleProbePositions =
+						allocator.allocate<IW7::GfxGpuLightGridProbePosition>(volume.probe_count);
+					memcpy(pd.gpuVisibleProbePositions, volume.probe_positions.data(),
+						sizeof(float) * volume.probe_positions.size());
+
+					// the trailing 0x2000 entries are scratch and are zero in every shipped map
+					pd.gpuVisibleProbesData =
+						allocator.allocate<IW7::GfxProbeData>(volume.probe_count + 0x2000);
+					memcpy(pd.gpuVisibleProbesData, volume.probes.data(),
+						sizeof(unsigned short) * volume.probes.size());
+
+					pd.probeCount = volume.probe_count;
+					pd.probes = allocator.allocate<IW7::GfxProbeData>(volume.probe_count);
+					memcpy(pd.probes, volume.probes.data(), sizeof(unsigned short) * volume.probes.size());
+					pd.probePositions = allocator.allocate<IW7::GfxGpuLightGridProbePosition>(volume.probe_count);
+					memcpy(pd.probePositions, volume.probe_positions.data(),
+						sizeof(float) * volume.probe_positions.size());
+
+					pd.tetrahedronCount = volume.tetrahedron_count;
+					pd.tetrahedrons = allocator.allocate<IW7::GfxGpuLightGridTetrahedron>(volume.tetrahedron_count);
+					memcpy(pd.tetrahedrons, volume.tetrahedrons.data(),
+						sizeof(unsigned int) * volume.tetrahedrons.size());
+					pd.tetrahedronNeighbors =
+						allocator.allocate<IW7::GfxGpuLightGridTetrahedronNeighbors>(volume.tetrahedron_count);
+					memcpy(pd.tetrahedronNeighbors, volume.tetrahedron_neighbors.data(),
+						sizeof(unsigned int) * volume.tetrahedron_neighbors.size());
+
+					// Shipped maps carry a visibility entry for ~41% of their tetrahedra: 64 bytes each,
+					// overwhelmingly 0xFF with occasional smaller values, so 0xFF reads as "fully
+					// visible" whether the engine treats it as 512 bits or 64 byte weights. Leaving it
+					// absent is what a walk that silently falls back to the zone probe looks like, so
+					// emit a permissive entry for *every* tetrahedron - that stays valid whether the
+					// table is indexed by tetrahedron index or by a compacted visible-only index.
+					pd.tetrahedronCountVisible = volume.tetrahedron_count;
+					pd.tetrahedronVisibility =
+						allocator.allocate<IW7::GfxGpuLightGridTetrahedronVisibility>(volume.tetrahedron_count);
+					memset(pd.tetrahedronVisibility, 0xFF,
+						sizeof(IW7::GfxGpuLightGridTetrahedronVisibility) * volume.tetrahedron_count);
+
+					pd.voxelStartTetrahedronCount = static_cast<unsigned int>(volume.voxel_start_tetrahedron.size());
+					pd.voxelStartTetrahedron = allocator.allocate<IW7::GfxGpuLightGridVoxelStartTetrahedron>(
+						pd.voxelStartTetrahedronCount);
+					memcpy(pd.voxelStartTetrahedron, volume.voxel_start_tetrahedron.data(),
+						sizeof(unsigned int) * volume.voxel_start_tetrahedron.size());
+
+					zone.numProbes = volume.zone_num_probes;
+					zone.firstProbe = volume.zone_first_probe;
+					zone.numTetrahedrons = volume.zone_num_tetrahedrons;
+					zone.firstTetrahedron = volume.zone_first_tetrahedron;
+					zone.firstVoxelTetrahedronIndex = volume.zone_first_voxel_tetrahedron_index;
+					zone.numVoxelTetrahedronIndices = volume.zone_num_voxel_tetrahedron_indices;
+
+					// the probe volume is indexed by the voxel tree's leaves, so the tree has to be the
+					// one the volume was built against - this replaces the per-sky stub built earlier
+					new_asset->voxelTreeCount = 1;
+					new_asset->voxelTree = allocator.allocate<IW7::GfxVoxelTree>(1);
+					auto& tree = new_asset->voxelTree[0];
+					memcpy(&tree.zoneBound, &asset->bounds, sizeof(Bounds));
+					tree.voxelTopDownViewNodeCount = static_cast<int>(volume.top_down_view_nodes.size());
+					tree.voxelInternalNodeCount = static_cast<int>(volume.internal_nodes.size());
+					tree.voxelLeafNodeCount = static_cast<int>(volume.leaf_nodes.size());
+					tree.lightListArraySize = static_cast<int>(volume.light_list.size());
+
+					tree.voxelTreeHeader = allocator.allocate<IW7::GfxVoxelTreeHeader>();
+					memcpy(tree.voxelTreeHeader->rootNodeDimension, volume.root_node_dimension, sizeof(int[4]));
+					memcpy(tree.voxelTreeHeader->nodeCoordBitShift, volume.node_coord_bit_shift, sizeof(int[4]));
+					memcpy(&tree.voxelTreeHeader->boundMin, volume.bound_min, sizeof(float[4]));
+					memcpy(&tree.voxelTreeHeader->boundMax, volume.bound_max, sizeof(float[4]));
+
+					tree.voxelTopDownViewNodeArray = allocator.allocate<IW7::GfxVoxelTopDownViewNode>(
+						tree.voxelTopDownViewNodeCount);
+					memcpy(tree.voxelTopDownViewNodeArray, volume.top_down_view_nodes.data(),
+						sizeof(IW7::GfxVoxelTopDownViewNode) * tree.voxelTopDownViewNodeCount);
+					tree.voxelInternalNodeArray = allocator.allocate<IW7::GfxVoxelInternalNode>(
+						tree.voxelInternalNodeCount);
+					memcpy(tree.voxelInternalNodeArray, volume.internal_nodes.data(),
+						sizeof(IW7::GfxVoxelInternalNode) * tree.voxelInternalNodeCount);
+					tree.voxelLeafNodeArray = allocator.allocate<IW7::GfxVoxelLeafNode>(tree.voxelLeafNodeCount);
+					memcpy(tree.voxelLeafNodeArray, volume.leaf_nodes.data(),
+						sizeof(unsigned short) * volume.leaf_nodes.size());
+					tree.lightListArray = allocator.allocate<unsigned short>(tree.lightListArraySize);
+					memcpy(tree.lightListArray, volume.light_list.data(),
+						sizeof(unsigned short) * volume.light_list.size());
+					tree.voxelInternalNodeDynamicLightList =
+						allocator.allocate<unsigned int>(2 * tree.voxelInternalNodeCount); // runtime
+				}
+
+				// the zone fallback is used when a sample resolves to no tetrahedron; it is also all a
+				// map gets if the volume could not be built
+				memcpy(zone.fallbackProbeData.coeffs, volume.zone_fallback_coeffs,
+					sizeof(zone.fallbackProbeData.coeffs));
+				memset(zone.fallbackProbeData.pad, 0, sizeof(zone.fallbackProbeData.pad));
 			}
 
-			// todo...
 			new_asset->frustumLights = allocator.allocate<IW7::GfxFrustumLights>(new_asset->primaryLightCount);
+
+			// lightViewFrustums stays zeroed: both consumers (sub_140E1E2A0 / sub_140E1E510) early
+			// out on planeCount == 0, so an absent frustum is a supported state, and they cull
+			// against these planes - a guessed volume would silently drop shadow casters. The
+			// shipped shapes are not a plain light frustum either (mp_dome_dusk light 7 is an
+			// axis-aligned box that does not match its cone's AABB), so leave it off until the
+			// volume is actually identified.
 			new_asset->lightViewFrustums = allocator.allocate<IW7::GfxLightViewFrustum>(new_asset->primaryLightCount);
 
-			// todo...
+			// the light shapes live in the ComWorld, which is loaded alongside this GfxWorld and
+			// shares its asset name
+			{
+				const auto com_world = converter_com_world;
+				if (com_world)
+				{
+					const auto light_count = com_world
+						? std::min<unsigned int>(new_asset->primaryLightCount, com_world->primaryLightCount)
+						: 0u;
+
+					for (unsigned int i = 0; i < light_count; i++)
+					{
+						const auto& light = com_world->primaryLights[i];
+						if (light.radius <= 0.0f)
+						{
+							continue;
+						}
+
+						// dir points toward the light, so the volume runs the other way
+						float axis[3] = { -light.dir[0], -light.dir[1], -light.dir[2] };
+						normalize_proxy_axis(axis);
+
+						proxy_mesh mesh{};
+						const auto cos_outer = std::max(-1.0f, std::min(1.0f, light.cosHalfFovOuter));
+						const auto half_angle = std::acos(cos_outer);
+
+						// past ~80 degrees the expanded cone runs into tan(), and the spot is most of a
+						// hemisphere anyway - the sphere hull contains it and stays well conditioned
+						if (light.type == light_type_spot && half_angle < light_proxy_wide_spot_cutoff)
+						{
+							build_spot_proxy(mesh, light.origin, axis, half_angle, light.radius);
+						}
+						else if (light.type == light_type_spot || light.type == light_type_omni)
+						{
+							build_omni_proxy(mesh, light.origin, light.radius);
+						}
+						else
+						{
+							// NONE and DIR (the sun) carry no proxy in shipped maps
+							continue;
+						}
+
+						auto& dest = new_asset->frustumLights[i];
+
+						// 32 bytes per vertex, of which only the leading xyz is ever read
+						dest.vertexCount = static_cast<unsigned int>(mesh.vertices.size() / 3);
+						dest.vertices = allocator.allocate<char>(32 * dest.vertexCount);
+						for (unsigned int v = 0; v < dest.vertexCount; v++)
+						{
+							memcpy(&dest.vertices[32 * v], &mesh.vertices[3ull * v], sizeof(float[3]));
+						}
+
+						dest.indexCount = static_cast<unsigned int>(mesh.indices.size());
+						dest.indices = allocator.allocate<unsigned short>(dest.indexCount);
+						memcpy(dest.indices, mesh.indices.data(), sizeof(unsigned short) * dest.indexCount);
+					}
+				}
+			}
+
+			// The probe volume builds its own voxel tree and is indexed by that tree's leaves, so
+			// only fall back to the per-sky stub when no volume was generated.
+			if (!new_asset->voxelTree)
 			{
 				new_asset->voxelTreeCount = new_asset->skyCount;
 				new_asset->voxelTree = allocator.allocate<IW7::GfxVoxelTree>(new_asset->voxelTreeCount);
@@ -658,6 +1287,16 @@ namespace ZoneTool::IW5
 				new_asset->shadowGeomOptimized = allocator.allocate<IW7::GfxShadowGeometry>(new_asset->primaryLightCount);
 				for (unsigned int i = 0; i < new_asset->primaryLightCount; i++)
 				{
+					// primary lights 0..lastSunPrimaryLightIndex are the sun lights, and IW7 keeps no caster
+					// list for them - shadowGeomOptimized only feeds the spot shadow passes. Every shipped map
+					// zeroes exactly that range (mp_bog 0-1, mp_dome_dusk 0-2, mp_frontend 0-20), and sun
+					// casters are expressed through GfxSurface::flags / GfxStaticModelDrawInst::sunShadowFlags
+					// instead. IW5 does populate its sun light entry, so drop it rather than copying it over.
+					if (i <= new_asset->lastSunPrimaryLightIndex)
+					{
+						continue;
+					}
+
 					new_asset->shadowGeomOptimized[i].surfaceCount = asset->shadowGeom[i].surfaceCount;
 					new_asset->shadowGeomOptimized[i].smodelCount = asset->shadowGeom[i].smodelCount;
 					new_asset->shadowGeomOptimized[i].sortedSurfIndex = allocator.allocate<unsigned int>(new_asset->shadowGeomOptimized[i].surfaceCount);
@@ -692,6 +1331,16 @@ namespace ZoneTool::IW5
 
 			// dpvs
 			{
+				// IW7 rebuilds dpvs.surfaceCastsSunShadow and dpvs.surfaceCastsSunShadowOpt every
+				// R_SortWorldSurfacesSetSurfaces out of GfxSurface::flags: bit 0 is "casts sun shadow" and
+				// bits 3..7 are a per-sun-light mask picking which surfaceCastsSunShadowOpt row the surface
+				// joins. Only 5 bits are available, which is why shipped maps cap dpvs.sunShadowOptCount at 5
+				// (mp_frontend has 20 sun lights and still stores 5); otherwise it equals
+				// lastSunPrimaryLightIndex exactly. GfxStaticModelDrawInst::sunShadowFlags is the same mask
+				// for static models.
+				const auto sun_light_count = std::min<unsigned int>(new_asset->lastSunPrimaryLightIndex, 5);
+				const auto sun_light_mask = static_cast<unsigned char>((1 << sun_light_count) - 1);
+
 				COPY_VALUE(dpvs.smodelCount);
 				COPY_VALUE(dpvs.staticSurfaceCount);
 				COPY_VALUE(dpvs.litOpaqueSurfsBegin);
@@ -708,7 +1357,17 @@ namespace ZoneTool::IW5
 				new_asset->dpvs.reflectionProbeVisDataCount = (new_asset->draw.reflectionProbeData.reflectionProbeInstanceCount + 0x1F) >> 5;
 				new_asset->dpvs.volumetricVisDataCount = (new_asset->draw.volumetrics.volumetricCount + 0x1F) >> 5;
 				new_asset->dpvs.decalVisDataCount = (new_asset->draw.decalVolumeCollectionCount + 0x1F) >> 5;
+				// umbra smodel object index -> smodel index: the object-ID decoder marks
+				// smodelVisData at lodData[objIndex] for tag 0x10000000. The object index is 1-based,
+				// which is what the trailing +1 entry is for - in every shipped IW7 map (mp_bog,
+				// mp_dome_dusk, mp_shipment) lodData[0] is 0 and lodData[1..smodelCount] is a
+				// permutation of 0..smodelCount-1. We keep the smodel order, so write that identity.
+				// Only matters if a tome ever resolves objects; ours takes the draw-everything path.
 				new_asset->dpvs.lodData = allocator.allocate<unsigned int>(new_asset->dpvs.smodelCount + 1);
+				for (unsigned int i = 0; i < new_asset->dpvs.smodelCount; i++)
+				{
+					new_asset->dpvs.lodData[i + 1] = i;
+				}
 				new_asset->dpvs.sortedSurfIndex = allocator.allocate<unsigned int>(new_asset->dpvs.staticSurfaceCount);
 				for (unsigned int i = 0; i < new_asset->dpvs.staticSurfaceCount; i++)
 				{
@@ -727,7 +1386,15 @@ namespace ZoneTool::IW5
 					COPY_VALUE(dpvs.surfaces[i].tris.baseIndex);
 					new_asset->dpvs.surfaces[i].material = reinterpret_cast<IW7::Material PTR64>(asset->dpvs.surfaces[i].material);
 					new_asset->dpvs.surfaces[i].lightmapIndex = asset->dpvs.surfaces[i].laf.fields.lightmapIndex;
-					new_asset->dpvs.surfaces[i].flags = asset->dpvs.surfaces[i].laf.fields.flags;
+
+					// bit 0 means the same thing in both engines - r_drawsurf.cpp tests laf.fields.flags & 1
+					// before setting the surfaceCastsSunShadow bit in IW5 and in IW7 alike - and it is the only
+					// bit IW5 ever sets. The remaining IW5 bits would be read as IW7's sun light mask, so mask
+					// them off and enrol every caster in all of the sun light sets.
+					const auto casts_sun_shadow = (asset->dpvs.surfaces[i].laf.fields.flags & 1) != 0;
+					new_asset->dpvs.surfaces[i].flags = casts_sun_shadow
+						? static_cast<unsigned char>(1 | (sun_light_mask << 3))
+						: 0;
 
 					new_asset->dpvs.surfaces[i].unk1 = 0;
 					new_asset->dpvs.surfaces[i].unk2 = 0;
@@ -761,7 +1428,9 @@ namespace ZoneTool::IW5
 					new_asset->dpvs.smodelDrawInsts[i].primaryLightEnvIndex = asset->dpvs.smodelDrawInsts[i].primaryLightIndex;
 					new_asset->dpvs.smodelDrawInsts[i].reflectionProbeIndex = asset->dpvs.smodelDrawInsts[i].reflectionProbeIndex;
 					new_asset->dpvs.smodelDrawInsts[i].firstMtlSkinIndex = asset->dpvs.smodelDrawInsts[i].firstMtlSkinIndex;
-					new_asset->dpvs.smodelDrawInsts[i].sunShadowFlags = 0;
+					// which sun lights this model casts for; a model with no bit set is skipped outright by
+					// R_AddAllStaticModelSurfacesRangeSunShadow once the opt path is live, so enrol every model.
+					new_asset->dpvs.smodelDrawInsts[i].sunShadowFlags = sun_light_mask;
 					new_asset->dpvs.smodelDrawInsts[i].transientZone = 0;
 
 					auto& iw7_draw_inst = new_asset->dpvs.smodelDrawInsts[i];
@@ -799,8 +1468,16 @@ namespace ZoneTool::IW5
 				new_asset->dpvs.sunSurfVisDataCount = 0;
 				new_asset->dpvs.surfaceCastsSunShadowOpt = nullptr; // fixme
 
-				// todo...
+				// old smodel index -> index after the map compiler's static model sort, streamed as
+				// 2 * smodelCount bytes. IW7 never reads it (the only code touching dpvs+0x370 is
+				// Load/Preload_GfxWorldDpvsStatic; the umbra path remaps smodels through lodData
+				// instead) and shipped IW7 zones such as mp_bog and mp_shipment carry it fully zeroed.
+				// We do not reorder anything, so write the identity map.
 				new_asset->dpvs.sortedSmodelIndices = allocator.allocate<unsigned short>(asset->dpvs.smodelCount);
+				for (unsigned int i = 0; i < asset->dpvs.smodelCount; i++)
+				{
+					new_asset->dpvs.sortedSmodelIndices[i] = static_cast<unsigned short>(i);
+				}
 
 				// todo...
 				new_asset->dpvs.constantBuffers = nullptr;
