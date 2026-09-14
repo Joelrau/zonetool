@@ -1,0 +1,1358 @@
+IW7 (hk_2014.2.5-r1) Havok class reflection -- collision-relevant subset
+
+Extracted from D:\Files\IDB\iw7\iw7_ship_dump.exe.i64 by reading the runtime
+hkClass/hkClassMember tables that live in the .data segment (0x14B05xxxx-0x14B06xxxx).
+These are IW7's OWN reflection tables, so every offset below is authoritative for
+hk_2014.2.5-r1 x64 -- not inferred from another SDK version.
+
+hkClass       = 80 bytes: name*, parent*, objectSize, numImplementedInterfaces,
+                declaredEnums*, numDeclaredEnums, declaredMembers*, numDeclaredMembers,
+                defaults*, attributes*, flags, describedVersion
+hkClassMember = 40 bytes: name*, class*, enum*, type u8, subtype u8, cArraySize i16,
+                flags u16, offset u16, attributes*
+
+'offset' is the byte offset within the object INCLUDING base-class subobjects.
+====================================================================================================
+
+### hkClass @000000014B0558E0  hkRefCountedPropertiesEntry   (sweep)
+    parent=None                               objectSize=16     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    object                                   0      ptr            struct         0      0x0      hkReferencedObject
+    key                                      8      uint16         void           0      0x0      
+    flags                                    10     uint16         void           0      0x0
+
+### hkClass @000000014B055A70  hkReferencedObject   (member class)
+    parent=hkBaseObject                       objectSize=16     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    memSizeAndRefCount                       8      uint32         void           0      0x400
+
+### hkClass @000000014B055A20  hkBaseObject   (parent)
+    parent=None                               objectSize=8      members=0   enums=0 ifaces=1 flags=0x0 version=0
+
+### hkClass @000000014B055930  hkRefCountedProperties   (sweep)
+    parent=None                               objectSize=16     members=1   enums=1 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    entries                                  0      array          struct         0      0x0      hkRefCountedPropertiesEntry
+
+### hkClass @000000014B055EA0  hkAabbHalf   (member class)
+    parent=None                               objectSize=16     members=1   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    data                                     0      uint16         void           8      0x0
+
+### hkClass @000000014B055AF0  hkAabb   (member class)
+    parent=None                               objectSize=32     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    min                                      0      vector4        void           0      0x0      
+    max                                      16     vector4        void           0      0x0
+
+### hkClass @000000014B055980  hkAabb16   (parent)
+    parent=None                               objectSize=16     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    min                                      0      uint16         void           3      0x100    
+    key                                      6      uint16         void           0      0x0      
+    max                                      8      uint16         void           3      0x0      
+    key1                                     14     uint16         void           0      0x0
+
+### hkClass @000000014B060C90  hkcdFourAabb   (sweep)
+    parent=None                               objectSize=96     members=6   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    lx                                       0      vector4        void           0      0x0      
+    hx                                       16     vector4        void           0      0x0      
+    ly                                       32     vector4        void           0      0x0      
+    hy                                       48     vector4        void           0      0x0      
+    lz                                       64     vector4        void           0      0x0      
+    hz                                       80     vector4        void           0      0x0
+
+### hkClass @000000014B060CE0  hkcdSimdTreeNode   (sweep)
+    parent=hkcdFourAabb                       objectSize=112    members=1   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    data                                     96     uint32         void           4      0x0
+
+### hkClass @000000014B060D30  hkcdSimdTree   (sweep)
+    parent=hkBaseObject                       objectSize=24     members=1   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    nodes                                    8      array          struct         0      0x0      hkcdSimdTreeNode
+
+### hkClass @000000014B060DB0  hkcdStaticMeshTreeBaseSectionSharedVertices   (sweep)
+    parent=None                               objectSize=4      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    data                                     0      uint32         void           0      0x0
+
+### hkClass @000000014B060E00  hkcdStaticMeshTreeBaseSectionPrimitives   (sweep)
+    parent=None                               objectSize=4      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    data                                     0      uint32         void           0      0x0
+
+### hkClass @000000014B060E50  hkcdStaticMeshTreeBaseSectionDataRuns   (sweep)
+    parent=None                               objectSize=4      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    data                                     0      uint32         void           0      0x0
+
+### hkClass @000000014B060EA0  hkcdStaticMeshTreeBaseSection   (sweep)
+    parent=hkcdStaticTreeTreehkcdStaticTreeDynamicStorage4 objectSize=96     members=12  enums=1 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    codecParms                               48     real           void           6      0x0      
+    firstPackedVertex                        72     uint32         void           0      0x0      
+    sharedVertices                           76     struct         void           0      0x0      hkcdStaticMeshTreeBaseSectionSharedVertices
+    primitives                               80     struct         void           0      0x0      hkcdStaticMeshTreeBaseSectionPrimitives
+    dataRuns                                 84     struct         void           0      0x0      hkcdStaticMeshTreeBaseSectionDataRuns
+    numPackedVertices                        88     uint8          void           0      0x0      
+    numSharedIndices                         89     uint8          void           0      0x0      
+    leafIndex                                90     uint16         void           0      0x0      
+    page                                     92     uint8          void           0      0x0      
+    flags                                    93     uint8          void           0      0x0      
+    layerData                                94     uint8          void           0      0x0      
+    unusedData                               95     uint8          void           0      0x0
+
+### hkClass @000000014B061530  hkcdStaticTreeTreehkcdStaticTreeDynamicStorage4   (parent)
+    parent=hkcdStaticTreeDynamicStorage4      objectSize=48     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    domain                                   16     struct         void           0      0x0      hkAabb
+
+### hkClass @000000014B061670  hkcdStaticTreeDynamicStorage4   (parent)
+    parent=hkcdStaticTreeDynamicStoragehkcdStaticTreeCodec3Axis4 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B061760  hkcdStaticTreeDynamicStoragehkcdStaticTreeCodec3Axis4   (parent)
+    parent=None                               objectSize=16     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    nodes                                    0      array          struct         0      0x0      hkcdStaticTreeCodec3Axis4
+
+### hkClass @000000014B060EF0  hkcdStaticMeshTreeBasePrimitive   (sweep)
+    parent=None                               objectSize=4      members=1   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    indices                                  0      uint8          void           4      0x0
+
+### hkClass @000000014B060F40  hkcdStaticMeshTreeBaseEdge   (sweep)
+    parent=None                               objectSize=4      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    keyAndIndex                              0      uint32         void           0      0x0
+
+### hkClass @000000014B060F90  hkcdStaticMeshTreeBaseLinks   (sweep)
+    parent=None                               objectSize=12     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    links                                    0      struct         void           3      0x0      hkcdStaticMeshTreeBaseEdge
+
+### hkClass @000000014B060FE0  hkcdStaticMeshTreeBaseConnectivitySectionHeader   (sweep)
+    parent=None                               objectSize=8      members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    baseLocal                                0      uint32         void           0      0x0      
+    baseGlobal                               4      uint32         void           0      0x0
+
+### hkClass @000000014B061030  hkcdStaticMeshTreeBaseConnectivity   (sweep)
+    parent=None                               objectSize=48     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    headers                                  0      array          struct         0      0x0      hkcdStaticMeshTreeBaseConnectivitySectionHeader
+    localLinks                               16     array          uint8          0      0x0      
+    globalLinks                              32     array          uint32         0      0x0
+
+### hkClass @000000014B061080  hkcdStaticMeshTreeBase   (sweep)
+    parent=hkcdStaticTreeTreehkcdStaticTreeDynamicStorage5 objectSize=112    members=6   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    numPrimitiveKeys                         48     int32          void           0      0x0      
+    bitsPerKey                               52     int32          void           0      0x0      
+    maxKeyValue                              56     uint32         void           0      0x0      
+    sections                                 64     array          struct         0      0x0      hkcdStaticMeshTreeBaseSection
+    primitives                               80     array          struct         0      0x0      hkcdStaticMeshTreeBasePrimitive
+    sharedVerticesIndex                      96     array          uint16         0      0x0
+
+### hkClass @000000014B061580  hkcdStaticTreeTreehkcdStaticTreeDynamicStorage5   (parent)
+    parent=hkcdStaticTreeDynamicStorage5      objectSize=48     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    domain                                   16     struct         void           0      0x0      hkAabb
+
+### hkClass @000000014B0616C0  hkcdStaticTreeDynamicStorage5   (parent)
+    parent=hkcdStaticTreeDynamicStoragehkcdStaticTreeCodec3Axis5 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B0617B0  hkcdStaticTreeDynamicStoragehkcdStaticTreeCodec3Axis5   (parent)
+    parent=None                               objectSize=16     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    nodes                                    0      array          struct         0      0x0      hkcdStaticTreeCodec3Axis5
+
+### hkClass @000000014B0610D0  hkcdStaticMeshTreeBasePrimitiveDataRunBaseunsignedshort   (sweep)
+    parent=None                               objectSize=4      members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    value                                    0      uint16         void           0      0x0      
+    index                                    2      uint8          void           0      0x0      
+    count                                    3      uint8          void           0      0x0
+
+### hkClass @000000014B061120  hkcdStaticMeshTreeDefaultDataRun   (sweep)
+    parent=hkcdStaticMeshTreeBasePrimitiveDataRunBaseunsignedshort objectSize=4      members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B0615D0  hkcdStaticTreeTreehkcdStaticTreeDynamicStorage6   (member class)
+    parent=hkcdStaticTreeDynamicStorage6      objectSize=48     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    domain                                   16     struct         void           0      0x0      hkAabb
+
+### hkClass @000000014B061710  hkcdStaticTreeDynamicStorage6   (parent)
+    parent=hkcdStaticTreeDynamicStoragehkcdStaticTreeCodec3Axis6 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B061800  hkcdStaticTreeDynamicStoragehkcdStaticTreeCodec3Axis6   (parent)
+    parent=None                               objectSize=16     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    nodes                                    0      array          struct         0      0x0      hkcdStaticTreeCodec3Axis6
+
+### hkClass @000000014B061210  hkcdStaticTreeCodec3Axis   (sweep)
+    parent=None                               objectSize=3      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    xyz                                      0      uint8          void           3      0x0
+
+### hkClass @000000014B061260  hkcdStaticTreeCodec3Axis4   (sweep)
+    parent=hkcdStaticTreeCodec3Axis           objectSize=4      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    data                                     3      uint8          void           0      0x0
+
+### hkClass @000000014B0612B0  hkcdStaticTreeCodec3Axis5   (sweep)
+    parent=hkcdStaticTreeCodec3Axis           objectSize=5      members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    hiData                                   3      uint8          void           0      0x0      
+    loData                                   4      uint8          void           0      0x0
+
+### hkClass @000000014B061300  hkcdStaticTreeCodec3Axis6   (sweep)
+    parent=hkcdStaticTreeCodec3Axis           objectSize=6      members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    hiData                                   3      uint8          void           0      0x0      
+    loData                                   4      uint16         void           0      0x0
+
+### hkClass @000000014B061350  hkcdStaticTreeCodecRaw   (sweep)
+    parent=None                               objectSize=32     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    aabb                                     0      struct         void           0      0x0      hkAabb
+
+### hkClass @000000014B0613A0  hkcdStaticTreeDefaultTreeStorage32   (sweep)
+    parent=hkcdStaticTreeTreehkcdStaticTreeDynamicStorage32 objectSize=48     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B0614E0  hkcdStaticTreeTreehkcdStaticTreeDynamicStorage32   (parent)
+    parent=hkcdStaticTreeDynamicStorage32     objectSize=48     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    domain                                   16     struct         void           0      0x0      hkAabb
+
+### hkClass @000000014B061620  hkcdStaticTreeDynamicStorage32   (parent)
+    parent=hkcdStaticTreeDynamicStoragehkcdStaticTreeCodecRaw objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B061850  hkcdStaticTreeDynamicStoragehkcdStaticTreeCodecRaw   (parent)
+    parent=None                               objectSize=16     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    nodes                                    0      array          struct         0      0x0      hkcdStaticTreeCodecRaw
+
+### hkClass @000000014B0613F0  hkcdStaticTreeDefaultTreeStorage4   (sweep)
+    parent=hkcdStaticTreeTreehkcdStaticTreeDynamicStorage4 objectSize=48     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B061440  hkcdStaticTreeDefaultTreeStorage5   (sweep)
+    parent=hkcdStaticTreeTreehkcdStaticTreeDynamicStorage5 objectSize=48     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B061490  hkcdStaticTreeDefaultTreeStorage6   (sweep)
+    parent=hkcdStaticTreeTreehkcdStaticTreeDynamicStorage6 objectSize=48     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B062D70  hknpCompoundShapeInternalsKeyMask   (sweep)
+    parent=hknpCompoundShapeKeyMask           objectSize=48     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    shape                                    8      ptr            struct         0      0x200    hknpCompoundShape
+    instanceMasks                            16     array          ptr            0      0x0      hknpShapeKeyMask
+    filter                                   32     array          uint32         0      0x0
+
+### hkClass @000000014B0639D0  hknpCompoundShape   (member class)
+    parent=hknpCompositeShape                 objectSize=192    members=4   enums=0 ifaces=0 flags=0x0 version=2
+    member                                   offset type           subtype        carray flags    class
+    instances                                96     struct         void           0      0x100    hkFreeListArrayhknpShapeInstancehkHandleshort32767hknpShapeInstanceIdDiscriminant8hknpShapeInstance
+    aabb                                     128    struct         void           0      0x0      hkAabb
+    isMutable                                160    bool           void           0      0x0      
+    mutationSignals                          168    struct         void           0      0x400    hknpShapeSignals
+
+### hkClass @000000014B066150  hkFreeListArrayhknpShapeInstancehkHandleshort32767hknpShapeInstanceIdDiscriminant8hknpShapeInstance   (member class)
+    parent=None                               objectSize=24     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    elements                                 0      array          struct         0      0x0      hknpShapeInstance
+    firstFree                                16     int32          void           0      0x0
+
+### hkClass @000000014B066510  hknpShapeInstance   (member class)
+    parent=None                               objectSize=128    members=6   enums=1 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    transform                                0      transform      void           0      0x0      
+    scale                                    64     vector4        void           0      0x0      
+    shape                                    80     ptr            struct         0      0x0      hknpShape
+    shapeTag                                 88     uint16         void           0      0x0      
+    destructionTag                           90     uint16         void           0      0x0      
+    padding                                  92     uint8          void           30     0x0
+
+### hkClass @000000014B066560  hknpShapeSignals   (member class)
+    parent=None                               objectSize=16     members=2   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    shapeMutated                             0      ptr            void           0      0x400    
+    shapeDestroyed                           8      ptr            void           0      0x400
+
+### hkClass @000000014B0644F0  hknpCompositeShape   (parent)
+    parent=hknpShape                          objectSize=96     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    edgeWeldingMap                           48     struct         void           0      0x0      hknpSparseCompactMapunsignedshort
+    shapeTagCodecInfo                        88     uint32         void           0      0x0
+
+### hkClass @000000014B0665B0  hknpSparseCompactMapunsignedshort   (member class)
+    parent=None                               objectSize=40     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    secondaryKeyMask                         0      uint32         void           0      0x0      
+    sencondaryKeyBits                        4      uint32         void           0      0x0      
+    primaryKeyToIndex                        8      array          uint16         0      0x0      
+    valueAndSecondaryKeys                    24     array          uint16         0      0x0
+
+### hkClass @000000014B065450  hknpShape   (parent)
+    parent=hkReferencedObject                 objectSize=48     members=6   enums=3 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    flags                                    16     flags          uint16         0      0x100    
+    numShapeKeyBits                          18     uint8          void           0      0x0      
+    dispatchType                             19     enum           uint8          0      0x0      
+    convexRadius                             20     real           void           0      0x0      
+    userData                                 24     uint64         void           0      0x0      
+    properties                               32     ptr            struct         0      0x0      hkRefCountedProperties
+
+### hkClass @000000014B063B90  hknpShapeKeyMask   (member class)
+    parent=hkBaseObject                       objectSize=8      members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063A20  hknpCompoundShapeKeyMask   (parent)
+    parent=hknpShapeKeyMask                   objectSize=8      members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B062DF0  hknpDynamicCompoundShapeData   (sweep)
+    parent=hkReferencedObject                 objectSize=56     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    aabbTree                                 16     struct         void           0      0x0      hknpDynamicCompoundShapeTree
+
+### hkClass @000000014B062E70  hknpDynamicCompoundShapeTree   (member class)
+    parent=hkcdDynamicTreeDefaultTree32Storage objectSize=40     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B062EC0  hknpStaticCompoundShapeData   (sweep)
+    parent=hkReferencedObject                 objectSize=64     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    aabbTree                                 16     struct         void           0      0x0      hknpStaticCompoundShapeTree
+
+### hkClass @000000014B062F40  hknpStaticCompoundShapeTree   (member class)
+    parent=hkcdStaticTreeDefaultTreeStorage6  objectSize=48     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B062F90  hknpCompressedMeshShapeData   (sweep)
+    parent=hkReferencedObject                 objectSize=256    members=3   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    meshTree                                 16     struct         void           0      0x0      hknpCompressedMeshShapeTree
+    simdTree                                 176    struct         void           0      0x0      hkcdSimdTree
+    connectivity                             200    struct         void           0      0x0      hkcdStaticMeshTreeBaseConnectivity
+
+### hkClass @000000014B063090  hknpCompressedMeshShapeTree   (member class)
+    parent=hkcdStaticMeshTreehkcdStaticMeshTreeCommonConfigunsignedintunsignedlonglong1121hknpCompressedMeshShapeTreeDataRun objectSize=160    members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063350  hkcdStaticMeshTreehkcdStaticMeshTreeCommonConfigunsignedintunsignedlonglong1121hknpCompressedMeshShapeTreeDataRun   (parent)
+    parent=hkcdStaticMeshTreeBase             objectSize=160    members=3   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    packedVertices                           112    array          uint32         0      0x0      
+    sharedVertices                           128    array          uint64         0      0x0      
+    primitiveDataRuns                        144    array          struct         0      0x0      hknpCompressedMeshShapeTreeDataRun
+
+### hkClass @000000014B0630E0  hknpCompressedMeshShapeTreeDataRun   (member class)
+    parent=hkcdStaticMeshTreeBasePrimitiveDataRunBasehknpCompressedMeshShapeTreeDataRunData objectSize=4      members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063010  hknpCompressedMeshShapeInternalsKeyMask   (sweep)
+    parent=hknpShapeKeyMask                   objectSize=32     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    shape                                    8      ptr            struct         0      0x200    hknpCompressedMeshShape
+    filter                                   16     array          uint32         0      0x0
+
+### hkClass @000000014B0645F0  hknpCompressedMeshShape   (member class)
+    parent=hknpCompositeShape                 objectSize=160    members=5   enums=0 ifaces=0 flags=0x0 version=5
+    member                                   offset type           subtype        carray flags    class
+    data                                     96     ptr            struct         0      0x0      hknpCompressedMeshShapeData
+    quadIsFlat                               104    struct         void           0      0x0      hkBitField
+    triangleIsInterior                       128    struct         void           0      0x0      hkBitField
+    numTriangles                             152    int32          void           0      0x400    
+    numConvexShapes                          156    int32          void           0      0x400
+
+### hkClass @000000014B0555B0  hkBitField   (member class)
+    parent=hkBitFieldBasehkBitFieldStoragehkArrayunsignedinthkContainerHeapAllocator objectSize=24     members=0   enums=0 ifaces=0 flags=0x0 version=2
+
+### hkClass @000000014B055600  hkBitFieldBasehkBitFieldStoragehkArrayunsignedinthkContainerHeapAllocator   (parent)
+    parent=None                               objectSize=24     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    storage                                  0      struct         void           0      0x0      hkBitFieldStoragehkArrayunsignedinthkContainerHeapAllocator
+
+### hkClass @000000014B063130  hknpCompressedMeshShapeTreeDataRunData   (sweep)
+    parent=None                               objectSize=2      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    data                                     0      uint16         void           0      0x0
+
+### hkClass @000000014B063180  hknpDynamicCompoundShapeKeyMask   (sweep)
+    parent=hknpCompoundShapeInternalsKeyMask  objectSize=48     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063200  hknpExternMeshShapeData   (sweep)
+    parent=hkReferencedObject                 objectSize=96     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    aabbTree                                 16     struct         void           0      0x0      hkcdStaticTreeDefaultTreeStorage6
+    simdTree                                 64     struct         void           0      0x0      hkcdSimdTree
+    buildContext                             88     ptr            void           0      0x400
+
+### hkClass @000000014B063280  hknpStaticCompoundShapeKeyMask   (sweep)
+    parent=hknpCompoundShapeInternalsKeyMask  objectSize=48     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063300  hkcdStaticMeshTreeBasePrimitiveDataRunBasehknpCompressedMeshShapeTreeDataRunData   (sweep)
+    parent=None                               objectSize=4      members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    value                                    0      struct         void           0      0x0      hknpCompressedMeshShapeTreeDataRunData
+    index                                    2      uint8          void           0      0x0      
+    count                                    3      uint8          void           0      0x0
+
+### hkClass @000000014B0633B0  hknpBodyCinfo   (sweep)
+    parent=None                               objectSize=160    members=19  enums=0 ifaces=0 flags=0x0 version=4
+    member                                   offset type           subtype        carray flags    class
+    shape                                    0      ptr            struct         0      0x200    hknpShape
+    flags                                    8      int32          void           0      0x0      
+    collisionFilterInfo                      12     uint32         void           0      0x0      
+    materialId                               16     uint16         void           0      0x0      
+    qualityId                                18     uint8          void           0      0x0      
+    userData                                 24     uint64         void           0      0x0      
+    name                                     32     stringptr      void           0      0x0      
+    motionType                               40     uint8          void           0      0x0      
+    position                                 48     vector4        void           0      0x0      
+    orientation                              64     quaternion     void           0      0x0      
+    linearVelocity                           80     vector4        void           0      0x0      
+    angularVelocity                          96     vector4        void           0      0x0      
+    mass                                     112    real           void           0      0x0      
+    massDistribution                         120    ptr            struct         0      0x0      hknpRefMassDistribution
+    motionPropertiesId                       128    uint16         void           0      0x0      
+    reservedBodyId                           132    uint32         void           0      0x0      
+    reservedMotionId                         136    uint32         void           0      0x0      
+    collisionLookAheadDistance               140    real           void           0      0x0      
+    localFrame                               144    ptr            struct         0      0x0      hkLocalFrame
+
+### hkClass @000000014B0652B0  hknpRefMassDistribution   (member class)
+    parent=hkReferencedObject                 objectSize=64     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    massDistribution                         16     struct         void           0      0x0      hknpMassDistribution
+
+### hkClass @000000014B065260  hknpMassDistribution   (member class)
+    parent=None                               objectSize=48     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    centerOfMassAndVolume                    0      vector4        void           0      0x0      
+    majorAxisSpace                           16     quaternion     void           0      0x0      
+    inertiaTensor                            32     vector4        void           0      0x0
+
+### hkClass @000000014B063400  hknpScaledConvexShape   (sweep)
+    parent=hknpScaledConvexShapeBase          objectSize=112    members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    mutationSignals                          96     struct         void           0      0x400    hknpShapeSignals
+
+### hkClass @000000014B063480  hknpScaledConvexShapeBase   (parent)
+    parent=hknpDecoratorShape                 objectSize=96     members=2   enums=1 ifaces=0 flags=0x0 version=2
+    member                                   offset type           subtype        carray flags    class
+    scale                                    64     vector4        void           0      0x0      
+    translation                              80     vector4        void           0      0x0
+
+### hkClass @000000014B0646F0  hknpDecoratorShape   (parent)
+    parent=hknpShape                          objectSize=64     members=1   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    coreShape                                48     ptr            struct         0      0x0      hknpShape
+
+### hkClass @000000014B063500  hknpConvexPolytopeShapeFace   (sweep)
+    parent=None                               objectSize=4      members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    firstIndex                               0      uint16         void           0      0x0      
+    numIndices                               2      uint8          void           0      0x0      
+    minHalfAngle                             3      uint8          void           0      0x0
+
+### hkClass @000000014B063550  hknpConvexPolytopeShapeConnectivityEdge   (sweep)
+    parent=None                               objectSize=4      members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    faceIndex                                0      uint16         void           0      0x0      
+    edgeIndex                                2      uint8          void           0      0x0
+
+### hkClass @000000014B0635A0  hknpConvexPolytopeShapeConnectivity   (sweep)
+    parent=hkReferencedObject                 objectSize=48     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    vertexEdges                              16     array          struct         0      0x0      hknpConvexPolytopeShapeConnectivityEdge
+    faceLinks                                32     array          struct         0      0x0      hknpConvexPolytopeShapeConnectivityEdge
+
+### hkClass @000000014B063620  hknpConvexPolytopeShape   (sweep)
+    parent=hknpConvexShape                    objectSize=96     members=4   enums=0 ifaces=0 flags=0x0 version=4
+    member                                   offset type           subtype        carray flags    class
+    planes                                   64     relarray       vector4        0      0x0      
+    faces                                    68     relarray       struct         0      0x0      hknpConvexPolytopeShapeFace
+    indices                                  72     relarray       uint8          0      0x0      
+    connectivity                             80     ptr            struct         0      0x0      hknpConvexPolytopeShapeConnectivity
+
+### hkClass @000000014B0636A0  hknpConvexShape   (parent)
+    parent=hknpShape                          objectSize=64     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    vertices                                 48     relarray       vector4        0      0x0
+
+### hkClass @000000014B063720  hknpAction   (sweep)
+    parent=hkReferencedObject                 objectSize=24     members=1   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    userData                                 16     ulong          void           0      0x0
+
+### hkClass @000000014B063770  hknpArrayAction   (sweep)
+    parent=hknpAction                         objectSize=40     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    bodyIds                                  24     array          uint64         0      0x0
+
+### hkClass @000000014B0637C0  hknpBinaryAction   (sweep)
+    parent=hknpAction                         objectSize=32     members=2   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    bodyIdA                                  24     uint32         void           0      0x0      
+    bodyIdB                                  28     uint32         void           0      0x0
+
+### hkClass @000000014B063810  hknpUnaryAction   (sweep)
+    parent=hknpAction                         objectSize=32     members=1   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    bodyId                                   24     uint32         void           0      0x0
+
+### hkClass @000000014B063860  hknpBroadPhaseConfigLayer   (sweep)
+    parent=None                               objectSize=8      members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    collideWithLayerMask                     0      uint32         void           0      0x0      
+    isVolatile                               4      bool           void           0      0x0
+
+### hkClass @000000014B0638B0  hknpBroadPhaseConfig   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063900  hknpDefaultBroadPhaseConfig   (sweep)
+    parent=hknpBroadPhaseConfig               objectSize=48     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    layers                                   16     struct         void           4      0x0      hknpBroadPhaseConfigLayer
+
+### hkClass @000000014B063980  hknpCollisionFilter   (sweep)
+    parent=hkReferencedObject                 objectSize=24     members=1   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    type                                     16     enum           uint8          0      0x0
+
+### hkClass @000000014B063A70  hknpExternMeshShape   (sweep)
+    parent=hknpCompositeShape                 objectSize=112    members=2   enums=1 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    geometry                                 96     ptr            struct         0      0x100    hknpExternMeshShapeGeometry
+    boundingVolumeData                       104    ptr            struct         0      0x0      hknpExternMeshShapeData
+
+### hkClass @000000014B063AF0  hknpExternMeshShapeGeometry   (member class)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063B40  hknpHeightFieldShape   (sweep)
+    parent=hknpCompositeShape                 objectSize=240    members=10  enums=0 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    aabb                                     96     struct         void           0      0x0      hkAabb
+    floatToIntScale                          128    vector4        void           0      0x0      
+    intToFloatScale                          144    vector4        void           0      0x0      
+    intSizeX                                 160    int32          void           0      0x0      
+    intSizeZ                                 164    int32          void           0      0x0      
+    numBitsX                                 168    int32          void           0      0x0      
+    numBitsZ                                 172    int32          void           0      0x0      
+    minMaxTree                               176    struct         void           0      0x0      hknpMinMaxQuadTree
+    minMaxTreeCoarseness                     224    int32          void           0      0x0      
+    includeShapeKeyInSdfContacts             228    bool           void           0      0x0
+
+### hkClass @000000014B0663D0  hknpMinMaxQuadTree   (member class)
+    parent=None                               objectSize=48     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    coarseTreeData                           0      array          struct         0      0x0      hknpMinMaxQuadTreeMinMaxLevel
+    offset                                   16     vector4        void           0      0x0      
+    multiplier                               32     real           void           0      0x0      
+    invMultiplier                            36     real           void           0      0x0
+
+### hkClass @000000014B066380  hknpMinMaxQuadTreeMinMaxLevel   (member class)
+    parent=None                               objectSize=24     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    minMaxData                               0      array          uint32         0      0x0      
+    xRes                                     16     uint16         void           0      0x0      
+    zRes                                     18     uint16         void           0      0x0
+
+### hkClass @000000014B063BE0  hknpShapeTagCodec   (sweep)
+    parent=hkReferencedObject                 objectSize=24     members=1   enums=1 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    type                                     16     enum           uint8          0      0x0
+
+### hkClass @000000014B063C30  hknpSurfaceVelocity   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=1 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063C80  hknpVehicleAerodynamics   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063CD0  hknpVehicleBrake   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063D20  hknpVehicleDriverInput   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063D70  hknpVehicleDriverInputStatus   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063DC0  hknpVehicleEngine   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063E10  hknpVehicleSteering   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063E60  hknpVehicleSuspensionSuspensionWheelParameters   (sweep)
+    parent=None                               objectSize=48     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    hardpointChassisSpace                    0      vector4        void           0      0x0      
+    directionChassisSpace                    16     vector4        void           0      0x0      
+    length                                   32     real           void           0      0x0
+
+### hkClass @000000014B063EB0  hknpVehicleSuspension   (sweep)
+    parent=hkReferencedObject                 objectSize=32     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    wheelParams                              16     array          struct         0      0x0      hknpVehicleSuspensionSuspensionWheelParameters
+
+### hkClass @000000014B063F00  hknpVehicleTransmission   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063F50  hknpVehicleVelocityDamper   (sweep)
+    parent=hkReferencedObject                 objectSize=16     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B063FA0  hknpVehicleWheelCollide   (sweep)
+    parent=hkReferencedObject                 objectSize=24     members=3   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    alreadyUsed                              16     bool           void           0      0x0      
+    type                                     17     enum           uint8          0      0x400    
+    wheelCollisionFilterInfo                 20     uint32         void           0      0x400
+
+### hkClass @000000014B063FF0  hknpBallGun   (sweep)
+    parent=hknpFirstPersonGun                 objectSize=144    members=11  enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    bulletRadius                             64     real           void           0      0x0      
+    bulletVelocity                           68     real           void           0      0x0      
+    bulletMass                               72     real           void           0      0x0      
+    damageMultiplier                         76     real           void           0      0x0      
+    maxBulletsInWorld                        80     int32          void           0      0x0      
+    bulletOffsetFromCenter                   96     vector4        void           0      0x0      
+    addedBodyIds                             112    ptr            void           0      0x400    
+    materialId                               120    uint16         void           0      0x400    
+    motionPropertiesId                       122    uint16         void           0      0x400    
+    bulletShape                              128    ptr            void           0      0x400    
+    raiseContactEvents                       136    uint32         void           0      0x400
+
+### hkClass @000000014B064070  hknpFirstPersonGun   (parent)
+    parent=hkReferencedObject                 objectSize=64     members=5   enums=2 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    type                                     16     enum           uint8          0      0x400    
+    name                                     24     stringptr      void           0      0x0      
+    keyboardKey                              32     enum           uint8          0      0x0      
+    listeners                                40     array          ptr            0      0x400    
+    collisionFilterInfo                      56     uint32         void           0      0x400
+
+### hkClass @000000014B0640F0  hknpProjectileGun   (sweep)
+    parent=hknpFirstPersonGun                 objectSize=104    members=5   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    maxProjectiles                           64     int32          void           0      0x0      
+    reloadTime                               68     real           void           0      0x0      
+    reload                                   72     real           void           0      0x400    
+    projectiles                              80     array          ptr            0      0x400    
+    npWorld                                  96     ptr            void           0      0x400
+
+### hkClass @000000014B064170  hknpBodyQualityLibrary   (sweep)
+    parent=hkReferencedObject                 objectSize=544    members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    qualityModifiedSignal                    16     ptr            void           0      0x400    
+    qualities                                32     struct         void           32     0x100    hknpBodyQuality
+
+### hkClass @000000014B0661F0  hknpBodyQuality   (member class)
+    parent=None                               objectSize=16     members=4   enums=1 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    priority                                 0      int32          void           0      0x0      
+    supportedFlags                           4      flags          uint32         0      0x0      
+    requestedFlags                           8      flags          uint32         0      0x0      
+    contactCachingRelativeMovementThreshold  12     real           void           0      0x0
+
+### hkClass @000000014B0641F0  hknpBodyReference   (sweep)
+    parent=hkReferencedObject                 objectSize=24     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    id                                       16     uint32         void           0      0x0
+
+### hkClass @000000014B064270  hknpBreakableConstraintData   (sweep)
+    parent=hkpWrappedConstraintData           objectSize=40     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    threshold                                32     real           void           0      0x0
+
+### hkClass @000000014B0642F0  hknpCapsuleShape   (sweep)
+    parent=hknpConvexPolytopeShape            objectSize=128    members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    a                                        96     vector4        void           0      0x0      
+    b                                        112    vector4        void           0      0x0
+
+### hkClass @000000014B064370  hknpCharacterProxyCinfo   (sweep)
+    parent=hkReferencedObject                 objectSize=176    members=22  enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    position                                 16     vector4        void           0      0x0      
+    orientation                              32     quaternion     void           0      0x0      
+    velocity                                 48     vector4        void           0      0x0      
+    dynamicFriction                          64     real           void           0      0x0      
+    staticFriction                           68     real           void           0      0x0      
+    keepContactTolerance                     72     real           void           0      0x0      
+    up                                       80     vector4        void           0      0x0      
+    shape                                    96     ptr            struct         0      0x0      hknpShape
+    userData                                 104    uint64         void           0      0x80     
+    world                                    112    ptr            void           0      0x400    
+    collisionFilterInfo                      120    uint32         void           0      0x0      
+    keepDistance                             124    real           void           0      0x0      
+    contactAngleSensitivity                  128    real           void           0      0x0      
+    userPlanes                               132    uint32         void           0      0x0      
+    maxCharacterSpeedForSolver               136    real           void           0      0x0      
+    characterStrength                        140    real           void           0      0x0      
+    characterMass                            144    real           void           0      0x0      
+    maxSlope                                 148    real           void           0      0x0      
+    penetrationRecoverySpeed                 152    real           void           0      0x0      
+    maxCastIterations                        156    int32          void           0      0x0      
+    refreshManifoldInCheckSupport            160    bool           void           0      0x0      
+    presenceInWorld                          161    bool           void           0      0x0
+
+### hkClass @000000014B0643F0  hknpCharacterRigidBodyCinfo   (sweep)
+    parent=hkReferencedObject                 objectSize=160    members=18  enums=0 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    collisionFilterInfo                      16     uint32         void           0      0x0      
+    shape                                    24     ptr            struct         0      0x0      hknpShape
+    world                                    32     ptr            void           0      0x400    
+    position                                 48     vector4        void           0      0x0      
+    orientation                              64     quaternion     void           0      0x0      
+    mass                                     80     real           void           0      0x0      
+    dynamicFriction                          84     real           void           0      0x0      
+    staticFriction                           88     real           void           0      0x0      
+    weldingTolerance                         92     real           void           0      0x0      
+    reservedBodyId                           96     uint32         void           0      0x0      
+    additionMode                             100    uint8          void           0      0x0      
+    activationMode                           101    uint8          void           0      0x0      
+    up                                       112    vector4        void           0      0x0      
+    maxSlope                                 128    real           void           0      0x0      
+    maxForce                                 132    real           void           0      0x0      
+    maxSpeedForSimplexSolver                 136    real           void           0      0x0      
+    supportDistance                          140    real           void           0      0x0      
+    hardSupportDistance                      144    real           void           0      0x0
+
+### hkClass @000000014B064470  hknpCircularSurfaceVelocity   (sweep)
+    parent=hknpSurfaceVelocity                objectSize=64     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    velocityIsLocalSpace                     16     bool           void           0      0x0      
+    pivot                                    32     vector4        void           0      0x0      
+    angularVelocity                          48     vector4        void           0      0x0
+
+### hkClass @000000014B064570  hknpCompressedHeightFieldShape   (sweep)
+    parent=hknpHeightFieldShape               objectSize=288    members=5   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    storage                                  240    array          uint16         0      0x0      
+    shapeTags                                256    array          uint16         0      0x0      
+    triangleFlip                             272    bool           void           0      0x0      
+    offset                                   276    real           void           0      0x0      
+    scale                                    280    real           void           0      0x0
+
+### hkClass @000000014B064670  hknpConstraintCollisionFilter   (sweep)
+    parent=hknpPairCollisionFilter            objectSize=56     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    subscribedWorld                          48     ptr            void           0      0x400
+
+### hkClass @000000014B065060  hknpPairCollisionFilter   (parent)
+    parent=hknpCollisionFilter                objectSize=48     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    disabledPairs                            24     struct         void           0      0x400    hknpPairCollisionFilterMapPairFilterKeyOverrideType
+    childFilter                              40     ptr            struct         0      0x0      hknpCollisionFilter
+
+### hkClass @000000014B065010  hknpPairCollisionFilterMapPairFilterKeyOverrideType   (member class)
+    parent=None                               objectSize=16     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    elem                                     0      ptr            void           0      0x400    
+    numElems                                 8      int32          void           0      0x0      
+    hashMod                                  12     int32          void           0      0x0
+
+### hkClass @000000014B064770  hknpDefaultExternMeshShapeGeometry   (sweep)
+    parent=hknpExternMeshShapeGeometry        objectSize=32     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    geometry                                 16     ptr            struct         0      0x100    hkGeometry
+
+### hkClass @000000014B055C80  hkGeometry   (member class)
+    parent=hkReferencedObject                 objectSize=48     members=2   enums=1 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    vertices                                 16     array          vector4        0      0x0      
+    triangles                                32     array          struct         0      0x0      hkGeometryTriangle
+
+### hkClass @000000014B055C30  hkGeometryTriangle   (member class)
+    parent=None                               objectSize=16     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    a                                        0      int32          void           0      0x0      
+    b                                        4      int32          void           0      0x0      
+    c                                        8      int32          void           0      0x0      
+    material                                 12     int32          void           0      0x0
+
+### hkClass @000000014B0647F0  hknpDestructionShapeProperties   (sweep)
+    parent=hkReferencedObject                 objectSize=112    members=4   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    worldFromShape                           16     transform      void           0      0x0      
+    sceneNodeUuid                            80     struct         void           0      0x0      hkUuid
+    isHierarchicalCompound                   96     bool           void           0      0x0      
+    hasDestructionShapes                     97     bool           void           0      0x0
+
+### hkClass @000000014B064870  hknpDisableCollisionFilter   (sweep)
+    parent=hknpCollisionFilter                objectSize=24     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B0648F0  hknpDummyShape   (sweep)
+    parent=hknpShape                          objectSize=96     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    aabb                                     48     struct         void           0      0x0      hkAabb
+    signals                                  80     struct         void           0      0x400    hknpShapeSignals
+
+### hkClass @000000014B064970  hknpDynamicCompoundShape   (sweep)
+    parent=hknpCompoundShape                  objectSize=208    members=1   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    boundingVolumeData                       192    ptr            struct         0      0x0      hknpDynamicCompoundShapeData
+
+### hkClass @000000014B0649F0  hknpGroupCollisionFilter   (sweep)
+    parent=hknpGroupCollisionFilterBasehknpGroupCollisionFilterTypesConfig55516 objectSize=176    members=0   enums=0 ifaces=0 flags=0x0 version=2
+
+### hkClass @000000014B064A70  hknpGroupCollisionFilterBasehknpGroupCollisionFilterTypesConfig55516   (parent)
+    parent=hknpCollisionFilter                objectSize=176    members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    nextFreeSystemGroup                      32     int32          void           0      0x100    
+    collisionLookupTable                     36     uint32         void           32     0x0
+
+### hkClass @000000014B064AF0  hknpLinearSurfaceVelocity   (sweep)
+    parent=hknpSurfaceVelocity                objectSize=64     members=5   enums=1 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    space                                    16     enum           uint8          0      0x0      
+    projectMethod                            17     enum           uint8          0      0x0      
+    maxVelocityScale                         20     real           void           0      0x0      
+    velocityMeasurePlane                     32     vector4        void           0      0x0      
+    velocity                                 48     vector4        void           0      0x0
+
+### hkClass @000000014B064B70  hknpLodShapeLevelOfDetailInfo   (sweep)
+    parent=None                               objectSize=8      members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    maxDistance                              0      real           void           0      0x0      
+    maxShrink                                4      real           void           0      0x0
+
+### hkClass @000000014B064BC0  hknpLodShape   (sweep)
+    parent=hknpCompositeShape                 objectSize=272    members=4   enums=0 ifaces=0 flags=0x0 version=2
+    member                                   offset type           subtype        carray flags    class
+    numLevelsOfDetail                        96     int32          void           0      0x0      
+    infos                                    100    struct         void           8      0x0      hknpLodShapeLevelOfDetailInfo
+    shapes                                   168    ptr            struct         8      0x0      hknpShape
+    maximumAabb                              240    struct         void           0      0x0      hkAabb
+
+### hkClass @000000014B064C40  hknpBridgeConstraintAtom   (sweep)
+    parent=hkpConstraintAtom                  objectSize=24     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    numSolverResults                         4      int32          void           0      0x0      
+    constraintData                           8      ptr            struct         0      0x200    hkpConstraintData
+    padding                                  16     uint8          void           4      0x400
+
+### hkClass @000000014B064C90  hknpMalleableConstraintData   (sweep)
+    parent=hkpWrappedConstraintData           objectSize=64     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    atom                                     32     struct         void           0      0x0      hknpBridgeConstraintAtom
+    wantsRuntime                             56     bool           void           0      0x0      
+    strength                                 60     real           void           0      0x0
+
+### hkClass @000000014B064D10  hknpMaskedShapeMaskWrapper   (sweep)
+    parent=hknpShapeKeyMask                   objectSize=16     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    maskedShape                              8      ptr            void           0      0x400
+
+### hkClass @000000014B064D90  hknpMaskedShape   (sweep)
+    parent=hknpDecoratorShape                 objectSize=112    members=3   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    mask                                     64     ptr            struct         0      0x0      hknpShapeKeyMask
+    maskWrapper                              72     struct         void           0      0x0      hknpMaskedShapeMaskWrapper
+    mutationSignals                          88     struct         void           0      0x400    hknpShapeSignals
+
+### hkClass @000000014B064E10  hknpMaterialLibrary   (sweep)
+    parent=hkReferencedObject                 objectSize=64     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    materialAddedSignal                      16     ptr            void           0      0x400    
+    materialModifiedSignal                   24     ptr            void           0      0x400    
+    materialRemovedSignal                    32     ptr            void           0      0x400    
+    entries                                  40     struct         void           0      0x0      hkFreeListArrayhknpMaterialhknpMaterialId8hknpMaterialFreeListArrayOperations
+
+### hkClass @000000014B0660B0  hkFreeListArrayhknpMaterialhknpMaterialId8hknpMaterialFreeListArrayOperations   (member class)
+    parent=None                               objectSize=24     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    elements                                 0      array          struct         0      0x0      hknpMaterial
+    firstFree                                16     int32          void           0      0x0
+
+### hkClass @000000014B065330  hknpMaterial   (member class)
+    parent=None                               objectSize=80     members=22  enums=3 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    name                                     0      stringptr      void           0      0x100    
+    isExclusive                              8      uint32         void           0      0x0      
+    flags                                    12     int32          void           0      0x0      
+    triggerType                              16     enum           uint8          0      0x0      
+    triggerManifoldTolerance                 17     struct         void           0      0x0      hkUFloat8
+    dynamicFriction                          18     half           void           0      0x0      
+    staticFriction                           20     half           void           0      0x0      
+    restitution                              22     half           void           0      0x0      
+    frictionCombinePolicy                    24     enum           uint8          0      0x0      
+    restitutionCombinePolicy                 25     enum           uint8          0      0x0      
+    weldingTolerance                         26     half           void           0      0x0      
+    maxContactImpulse                        28     real           void           0      0x0      
+    fractionOfClippedImpulseToApply          32     real           void           0      0x0      
+    massChangerCategory                      36     enum           uint8          0      0x0      
+    massChangerHeavyObjectFactor             38     half           void           0      0x0      
+    softContactForceFactor                   40     half           void           0      0x0      
+    softContactDampFactor                    42     half           void           0      0x0      
+    softContactSeperationVelocity            44     struct         void           0      0x0      hkUFloat8
+    surfaceVelocity                          48     ptr            struct         0      0x0      hknpSurfaceVelocity
+    disablingCollisionsBetweenCvxCvxDynamicObjectsDistance 56     half           void           0      0x0      
+    userData                                 64     uint64         void           0      0x80     
+    isShared                                 72     bool           void           0      0x0
+
+### hkClass @000000014B055B90  hkUFloat8   (member class)
+    parent=None                               objectSize=1      members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    value                                    0      uint8          void           0      0x0
+
+### hkClass @000000014B064E90  hknpMaterialPalette   (sweep)
+    parent=hkReferencedObject                 objectSize=32     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    entries                                  16     array          struct         0      0x0      hknpMaterialDescriptor
+
+### hkClass @000000014B065380  hknpMaterialDescriptor   (member class)
+    parent=None                               objectSize=24     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    name                                     0      stringptr      void           0      0x0      
+    material                                 8      ptr            struct         0      0x0      hknpRefMaterial
+    materialId                               16     uint16         void           0      0x0
+
+### hkClass @000000014B0653D0  hknpRefMaterial   (member class)
+    parent=hkReferencedObject                 objectSize=96     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    material                                 16     struct         void           0      0x0      hknpMaterial
+
+### hkClass @000000014B064F10  hknpMotionPropertiesLibrary   (sweep)
+    parent=hkReferencedObject                 objectSize=64     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    entryAddedSignal                         16     ptr            void           0      0x400    
+    entryModifiedSignal                      24     ptr            void           0      0x400    
+    entryRemovedSignal                       32     ptr            void           0      0x400    
+    entries                                  40     struct         void           0      0x0      hkFreeListArrayhknpMotionPropertieshknpMotionPropertiesId8hknpMotionPropertiesFreeListArrayOperations
+
+### hkClass @000000014B066100  hkFreeListArrayhknpMotionPropertieshknpMotionPropertiesId8hknpMotionPropertiesFreeListArrayOperations   (member class)
+    parent=None                               objectSize=24     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    elements                                 0      array          struct         0      0x0      hknpMotionProperties
+    firstFree                                16     int32          void           0      0x0
+
+### hkClass @000000014B0664C0  hknpMotionProperties   (member class)
+    parent=None                               objectSize=64     members=20  enums=2 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    isExclusive                              0      uint32         void           0      0x100    
+    flags                                    4      uint32         void           0      0x0      
+    gravityFactor                            8      real           void           0      0x0      
+    timeFactor                               12     real           void           0      0x0      
+    maxLinearSpeed                           16     real           void           0      0x0      
+    maxAngularSpeed                          20     real           void           0      0x0      
+    linearDamping                            24     real           void           0      0x0      
+    angularDamping                           28     real           void           0      0x0      
+    solverStabilizationSpeedThreshold        32     real           void           0      0x0      
+    solverStabilizationSpeedReduction        36     real           void           0      0x0      
+    maxDistSqrd                              40     real           void           0      0x0      
+    maxRotSqrd                               44     real           void           0      0x0      
+    invBlockSize                             48     real           void           0      0x0      
+    pathingUpperThreshold                    52     int16          void           0      0x0      
+    pathingLowerThreshold                    54     int16          void           0      0x0      
+    numDeactivationFrequencyPasses           56     uint8          void           0      0x0      
+    deactivationVelocityScaleSquare          57     uint8          void           0      0x0      
+    minimumPathingVelocityScaleSquare        58     uint8          void           0      0x0      
+    spikingVelocityScaleThresholdSquared     59     uint8          void           0      0x0      
+    minimumSpikingVelocityScaleSquared       60     uint8          void           0      0x0
+
+### hkClass @000000014B064F90  hknpMountedBallGun   (sweep)
+    parent=hknpBallGun                        objectSize=160    members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    position                                 144    vector4        void           0      0x0
+
+### hkClass @000000014B0650E0  hknpPhysicsSceneData   (sweep)
+    parent=hkReferencedObject                 objectSize=40     members=2   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    systemDatas                              16     array          ptr            0      0x0      hknpPhysicsSystemData
+    worldCinfo                               32     ptr            struct         0      0x0      hknpRefWorldCinfo
+
+### hkClass @000000014B0651E0  hknpPhysicsSystemData   (member class)
+    parent=hkReferencedObject                 objectSize=120    members=7   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    materials                                16     array          struct         0      0x0      hknpMaterial
+    motionProperties                         32     array          struct         0      0x0      hknpMotionProperties
+    motionCinfos                             48     array          struct         0      0x0      hknpMotionCinfo
+    bodyCinfos                               64     array          struct         0      0x0      hknpBodyCinfo
+    constraintCinfos                         80     array          struct         0      0x0      hknpConstraintCinfo
+    referencedObjects                        96     array          ptr            0      0x0      hkReferencedObject
+    name                                     112    stringptr      void           0      0x0
+
+### hkClass @000000014B066470  hknpMotionCinfo   (member class)
+    parent=None                               objectSize=96     members=10  enums=0 ifaces=0 flags=0x0 version=2
+    member                                   offset type           subtype        carray flags    class
+    motionPropertiesId                       0      uint16         void           0      0x0      
+    enableDeactivation                       2      bool           void           0      0x0      
+    inverseMass                              4      real           void           0      0x0      
+    maxLinearAccelerationDistancePerStep     8      real           void           0      0x0      
+    maxRotationPerStep                       12     real           void           0      0x0      
+    inverseInertiaLocal                      16     vector4        void           0      0x0      
+    centerOfMassWorld                        32     vector4        void           0      0x0      
+    orientation                              48     quaternion     void           0      0x0      
+    linearVelocity                           64     vector4        void           0      0x0      
+    angularVelocity                          80     vector4        void           0      0x0
+
+### hkClass @000000014B066330  hknpConstraintCinfo   (member class)
+    parent=None                               objectSize=32     members=5   enums=0 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    constraintData                           0      ptr            struct         0      0x0      hkpConstraintData
+    bodyA                                    8      uint32         void           0      0x0      
+    bodyB                                    12     uint32         void           0      0x0      
+    flags                                    16     flags          uint8          0      0x0      
+    name                                     24     stringptr      void           0      0x0
+
+### hkClass @000000014B065160  hknpRefWorldCinfo   (member class)
+    parent=hkReferencedObject                 objectSize=256    members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    info                                     16     struct         void           0      0x0      hknpWorldCinfo
+
+### hkClass @000000014B066600  hknpWorldCinfo   (member class)
+    parent=None                               objectSize=240    members=33  enums=1 ifaces=0 flags=0x0 version=6
+    member                                   offset type           subtype        carray flags    class
+    bodyBufferCapacity                       0      int32          void           0      0x0      
+    userBodyBuffer                           8      ptr            void           0      0x400    
+    motionBufferCapacity                     16     int32          void           0      0x0      
+    userMotionBuffer                         24     ptr            void           0      0x400    
+    constraintBufferCapacity                 32     int32          void           0      0x0      
+    userConstraintBuffer                     40     ptr            void           0      0x400    
+    persistentStreamAllocator                48     ptr            void           0      0x400    
+    materialLibrary                          56     ptr            struct         0      0x0      hknpMaterialLibrary
+    motionPropertiesLibrary                  64     ptr            struct         0      0x0      hknpMotionPropertiesLibrary
+    qualityLibrary                           72     ptr            struct         0      0x0      hknpBodyQualityLibrary
+    simulationType                           80     uint8          void           0      0x0      
+    numSplitterCells                         84     int32          void           0      0x0      
+    gravity                                  96     vector4        void           0      0x0      
+    enableContactCaching                     112    bool           void           0      0x0      
+    mergeEventsBeforeDispatch                113    bool           void           0      0x0      
+    broadPhaseAabb                           128    struct         void           0      0x0      hkAabb
+    broadPhaseConfig                         160    ptr            struct         0      0x0      hknpBroadPhaseConfig
+    collisionFilter                          168    ptr            struct         0      0x0      hknpCollisionFilter
+    shapeTagCodec                            176    ptr            struct         0      0x0      hknpShapeTagCodec
+    collisionTolerance                       184    real           void           0      0x0      
+    relativeCollisionAccuracy                188    real           void           0      0x0      
+    enableWeldingForDefaultObjects           192    bool           void           0      0x0      
+    enableWeldingForCriticalObjects          193    bool           void           0      0x0      
+    solverTau                                196    real           void           0      0x0      
+    solverDamp                               200    real           void           0      0x0      
+    solverIterations                         204    int32          void           0      0x0      
+    solverMicrosteps                         208    int32          void           0      0x0      
+    defaultSolverTimestep                    212    real           void           0      0x0      
+    maxApproachSpeedForHighQualitySolver     216    real           void           0      0x0      
+    enableDeactivation                       220    bool           void           0      0x0      
+    deleteCachesOnDeactivation               221    bool           void           0      0x0      
+    unitScale                                224    real           void           0      0x0      
+    applyUnitScaleToStaticConstants          228    bool           void           0      0x0
+
+### hkClass @000000014B0654D0  hknpShapeMassProperties   (sweep)
+    parent=hkReferencedObject                 objectSize=48     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    compressedMassProperties                 16     struct         void           0      0x80     hkCompressedMassProperties
+
+### hkClass @000000014B062CB0  hkCompressedMassProperties   (member class)
+    parent=None                               objectSize=32     members=5   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    centerOfMass                             0      int16          void           4      0x0      
+    inertia                                  8      int16          void           4      0x0      
+    majorAxisSpace                           16     int16          void           4      0x0      
+    mass                                     24     real           void           0      0x0      
+    volume                                   28     real           void           0      0x0
+
+### hkClass @000000014B065550  hknpSphereShape   (sweep)
+    parent=hknpConvexShape                    objectSize=64     members=0   enums=0 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B0655D0  hknpStaticCompoundShape   (sweep)
+    parent=hknpCompoundShape                  objectSize=208    members=1   enums=0 ifaces=0 flags=0x0 version=1
+    member                                   offset type           subtype        carray flags    class
+    boundingVolumeData                       192    ptr            struct         0      0x0      hknpStaticCompoundShapeData
+
+### hkClass @000000014B065650  hknpTriangleShape   (sweep)
+    parent=hknpConvexPolytopeShape            objectSize=96     members=0   enums=0 ifaces=0 flags=0x0 version=1
+
+### hkClass @000000014B0656D0  hknpTyremarkPoint   (sweep)
+    parent=None                               objectSize=32     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    pointLeft                                0      vector4        void           0      0x0      
+    pointRight                               16     vector4        void           0      0x0
+
+### hkClass @000000014B065720  hknpTyremarksInfo   (sweep)
+    parent=hkReferencedObject                 objectSize=40     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    minTyremarkEnergy                        16     real           void           0      0x0      
+    maxTyremarkEnergy                        20     real           void           0      0x0      
+    tyremarksWheel                           24     array          ptr            0      0x0      hknpTyremarksWheel
+
+### hkClass @000000014B0657A0  hknpTyremarksWheel   (member class)
+    parent=hkReferencedObject                 objectSize=40     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    currentPosition                          16     int32          void           0      0x0      
+    numPoints                                20     int32          void           0      0x0      
+    tyremarkPoints                           24     array          struct         0      0x0      hknpTyremarkPoint
+
+### hkClass @000000014B065820  hknpVehicleDataWheelComponentParams   (sweep)
+    parent=None                               objectSize=40     members=10  enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    radius                                   0      real           void           0      0x0      
+    mass                                     4      real           void           0      0x0      
+    width                                    8      real           void           0      0x0      
+    friction                                 12     real           void           0      0x0      
+    viscosityFriction                        16     real           void           0      0x0      
+    maxFriction                              20     real           void           0      0x0      
+    slipAngle                                24     real           void           0      0x0      
+    forceFeedbackMultiplier                  28     real           void           0      0x0      
+    maxContactBodyAcceleration               32     real           void           0      0x0      
+    axle                                     36     int8           void           0      0x0
+
+### hkClass @000000014B065870  hknpVehicleData   (sweep)
+    parent=hkReferencedObject                 objectSize=432    members=19  enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    gravity                                  16     vector4        void           0      0x0      
+    numWheels                                32     int8           void           0      0x0      
+    chassisOrientation                       48     rotation       void           0      0x0      
+    torqueRollFactor                         96     real           void           0      0x0      
+    torquePitchFactor                        100    real           void           0      0x0      
+    torqueYawFactor                          104    real           void           0      0x0      
+    extraTorqueFactor                        108    real           void           0      0x0      
+    maxVelocityForPositionalFriction         112    real           void           0      0x0      
+    chassisUnitInertiaYaw                    116    real           void           0      0x0      
+    chassisUnitInertiaRoll                   120    real           void           0      0x0      
+    chassisUnitInertiaPitch                  124    real           void           0      0x0      
+    frictionEqualizer                        128    real           void           0      0x0      
+    normalClippingAngleCos                   132    real           void           0      0x0      
+    maxFrictionSolverMassRatio               136    real           void           0      0x0      
+    wheelParams                              144    array          struct         0      0x0      hknpVehicleDataWheelComponentParams
+    numWheelsPerAxle                         160    array          int8           0      0x0      
+    frictionDescription                      176    struct         void           0      0x0      hkpVehicleFrictionDescription
+    chassisFrictionInertiaInvDiag            400    vector4        void           0      0x0      
+    alreadyInitialised                       416    bool           void           0      0x0
+
+### hkClass @000000014B0658F0  hknpVehicleDefaultAerodynamics   (sweep)
+    parent=hknpVehicleAerodynamics            objectSize=48     members=5   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    airDensity                               16     real           void           0      0x0      
+    frontalArea                              20     real           void           0      0x0      
+    dragCoefficient                          24     real           void           0      0x0      
+    liftCoefficient                          28     real           void           0      0x0      
+    extraGravityws                           32     vector4        void           0      0x0
+
+### hkClass @000000014B065970  hknpVehicleDefaultAnalogDriverInput   (sweep)
+    parent=hknpVehicleDriverInput             objectSize=32     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    slopeChangePointX                        16     real           void           0      0x0      
+    initialSlope                             20     real           void           0      0x0      
+    deadZone                                 24     real           void           0      0x0      
+    autoReverse                              28     bool           void           0      0x0
+
+### hkClass @000000014B0659F0  hknpVehicleDriverInputAnalogStatus   (sweep)
+    parent=hknpVehicleDriverInputStatus       objectSize=32     members=5   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    positionX                                16     real           void           0      0x0      
+    positionY                                20     real           void           0      0x0      
+    handbrakeButtonPressed                   24     bool           void           0      0x0      
+    allWheelHandbrakeButtonPressed           25     bool           void           0      0x0      
+    reverseButtonPressed                     26     bool           void           0      0x0
+
+### hkClass @000000014B065A70  hknpVehicleDefaultBrakeWheelBrakingProperties   (sweep)
+    parent=None                               objectSize=12     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    maxBreakingTorque                        0      real           void           0      0x0      
+    minPedalInputToBlock                     4      real           void           0      0x0      
+    isConnectedToHandbrake                   8      bool           void           0      0x0
+
+### hkClass @000000014B065AC0  hknpVehicleDefaultBrake   (sweep)
+    parent=hknpVehicleBrake                   objectSize=40     members=2   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    wheelBrakingProperties                   16     array          struct         0      0x0      hknpVehicleDefaultBrakeWheelBrakingProperties
+    wheelsMinTimeToBlock                     32     real           void           0      0x0
+
+### hkClass @000000014B065B40  hknpVehicleDefaultEngine   (sweep)
+    parent=hknpVehicleEngine                  objectSize=56     members=10  enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    minRPM                                   16     real           void           0      0x0      
+    optRPM                                   20     real           void           0      0x0      
+    maxRPM                                   24     real           void           0      0x0      
+    maxTorque                                28     real           void           0      0x0      
+    torqueFactorAtMinRPM                     32     real           void           0      0x0      
+    torqueFactorAtMaxRPM                     36     real           void           0      0x0      
+    resistanceFactorAtMinRPM                 40     real           void           0      0x0      
+    resistanceFactorAtOptRPM                 44     real           void           0      0x0      
+    resistanceFactorAtMaxRPM                 48     real           void           0      0x0      
+    clutchSlipRPM                            52     real           void           0      0x0
+
+### hkClass @000000014B065BC0  hknpVehicleDefaultSteering   (sweep)
+    parent=hknpVehicleSteering                objectSize=40     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    maxSteeringAngle                         16     real           void           0      0x0      
+    maxSpeedFullSteeringAngle                20     real           void           0      0x0      
+    doesWheelSteer                           24     array          bool           0      0x0
+
+### hkClass @000000014B065C40  hknpVehicleDefaultSuspensionWheelSpringSuspensionParameters   (sweep)
+    parent=None                               objectSize=12     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    strength                                 0      real           void           0      0x0      
+    dampingCompression                       4      real           void           0      0x0      
+    dampingRelaxation                        8      real           void           0      0x0
+
+### hkClass @000000014B065C90  hknpVehicleDefaultSuspension   (sweep)
+    parent=hknpVehicleSuspension              objectSize=48     members=1   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    wheelSpringParams                        32     array          struct         0      0x0      hknpVehicleDefaultSuspensionWheelSpringSuspensionParameters
+
+### hkClass @000000014B065D10  hknpVehicleDefaultTransmission   (sweep)
+    parent=hknpVehicleTransmission            objectSize=72     members=7   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    downshiftRPM                             16     real           void           0      0x0      
+    upshiftRPM                               20     real           void           0      0x0      
+    primaryTransmissionRatio                 24     real           void           0      0x0      
+    clutchDelayTime                          28     real           void           0      0x0      
+    reverseGearRatio                         32     real           void           0      0x0      
+    gearsRatio                               40     array          real           0      0x0      
+    wheelsTorqueRatio                        56     array          real           0      0x0
+
+### hkClass @000000014B065D90  hknpVehicleDefaultVelocityDamper   (sweep)
+    parent=hknpVehicleVelocityDamper          objectSize=32     members=3   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    normalSpinDamping                        16     real           void           0      0x0      
+    collisionSpinDamping                     20     real           void           0      0x0      
+    collisionThreshold                       24     real           void           0      0x0
+
+### hkClass @000000014B065E10  hknpVehicleInstanceWheelInfo   (sweep)
+    parent=None                               objectSize=192    members=18  enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    contactPoint                             0      struct         void           0      0x0      hkContactPoint
+    contactFriction                          32     real           void           0      0x0      
+    contactBodyId                            36     uint32         void           0      0x400    
+    contactShapeKey                          40     uint32         void           0      0x0      
+    hardPointWs                              48     vector4        void           0      0x0      
+    rayEndPointWs                            64     vector4        void           0      0x0      
+    currentSuspensionLength                  80     real           void           0      0x0      
+    suspensionDirectionWs                    96     vector4        void           0      0x0      
+    spinAxisChassisSpace                     112    vector4        void           0      0x0      
+    spinAxisWs                               128    vector4        void           0      0x0      
+    steeringOrientationChassisSpace          144    quaternion     void           0      0x0      
+    spinVelocity                             160    real           void           0      0x0      
+    noSlipIdealSpinVelocity                  164    real           void           0      0x0      
+    spinAngle                                168    real           void           0      0x0      
+    skidEnergyDensity                        172    real           void           0      0x0      
+    sideForce                                176    real           void           0      0x0      
+    forwardSlipVelocity                      180    real           void           0      0x0      
+    sideSlipVelocity                         184    real           void           0      0x0
+
+### hkClass @000000014B065E60  hknpVehicleInstance   (sweep)
+    parent=hknpUnaryAction                    objectSize=296    members=27  enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    world                                    32     ptr            void           0      0x400    
+    data                                     40     ptr            struct         0      0x0      hknpVehicleData
+    driverInput                              48     ptr            struct         0      0x0      hknpVehicleDriverInput
+    steering                                 56     ptr            struct         0      0x0      hknpVehicleSteering
+    engine                                   64     ptr            struct         0      0x0      hknpVehicleEngine
+    transmission                             72     ptr            struct         0      0x0      hknpVehicleTransmission
+    brake                                    80     ptr            struct         0      0x0      hknpVehicleBrake
+    suspension                               88     ptr            struct         0      0x0      hknpVehicleSuspension
+    aerodynamics                             96     ptr            struct         0      0x0      hknpVehicleAerodynamics
+    wheelCollide                             104    ptr            struct         0      0x0      hknpVehicleWheelCollide
+    tyreMarks                                112    ptr            struct         0      0x0      hknpTyremarksInfo
+    velocityDamper                           120    ptr            struct         0      0x0      hknpVehicleVelocityDamper
+    wheelsInfo                               128    array          struct         0      0x0      hknpVehicleInstanceWheelInfo
+    frictionStatus                           144    struct         void           0      0x0      hkpVehicleFrictionStatus
+    deviceStatus                             216    ptr            struct         0      0x0      hknpVehicleDriverInputStatus
+    isFixed                                  224    array          bool           0      0x0      
+    wheelsTimeSinceMaxPedalInput             240    real           void           0      0x0      
+    tryingToReverse                          244    bool           void           0      0x0      
+    torque                                   248    real           void           0      0x0      
+    rpm                                      252    real           void           0      0x0      
+    mainSteeringAngle                        256    real           void           0      0x0      
+    mainSteeringAngleAssumingNoReduction     260    real           void           0      0x0      
+    wheelsSteeringAngle                      264    array          real           0      0x0      
+    isReversing                              284    bool           void           0      0x0      
+    currentGear                              285    int8           void           0      0x0      
+    delayed                                  286    bool           void           0      0x0      
+    clutchDelayCountdown                     288    real           void           0      0x0
+
+### hkClass @000000014B065EE0  hknpVehicleLinearCastWheelCollideWheelState   (sweep)
+    parent=None                               objectSize=128    members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    aabb                                     0      struct         void           0      0x0      hkAabb
+    shape                                    32     ptr            struct         0      0x0      hknpShape
+    transform                                48     transform      void           0      0x0      
+    to                                       112    vector4        void           0      0x0
+
+### hkClass @000000014B065F30  hknpVehicleLinearCastWheelCollide   (sweep)
+    parent=hknpVehicleWheelCollide            objectSize=56     members=4   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    wheelStates                              24     array          struct         0      0x0      hknpVehicleLinearCastWheelCollideWheelState
+    maxExtraPenetration                      40     real           void           0      0x0      
+    startPointTolerance                      44     real           void           0      0x0      
+    chassisBody                              48     uint32         void           0      0x0
+
+### hkClass @000000014B065FB0  hknpVehicleRayCastWheelCollide   (sweep)
+    parent=hknpVehicleWheelCollide            objectSize=24     members=0   enums=0 ifaces=0 flags=0x0 version=1
+
+### hkClass @000000014B066030  hknpWorldSnapshot   (sweep)
+    parent=hkReferencedObject                 objectSize=320    members=5   enums=0 ifaces=0 flags=0x0 version=0
+    member                                   offset type           subtype        carray flags    class
+    worldCinfo                               16     struct         void           0      0x0      hknpWorldCinfo
+    bodies                                   256    array          struct         0      0x0      hknpBody
+    bodyNames                                272    array          stringptr      0      0x0      
+    motions                                  288    array          struct         0      0x0      hknpMotion
+    constraints                              304    array          struct         0      0x0      hknpConstraintCinfo
+
+### hkClass @000000014B0661A0  hknpBody   (member class)
+    parent=None                               objectSize=144    members=18  enums=1 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    transform                                0      transform      void           0      0x0      
+    flags                                    64     int32          void           0      0x0      
+    collisionFilterInfo                      68     uint32         void           0      0x0      
+    shape                                    72     ptr            struct         0      0x0      hknpShape
+    aabb                                     80     struct         void           0      0x0      hkAabb16
+    id                                       96     uint32         void           0      0x0      
+    nextAttachedBodyId                       100    uint32         void           0      0x0      
+    motionId                                 104    uint32         void           0      0x0      
+    broadPhaseId                             108    uint32         void           0      0x0      
+    materialId                               112    uint16         void           0      0x0      
+    qualityId                                114    uint8          void           0      0x0      
+    timAngle                                 116    uint16         void           0      0x0      
+    maxTimDistance                           118    uint16         void           0      0x0      
+    maxContactDistance                       120    uint16         void           0      0x0      
+    radiusOfComCenteredBoundingSphere        122    half           void           0      0x0      
+    indexIntoActiveListOrDeactivatedIslandId 124    uint32         void           0      0x0      
+    userData                                 128    uint64         void           0      0x0      
+    motionToBodyRotation                     136    int16          void           4      0x0
+
+### hkClass @000000014B066420  hknpMotion   (member class)
+    parent=None                               objectSize=128    members=16  enums=0 ifaces=0 flags=0x0 version=3
+    member                                   offset type           subtype        carray flags    class
+    centerOfMass                             0      vector4        void           0      0x0      
+    orientation                              16     quaternion     void           0      0x0      
+    inverseInertia                           32     half           void           4      0x0      
+    firstAttachedBodyId                      40     uint32         void           0      0x0      
+    solverId                                 44     uint32         void           0      0x400    
+    linearVelocityCage                       48     half           void           3      0x100    
+    integrationFactor                        54     half           void           0      0x0      
+    motionPropertiesId                       56     uint16         void           0      0x0      
+    maxLinearAccelerationDistancePerStep     58     half           void           0      0x0      
+    maxRotationPerStep                       60     half           void           0      0x0      
+    cellIndex                                62     uint8          void           0      0x0      
+    spaceSplitterWeight                      63     uint8          void           0      0x0      
+    linearVelocity                           64     vector4        void           0      0x0      
+    angularVelocity                          80     vector4        void           0      0x0      
+    previousStepLinearVelocity               96     vector4        void           0      0x0      
+    previousStepAngularVelocity              112    vector4        void           0      0x0
+
+### hkClass @000000014B066240  hknpCollisionDispatchType   (sweep)
+    parent=None                               objectSize=1      members=0   enums=1 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B066290  hknpShapeType   (sweep)
+    parent=None                               objectSize=1      members=0   enums=1 ifaces=0 flags=0x0 version=0
+
+### hkClass @000000014B0662E0  hknpConstraint   (sweep)
+    parent=None                               objectSize=56     members=15  enums=1 ifaces=0 flags=0x0 version=2
+    member                                   offset type           subtype        carray flags    class
+    bodyIdA                                  0      uint32         void           0      0x0      
+    bodyIdB                                  4      uint32         void           0      0x0      
+    data                                     8      ptr            struct         0      0x0      hkpConstraintData
+    id                                       16     uint32         void           0      0x0      
+    immediateId                              20     uint16         void           0      0x400    
+    flags                                    22     flags          uint8          0      0x0      
+    type                                     23     enum           uint8          0      0x0      
+    atoms                                    24     ptr            void           0      0x400    
+    sizeOfAtoms                              32     uint16         void           0      0x0      
+    sizeOfSchemas                            34     uint16         void           0      0x0      
+    numSolverResults                         36     uint8          void           0      0x0      
+    numSolverElemTemps                       37     uint8          void           0      0x0      
+    runtimeSize                              38     uint16         void           0      0x0      
+    runtime                                  40     ptr            void           0      0x400    
+    userData                                 48     uint64         void           0      0x0

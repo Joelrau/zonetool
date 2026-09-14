@@ -53,5 +53,22 @@ namespace zonetool
 		std::string get_file_path(const std::string& name);
 		std::string get_dump_path();
 		bool create_directory(const std::string& name);
+
+		// ---- zone source (.csv) -----------------------------------------------------------
+		//
+		// The linkers write the csv from the source game's own asset name, but a dumper is free
+		// to write the asset out under a different one - IW7 materials get their prefix rewritten
+		// to match the mapped techset, so mc/mtl_metal_pail lands in materials\mo\. The csv has to
+		// name the file that actually exists or the IW7 linker resolves nothing.
+		//
+		// A dumper cannot fix its own line as it is written: the linker emits it just before the
+		// asset is dumped, so the new name does not exist yet. So the lines are buffered, dumpers
+		// register renames as they go, and the substitution happens at close, by which point every
+		// asset in the zone - referenced ones included - has been through its dumper.
+		void csv_reset();
+		void csv_buffer_line(const std::string& type, const std::string& name);
+		void csv_register_rename(const std::string& type, const std::string& from,
+			const std::string& to);
+		std::vector<std::string> csv_take_lines();
 	}
 }

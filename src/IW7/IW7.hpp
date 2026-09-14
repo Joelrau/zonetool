@@ -24,6 +24,7 @@ using namespace zonetool;
 #include "Assets/GfxWorldTr.hpp"
 #include "Assets/GlassWorld.hpp"
 #include "Assets/MapEnts.hpp"
+#include "Assets/PhysicsAsset.hpp"
 #include "Assets/ParticleSystem.hpp"
 #include "Assets/RawFile.hpp"
 #include "Assets/XAnimParts.hpp"

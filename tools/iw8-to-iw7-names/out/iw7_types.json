@@ -1,0 +1,4291 @@
+{
+ "sizes": {
+  "GfxWorld": 4520,
+  "GfxLightGridProbeData": 240,
+  "GfxVoxelTree": 112,
+  "GfxVoxelTreeHeader": 64,
+  "GfxStaticModelDrawInst": 184,
+  "GfxGpuLightGridZone": 88,
+  "GfxSHProbeData": 64,
+  "GfxProbeData": 64,
+  "GfxFrustumLights": 48,
+  "GfxLightViewFrustum": 48,
+  "GfxLightRegion": 16,
+  "GfxLightRegionHull": 88,
+  "GfxCell": 40,
+  "GfxPortal": 80,
+  "GfxSky": 32,
+  "GfxWorldDpvsPlanes": 32,
+  "GfxAabbTree": 56,
+  "GfxCellTree": 8,
+  "GfxCellTreeCount": 4,
+  "GfxSurface": 48,
+  "GfxSurfaceBounds": 36,
+  "GfxStaticModelInst": 36,
+  "GfxLightGrid": 1752,
+  "GfxLightGridTree": 80,
+  "GfxLightGridColorsHDR": 672,
+  "GfxWorldDraw": 536,
+  "GfxWorldDpvsStatic": 920,
+  "cplane_s": 20,
+  "GfxHeightfield": 96,
+  "GfxWorldVolumetrics": 16,
+  "GfxShadowGeometry": 24,
+  "GfxLightAABBNode": 28,
+  "GfxCellTransientInfo": 4,
+  "GfxGpuLightGridProbePosition": 12,
+  "GfxGpuLightGridTetrahedron": 16,
+  "GfxGpuLightGridTetrahedronNeighbors": 16,
+  "GfxGpuLightGridTetrahedronVisibility": 64,
+  "GfxGpuLightGridVoxelStartTetrahedron": 4,
+  "GfxVoxelTopDownViewNode": 12,
+  "GfxVoxelInternalNode": 16,
+  "GfxVoxelLeafNode": 2,
+  "XModelDrawInfo": 8,
+  "GfxWorldLodChain": null,
+  "GfxUmbraGate": null,
+  "GfxHeroOnlyLight": 68,
+  "MaterialMemory": 16,
+  "GfxReflectionProbe": 48,
+  "GfxReflectionProbeInstance": 152,
+  "GfxReflectionProbeSampleData": 32,
+  "GfxLightmapReindexElement": null,
+  "GfxPackedLightmap": null,
+  "GfxDecalVolumeCollection": 388,
+  "Bounds": 24,
+  "DpvsPlane": 16,
+  "GfxBrushModel": 60,
+  "GfxDrawSurf": 16,
+  "GfxImage": 112,
+  "GfxLightAABB": 24,
+  "GfxLightRegionAxis": 20,
+  "GfxPackedPlacement": 52,
+  "GfxPortalWritable": 24,
+  "GfxRawTexture": 24,
+  "GfxReflectionProbeObb": 60,
+  "GfxReflectionProbeRelightingData": 32,
+  "GfxSceneDynBrush": 6,
+  "GfxSceneDynModel": 10,
+  "GfxStaticModelLightmapInfo": 20,
+  "GfxStaticModelVertexLighting": 20,
+  "GfxStaticModelVertexLightingInfo": 56,
+  "GfxSubdivCache": 24,
+  "GfxTexture": 24,
+  "GfxVolumetric": 240,
+  "GfxWorldDpvsDynamic": 512,
+  "GfxWorldLightmapReindexData": 32,
+  "GfxWorldLightmapReindexDataElement": 20,
+  "GfxWorldPackedLightmap": 8,
+  "GfxWorldReflectionProbeData": 112,
+  "GfxWorldTransientZone": 80,
+  "ID3D11Buffer": 8,
+  "ID3D11ShaderResourceView": 8,
+  "Material": 280,
+  "UmbraGate": 32,
+  "UmbraGate2": 40,
+  "XModel": 736,
+  "srfTriangles_t": 20,
+  "sunflare_t": 112,
+  "umbraTomePtr_t": 8,
+  "unk_1453E4B08": 48,
+  "vec2_t": 8,
+  "vec3_t": 12,
+  "vec4_t": 16
+ },
+ "layout": {
+  "GfxWorld": [
+   {
+    "name": "name",
+    "offset": 0,
+    "size": 8,
+    "type": "const char *"
+   },
+   {
+    "name": "baseName",
+    "offset": 8,
+    "size": 8,
+    "type": "const char *"
+   },
+   {
+    "name": "bspVersion",
+    "offset": 16,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "planeCount",
+    "offset": 20,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "nodeCount",
+    "offset": 24,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "surfaceCount",
+    "offset": 28,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "skyCount",
+    "offset": 32,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "skies",
+    "offset": 40,
+    "size": 8,
+    "type": "GfxSky *"
+   },
+   {
+    "name": "lastSunPrimaryLightIndex",
+    "offset": 48,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "primaryLightCount",
+    "offset": 52,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "movingScriptablePrimaryLightCount",
+    "offset": 56,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyLitDecal",
+    "offset": 60,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyEffectDecal",
+    "offset": 64,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyTopDecal",
+    "offset": 68,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyEffectAuto",
+    "offset": 72,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyDistortion",
+    "offset": 76,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyEffectDistortion",
+    "offset": 80,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKey2D",
+    "offset": 84,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyOpaqueBegin",
+    "offset": 88,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyOpaqueEnd",
+    "offset": 92,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyDecalBegin",
+    "offset": 96,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyDecalEnd",
+    "offset": 100,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyTransBegin",
+    "offset": 104,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyTransEnd",
+    "offset": 108,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyEmissiveBegin",
+    "offset": 112,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sortKeyEmissiveEnd",
+    "offset": 116,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvsPlanes",
+    "offset": 120,
+    "size": 32,
+    "type": "GfxWorldDpvsPlanes"
+   },
+   {
+    "name": "dpvsPlanes.cellCount",
+    "offset": 120,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "dpvsPlanes.planes",
+    "offset": 128,
+    "size": 8,
+    "type": "cplane_s *"
+   },
+   {
+    "name": "dpvsPlanes.nodes",
+    "offset": 136,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "dpvsPlanes.sceneEntCellBits",
+    "offset": 144,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "cellTransientInfos",
+    "offset": 152,
+    "size": 8,
+    "type": "GfxCellTransientInfo *"
+   },
+   {
+    "name": "cells",
+    "offset": 160,
+    "size": 8,
+    "type": "GfxCell *"
+   },
+   {
+    "name": "draw",
+    "offset": 168,
+    "size": 536,
+    "type": "GfxWorldDraw"
+   },
+   {
+    "name": "draw.reflectionProbeData",
+    "offset": 168,
+    "size": 112,
+    "type": "GfxWorldReflectionProbeData"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeCount",
+    "offset": 168,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.reflectionProbeData.sharedReflectionProbeCount",
+    "offset": 172,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbes",
+    "offset": 176,
+    "size": 8,
+    "type": "GfxReflectionProbe *"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeArrayImage",
+    "offset": 184,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "draw.reflectionProbeData.probeRelightingCount",
+    "offset": 192,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.reflectionProbeData.probeRelightingData",
+    "offset": 200,
+    "size": 8,
+    "type": "GfxReflectionProbeRelightingData *"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeGBufferImageCount",
+    "offset": 208,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeGBufferImages",
+    "offset": 216,
+    "size": 8,
+    "type": "GfxImage **"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeGBufferTextures",
+    "offset": 224,
+    "size": 8,
+    "type": "GfxRawTexture *"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeInstanceCount",
+    "offset": 232,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeInstances",
+    "offset": 240,
+    "size": 8,
+    "type": "GfxReflectionProbeInstance *"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeLightgridSampleData",
+    "offset": 248,
+    "size": 8,
+    "type": "GfxReflectionProbeSampleData *"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeLightgridSampleDataBuffer",
+    "offset": 256,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeLightgridSampleDataBufferView",
+    "offset": 264,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "draw.reflectionProbeData.reflectionProbeLightgridSampleDataBufferRWView",
+    "offset": 272,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "draw.lightmapReindexData",
+    "offset": 280,
+    "size": 32,
+    "type": "GfxWorldLightmapReindexData"
+   },
+   {
+    "name": "draw.lightmapReindexData.imagePixelSize",
+    "offset": 280,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.lightmapReindexData.reindexCount",
+    "offset": 284,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.lightmapReindexData.reindexElement",
+    "offset": 288,
+    "size": 8,
+    "type": "GfxWorldLightmapReindexDataElement *"
+   },
+   {
+    "name": "draw.lightmapReindexData.packedLightmapCount",
+    "offset": 296,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.lightmapReindexData.packedLightmap",
+    "offset": 304,
+    "size": 8,
+    "type": "GfxWorldPackedLightmap *"
+   },
+   {
+    "name": "draw.iesLookupTexture",
+    "offset": 312,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "draw.decalVolumeCollectionCount",
+    "offset": 320,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.decalVolumeCollections",
+    "offset": 328,
+    "size": 8,
+    "type": "GfxDecalVolumeCollection *"
+   },
+   {
+    "name": "draw.lightmapOverridePrimary",
+    "offset": 336,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "draw.lightmapOverrideSecondary",
+    "offset": 344,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "draw.lightMapCount",
+    "offset": 352,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.lightMaps",
+    "offset": 360,
+    "size": 8,
+    "type": "GfxLightMap **"
+   },
+   {
+    "name": "draw.lightmapTextures",
+    "offset": 368,
+    "size": 8,
+    "type": "GfxTexture *"
+   },
+   {
+    "name": "draw.unused1",
+    "offset": 376,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "draw.unused2",
+    "offset": 384,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "draw.unused3",
+    "offset": 392,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "draw.transientZoneCount",
+    "offset": 400,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.transientZones",
+    "offset": 408,
+    "size": 256,
+    "type": "GfxWorldTransientZone *[32]"
+   },
+   {
+    "name": "draw.indexCount",
+    "offset": 664,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.indices",
+    "offset": 672,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "draw.indexBuffer",
+    "offset": 680,
+    "size": 8,
+    "type": "ID3D11Buffer *"
+   },
+   {
+    "name": "draw.volumetrics",
+    "offset": 688,
+    "size": 16,
+    "type": "GfxWorldVolumetrics"
+   },
+   {
+    "name": "draw.volumetrics.volumetricCount",
+    "offset": 688,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "draw.volumetrics.volumetrics",
+    "offset": 696,
+    "size": 8,
+    "type": "GfxVolumetric *"
+   },
+   {
+    "name": "lightGrid",
+    "offset": 704,
+    "size": 1752,
+    "type": "GfxLightGrid"
+   },
+   {
+    "name": "lightGrid.unk",
+    "offset": 704,
+    "size": 36,
+    "type": "int[9]"
+   },
+   {
+    "name": "lightGrid.tableVersion",
+    "offset": 740,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightGrid.paletteVersion",
+    "offset": 744,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightGrid.rangeExponent8BitsEncoding",
+    "offset": 748,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "lightGrid.rangeExponent12BitsEncoding",
+    "offset": 749,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "lightGrid.rangeExponent16BitsEncoding",
+    "offset": 750,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "lightGrid.stageCount",
+    "offset": 751,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "lightGrid.stageLightingContrastGain",
+    "offset": 752,
+    "size": 8,
+    "type": "float *"
+   },
+   {
+    "name": "lightGrid.paletteEntryCount",
+    "offset": 760,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.paletteEntryAddress",
+    "offset": 768,
+    "size": 8,
+    "type": "int *"
+   },
+   {
+    "name": "lightGrid.paletteBitstreamSize",
+    "offset": 776,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.paletteBitstream",
+    "offset": 784,
+    "size": 8,
+    "type": "unsigned __int8 *"
+   },
+   {
+    "name": "lightGrid.skyLightGridColors",
+    "offset": 792,
+    "size": 672,
+    "type": "GfxLightGridColorsHDR"
+   },
+   {
+    "name": "lightGrid.skyLightGridColors.rgb",
+    "offset": 792,
+    "size": 672,
+    "type": "float[56][3]"
+   },
+   {
+    "name": "lightGrid.defaultLightGridColors",
+    "offset": 1464,
+    "size": 672,
+    "type": "GfxLightGridColorsHDR"
+   },
+   {
+    "name": "lightGrid.defaultLightGridColors.rgb",
+    "offset": 1464,
+    "size": 672,
+    "type": "float[56][3]"
+   },
+   {
+    "name": "lightGrid.tree",
+    "offset": 2136,
+    "size": 80,
+    "type": "GfxLightGridTree"
+   },
+   {
+    "name": "lightGrid.tree.maxDepth",
+    "offset": 2136,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "lightGrid.tree.nodeCount",
+    "offset": 2140,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightGrid.tree.leafCount",
+    "offset": 2144,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightGrid.tree.coordMinGridSpace",
+    "offset": 2148,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "lightGrid.tree.coordMaxGridSpace",
+    "offset": 2160,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "lightGrid.tree.coordHalfSizeGridSpace",
+    "offset": 2172,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "lightGrid.tree.defaultColorIndexBitCount",
+    "offset": 2184,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightGrid.tree.defaultLightIndexBitCount",
+    "offset": 2188,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightGrid.tree.p_nodeTable",
+    "offset": 2192,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "lightGrid.tree.leafTableSize",
+    "offset": 2200,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightGrid.tree.p_leafTable",
+    "offset": 2208,
+    "size": 8,
+    "type": "unsigned __int8 *"
+   },
+   {
+    "name": "lightGrid.probeData",
+    "offset": 2216,
+    "size": 240,
+    "type": "GfxLightGridProbeData"
+   },
+   {
+    "name": "lightGrid.probeData.gpuVisibleProbesCount",
+    "offset": 2216,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.probeData.gpuVisibleProbePositions",
+    "offset": 2224,
+    "size": 8,
+    "type": "GfxGpuLightGridProbePosition *"
+   },
+   {
+    "name": "lightGrid.probeData.gpuVisibleProbesData",
+    "offset": 2232,
+    "size": 8,
+    "type": "GfxProbeData *"
+   },
+   {
+    "name": "lightGrid.probeData.gpuVisibleProbesBuffer",
+    "offset": 2240,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.gpuVisibleProbesView",
+    "offset": 2248,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.gpuVisibleProbesRWView",
+    "offset": 2256,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.probeCount",
+    "offset": 2264,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.probeData.probes",
+    "offset": 2272,
+    "size": 8,
+    "type": "GfxProbeData *"
+   },
+   {
+    "name": "lightGrid.probeData.probesBuffer",
+    "offset": 2280,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.probesView",
+    "offset": 2288,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.probesRWView",
+    "offset": 2296,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.probePositions",
+    "offset": 2304,
+    "size": 8,
+    "type": "GfxGpuLightGridProbePosition *"
+   },
+   {
+    "name": "lightGrid.probeData.probePositionsBuffer",
+    "offset": 2312,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.probePositionsView",
+    "offset": 2320,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.zoneCount",
+    "offset": 2328,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.probeData.zones",
+    "offset": 2336,
+    "size": 8,
+    "type": "GfxGpuLightGridZone *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronCount",
+    "offset": 2344,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronCountVisible",
+    "offset": 2348,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedrons",
+    "offset": 2352,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedron *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronBuffer",
+    "offset": 2360,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronView",
+    "offset": 2368,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronNeighbors",
+    "offset": 2376,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedronNeighbors *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronNeighborsBuffer",
+    "offset": 2384,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronNeighborsView",
+    "offset": 2392,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronVisibility",
+    "offset": 2400,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedronVisibility *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronVisibilityBuffer",
+    "offset": 2408,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.tetrahedronVisibilityView",
+    "offset": 2416,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.voxelStartTetrahedronCount",
+    "offset": 2424,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightGrid.probeData.voxelStartTetrahedron",
+    "offset": 2432,
+    "size": 8,
+    "type": "GfxGpuLightGridVoxelStartTetrahedron *"
+   },
+   {
+    "name": "lightGrid.probeData.voxelStartTetrahedronBuffer",
+    "offset": 2440,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightGrid.probeData.voxelStartTetrahedronView",
+    "offset": 2448,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "frustumLights",
+    "offset": 2456,
+    "size": 8,
+    "type": "GfxFrustumLights *"
+   },
+   {
+    "name": "lightViewFrustums",
+    "offset": 2464,
+    "size": 8,
+    "type": "GfxLightViewFrustum *"
+   },
+   {
+    "name": "voxelTreeCount",
+    "offset": 2472,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "voxelTree",
+    "offset": 2480,
+    "size": 8,
+    "type": "GfxVoxelTree *"
+   },
+   {
+    "name": "heightfieldCount",
+    "offset": 2488,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "heightfields",
+    "offset": 2496,
+    "size": 8,
+    "type": "GfxHeightfield *"
+   },
+   {
+    "name": "unk01",
+    "offset": 2504,
+    "size": 48,
+    "type": "unk_1453E4B08"
+   },
+   {
+    "name": "unk01.unk01Count",
+    "offset": 2504,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "unk01.unk01",
+    "offset": 2512,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "unk01.unk02Count",
+    "offset": 2520,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "unk01.unk02",
+    "offset": 2528,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "unk01.unk03Count",
+    "offset": 2536,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "unk01.unk03",
+    "offset": 2544,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "modelCount",
+    "offset": 2552,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "models",
+    "offset": 2560,
+    "size": 8,
+    "type": "GfxBrushModel *"
+   },
+   {
+    "name": "bounds",
+    "offset": 2568,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "bounds.midPoint",
+    "offset": 2568,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "bounds.halfSize",
+    "offset": 2580,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "checksum",
+    "offset": 2592,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "materialMemoryCount",
+    "offset": 2596,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "materialMemory",
+    "offset": 2600,
+    "size": 8,
+    "type": "MaterialMemory *"
+   },
+   {
+    "name": "sun",
+    "offset": 2608,
+    "size": 112,
+    "type": "sunflare_t"
+   },
+   {
+    "name": "sun.hasValidData",
+    "offset": 2608,
+    "size": 1,
+    "type": "bool"
+   },
+   {
+    "name": "sun.spriteMaterial",
+    "offset": 2616,
+    "size": 8,
+    "type": "Material *"
+   },
+   {
+    "name": "sun.flareMaterial",
+    "offset": 2624,
+    "size": 8,
+    "type": "Material *"
+   },
+   {
+    "name": "sun.spriteSize",
+    "offset": 2632,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.flareMinSize",
+    "offset": 2636,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.flareMinDot",
+    "offset": 2640,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.flareMaxSize",
+    "offset": 2644,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.flareMaxDot",
+    "offset": 2648,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.flareMaxAlpha",
+    "offset": 2652,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.flareFadeInTime",
+    "offset": 2656,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "sun.flareFadeOutTime",
+    "offset": 2660,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "sun.blindMinDot",
+    "offset": 2664,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.blindMaxDot",
+    "offset": 2668,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.blindMaxDarken",
+    "offset": 2672,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.blindFadeInTime",
+    "offset": 2676,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "sun.blindFadeOutTime",
+    "offset": 2680,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "sun.glareMinDot",
+    "offset": 2684,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.glareMaxDot",
+    "offset": 2688,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.glareMaxLighten",
+    "offset": 2692,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "sun.glareFadeInTime",
+    "offset": 2696,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "sun.glareFadeOutTime",
+    "offset": 2700,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "sun.sunFxPosition",
+    "offset": 2704,
+    "size": 12,
+    "type": "float[3]"
+   },
+   {
+    "name": "outdoorLookupMatrix",
+    "offset": 2720,
+    "size": 64,
+    "type": "float[4][4]"
+   },
+   {
+    "name": "outdoorImage",
+    "offset": 2784,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "dustMaterial",
+    "offset": 2792,
+    "size": 8,
+    "type": "Material *"
+   },
+   {
+    "name": "materialLod0SizeThreshold",
+    "offset": 2800,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "cellCasterBits",
+    "offset": 2808,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "cellHasSunLitSurfsBits",
+    "offset": 2816,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "sceneDynModel",
+    "offset": 2824,
+    "size": 8,
+    "type": "GfxSceneDynModel *"
+   },
+   {
+    "name": "sceneDynBrush",
+    "offset": 2832,
+    "size": 8,
+    "type": "GfxSceneDynBrush *"
+   },
+   {
+    "name": "primaryLightMotionDetectBitsEntries",
+    "offset": 2840,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "primaryLightMotionDetectBits",
+    "offset": 2848,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "entityMotionBitsEntries",
+    "offset": 2856,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "entityMotionBits",
+    "offset": 2864,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "staticSpotOmniPrimaryLightCountAligned",
+    "offset": 2872,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "numPrimaryLightEntityShadowVisEntries",
+    "offset": 2876,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "primaryLightEntityShadowVis",
+    "offset": 2880,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "dynEntMotionBitsEntries",
+    "offset": 2888,
+    "size": 8,
+    "type": "unsigned int[2]"
+   },
+   {
+    "name": "dynEntMotionBits",
+    "offset": 2896,
+    "size": 16,
+    "type": "unsigned int *[2]"
+   },
+   {
+    "name": "numPrimaryLightDynEntShadowVisEntries",
+    "offset": 2912,
+    "size": 8,
+    "type": "unsigned int[2]"
+   },
+   {
+    "name": "primaryLightDynEntShadowVis",
+    "offset": 2920,
+    "size": 16,
+    "type": "unsigned int *[2]"
+   },
+   {
+    "name": "shadowGeomOptimized",
+    "offset": 2936,
+    "size": 8,
+    "type": "GfxShadowGeometry *"
+   },
+   {
+    "name": "lightRegion",
+    "offset": 2944,
+    "size": 8,
+    "type": "GfxLightRegion *"
+   },
+   {
+    "name": "lightAABB",
+    "offset": 2952,
+    "size": 24,
+    "type": "GfxLightAABB"
+   },
+   {
+    "name": "lightAABB.nodeCount",
+    "offset": 2952,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "lightAABB.lightCount",
+    "offset": 2954,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "lightAABB.nodeArray",
+    "offset": 2960,
+    "size": 8,
+    "type": "GfxLightAABBNode *"
+   },
+   {
+    "name": "lightAABB.lightArray",
+    "offset": 2968,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "dpvs",
+    "offset": 2976,
+    "size": 920,
+    "type": "GfxWorldDpvsStatic"
+   },
+   {
+    "name": "dpvs.smodelCount",
+    "offset": 2976,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.staticSurfaceCount",
+    "offset": 2980,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.litOpaqueSurfsBegin",
+    "offset": 2984,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.litOpaqueSurfsEnd",
+    "offset": 2988,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.litDecalSurfsBegin",
+    "offset": 2992,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.litDecalSurfsEnd",
+    "offset": 2996,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.litTransSurfsBegin",
+    "offset": 3000,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.litTransSurfsEnd",
+    "offset": 3004,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.emissiveSurfsBegin",
+    "offset": 3008,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.emissiveSurfsEnd",
+    "offset": 3012,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.smodelVisDataCount",
+    "offset": 3016,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.surfaceVisDataCount",
+    "offset": 3020,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.primaryLightVisDataCount",
+    "offset": 3024,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.reflectionProbeVisDataCount",
+    "offset": 3028,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.volumetricVisDataCount",
+    "offset": 3032,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.decalVisDataCount",
+    "offset": 3036,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.smodelVisData",
+    "offset": 3040,
+    "size": 240,
+    "type": "unsigned int *[30]"
+   },
+   {
+    "name": "dpvs.surfaceVisData",
+    "offset": 3280,
+    "size": 240,
+    "type": "unsigned int *[30]"
+   },
+   {
+    "name": "dpvs.lodData",
+    "offset": 3520,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "dpvs.primaryLightVisData",
+    "offset": 3528,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "dpvs.reflectionProbeVisData",
+    "offset": 3536,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "dpvs.volumetricVisData",
+    "offset": 3544,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "dpvs.decalVisData",
+    "offset": 3552,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "dpvs.tessellationCutoffVisData",
+    "offset": 3560,
+    "size": 240,
+    "type": "unsigned int *[30]"
+   },
+   {
+    "name": "dpvs.sortedSurfIndex",
+    "offset": 3800,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "dpvs.smodelInsts",
+    "offset": 3808,
+    "size": 8,
+    "type": "GfxStaticModelInst *"
+   },
+   {
+    "name": "dpvs.surfaces",
+    "offset": 3816,
+    "size": 8,
+    "type": "GfxSurface *"
+   },
+   {
+    "name": "dpvs.surfacesBounds",
+    "offset": 3824,
+    "size": 8,
+    "type": "GfxSurfaceBounds *"
+   },
+   {
+    "name": "dpvs.smodelDrawInsts",
+    "offset": 3832,
+    "size": 8,
+    "type": "GfxStaticModelDrawInst *"
+   },
+   {
+    "name": "dpvs.surfaceMaterials",
+    "offset": 3840,
+    "size": 8,
+    "type": "GfxDrawSurf *"
+   },
+   {
+    "name": "dpvs.surfaceCastsSunShadow",
+    "offset": 3848,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "dpvs.sortedSmodelIndices",
+    "offset": 3856,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "dpvs.sunShadowOptCount",
+    "offset": 3864,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.sunSurfVisDataCount",
+    "offset": 3868,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "dpvs.surfaceCastsSunShadowOpt",
+    "offset": 3872,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "dpvs.constantBuffers",
+    "offset": 3880,
+    "size": 8,
+    "type": "char **"
+   },
+   {
+    "name": "dpvs.usageCount",
+    "offset": 3888,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "dpvsDyn",
+    "offset": 3896,
+    "size": 512,
+    "type": "GfxWorldDpvsDynamic"
+   },
+   {
+    "name": "dpvsDyn.dynEntClientWordCount",
+    "offset": 3896,
+    "size": 8,
+    "type": "unsigned int[2]"
+   },
+   {
+    "name": "dpvsDyn.dynEntClientCount",
+    "offset": 3904,
+    "size": 8,
+    "type": "unsigned int[2]"
+   },
+   {
+    "name": "dpvsDyn.dynEntCellBits",
+    "offset": 3912,
+    "size": 16,
+    "type": "unsigned int *[2]"
+   },
+   {
+    "name": "dpvsDyn.dynEntVisData",
+    "offset": 3928,
+    "size": 480,
+    "type": "unsigned __int8 *[2][30]"
+   },
+   {
+    "name": "mapVtxChecksum",
+    "offset": 4408,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "heroOnlyLightCount",
+    "offset": 4412,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "heroOnlyLights",
+    "offset": 4416,
+    "size": 8,
+    "type": "GfxHeroOnlyLight *"
+   },
+   {
+    "name": "numUmbraGates",
+    "offset": 4424,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "umbraGates",
+    "offset": 4432,
+    "size": 8,
+    "type": "UmbraGate *"
+   },
+   {
+    "name": "umbraTomeSize",
+    "offset": 4440,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "umbraTomeData",
+    "offset": 4448,
+    "size": 8,
+    "type": "char *"
+   },
+   {
+    "name": "umbraTomePtr",
+    "offset": 4456,
+    "size": 8,
+    "type": "umbraTomePtr_t"
+   },
+   {
+    "name": "numUmbraGates2",
+    "offset": 4464,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "umbraGates2",
+    "offset": 4472,
+    "size": 8,
+    "type": "UmbraGate2 *"
+   },
+   {
+    "name": "umbraTomeSize2",
+    "offset": 4480,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "umbraTomeData2",
+    "offset": 4488,
+    "size": 8,
+    "type": "char *"
+   },
+   {
+    "name": "umbraTomePtr2",
+    "offset": 4496,
+    "size": 8,
+    "type": "umbraTomePtr_t"
+   },
+   {
+    "name": "umbraUnkSize",
+    "offset": 4504,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "umbraUnkData",
+    "offset": 4512,
+    "size": 8,
+    "type": "char *"
+   }
+  ],
+  "GfxLightGridProbeData": [
+   {
+    "name": "gpuVisibleProbesCount",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "gpuVisibleProbePositions",
+    "offset": 8,
+    "size": 8,
+    "type": "GfxGpuLightGridProbePosition *"
+   },
+   {
+    "name": "gpuVisibleProbesData",
+    "offset": 16,
+    "size": 8,
+    "type": "GfxProbeData *"
+   },
+   {
+    "name": "gpuVisibleProbesBuffer",
+    "offset": 24,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "gpuVisibleProbesView",
+    "offset": 32,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "gpuVisibleProbesRWView",
+    "offset": 40,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeCount",
+    "offset": 48,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probes",
+    "offset": 56,
+    "size": 8,
+    "type": "GfxProbeData *"
+   },
+   {
+    "name": "probesBuffer",
+    "offset": 64,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probesView",
+    "offset": 72,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probesRWView",
+    "offset": 80,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probePositions",
+    "offset": 88,
+    "size": 8,
+    "type": "GfxGpuLightGridProbePosition *"
+   },
+   {
+    "name": "probePositionsBuffer",
+    "offset": 96,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probePositionsView",
+    "offset": 104,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "zoneCount",
+    "offset": 112,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "zones",
+    "offset": 120,
+    "size": 8,
+    "type": "GfxGpuLightGridZone *"
+   },
+   {
+    "name": "tetrahedronCount",
+    "offset": 128,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "tetrahedronCountVisible",
+    "offset": 132,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "tetrahedrons",
+    "offset": 136,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedron *"
+   },
+   {
+    "name": "tetrahedronBuffer",
+    "offset": 144,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "tetrahedronView",
+    "offset": 152,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "tetrahedronNeighbors",
+    "offset": 160,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedronNeighbors *"
+   },
+   {
+    "name": "tetrahedronNeighborsBuffer",
+    "offset": 168,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "tetrahedronNeighborsView",
+    "offset": 176,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "tetrahedronVisibility",
+    "offset": 184,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedronVisibility *"
+   },
+   {
+    "name": "tetrahedronVisibilityBuffer",
+    "offset": 192,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "tetrahedronVisibilityView",
+    "offset": 200,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "voxelStartTetrahedronCount",
+    "offset": 208,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "voxelStartTetrahedron",
+    "offset": 216,
+    "size": 8,
+    "type": "GfxGpuLightGridVoxelStartTetrahedron *"
+   },
+   {
+    "name": "voxelStartTetrahedronBuffer",
+    "offset": 224,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "voxelStartTetrahedronView",
+    "offset": 232,
+    "size": 8,
+    "type": "void *"
+   }
+  ],
+  "GfxVoxelTree": [
+   {
+    "name": "zoneBound",
+    "offset": 0,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "zoneBound.midPoint",
+    "offset": 0,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "zoneBound.halfSize",
+    "offset": 12,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "voxelTopDownViewNodeCount",
+    "offset": 24,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "voxelInternalNodeCount",
+    "offset": 28,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "voxelLeafNodeCount",
+    "offset": 32,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "lightListArraySize",
+    "offset": 36,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "voxelTreeHeader",
+    "offset": 40,
+    "size": 8,
+    "type": "GfxVoxelTreeHeader *"
+   },
+   {
+    "name": "voxelTopDownViewNodeArray",
+    "offset": 48,
+    "size": 8,
+    "type": "GfxVoxelTopDownViewNode *"
+   },
+   {
+    "name": "voxelInternalNodeArray",
+    "offset": 56,
+    "size": 8,
+    "type": "GfxVoxelInternalNode *"
+   },
+   {
+    "name": "voxelLeafNodeArray",
+    "offset": 64,
+    "size": 8,
+    "type": "GfxVoxelLeafNode *"
+   },
+   {
+    "name": "lightListArray",
+    "offset": 72,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "voxelInternalNodeDynamicLightList",
+    "offset": 80,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "__pad0",
+    "offset": 88,
+    "size": 24,
+    "type": "char[24]"
+   }
+  ],
+  "GfxVoxelTreeHeader": [
+   {
+    "name": "rootNodeDimension",
+    "offset": 0,
+    "size": 16,
+    "type": "int[4]"
+   },
+   {
+    "name": "nodeCoordBitShift",
+    "offset": 16,
+    "size": 16,
+    "type": "int[4]"
+   },
+   {
+    "name": "boundMin",
+    "offset": 32,
+    "size": 16,
+    "type": "vec4_t"
+   },
+   {
+    "name": "boundMax",
+    "offset": 48,
+    "size": 16,
+    "type": "vec4_t"
+   }
+  ],
+  "GfxStaticModelDrawInst": [
+   {
+    "name": "placement",
+    "offset": 0,
+    "size": 52,
+    "type": "GfxPackedPlacement"
+   },
+   {
+    "name": "placement.origin",
+    "offset": 0,
+    "size": 12,
+    "type": "float[3]"
+   },
+   {
+    "name": "placement.axis",
+    "offset": 12,
+    "size": 36,
+    "type": "float[3][3]"
+   },
+   {
+    "name": "placement.scale",
+    "offset": 48,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "model",
+    "offset": 56,
+    "size": 8,
+    "type": "XModel *"
+   },
+   {
+    "name": "vertexLightingInfo",
+    "offset": 64,
+    "size": 56,
+    "type": "GfxStaticModelVertexLightingInfo"
+   },
+   {
+    "name": "vertexLightingInfo.lightingValues",
+    "offset": 64,
+    "size": 8,
+    "type": "GfxStaticModelVertexLighting *"
+   },
+   {
+    "name": "vertexLightingInfo.smodelLightingVb",
+    "offset": 72,
+    "size": 8,
+    "type": "ID3D11Buffer *"
+   },
+   {
+    "name": "vertexLightingInfo.lightingValuesVb",
+    "offset": 80,
+    "size": 8,
+    "type": "ID3D11Buffer *"
+   },
+   {
+    "name": "vertexLightingInfo.cache",
+    "offset": 88,
+    "size": 24,
+    "type": "GfxSubdivCache"
+   },
+   {
+    "name": "vertexLightingInfo.cache.size",
+    "offset": 88,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "vertexLightingInfo.cache.subdivCacheBuffer",
+    "offset": 96,
+    "size": 8,
+    "type": "ID3D11Buffer *"
+   },
+   {
+    "name": "vertexLightingInfo.cache.subdivCacheView",
+    "offset": 104,
+    "size": 8,
+    "type": "ID3D11ShaderResourceView *"
+   },
+   {
+    "name": "vertexLightingInfo.flags",
+    "offset": 112,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "vertexLightingInfo.numLightingValues",
+    "offset": 116,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "modelLightmapInfo",
+    "offset": 120,
+    "size": 20,
+    "type": "GfxStaticModelLightmapInfo"
+   },
+   {
+    "name": "modelLightmapInfo.offset",
+    "offset": 120,
+    "size": 8,
+    "type": "float[2]"
+   },
+   {
+    "name": "modelLightmapInfo.scale",
+    "offset": 128,
+    "size": 8,
+    "type": "float[2]"
+   },
+   {
+    "name": "modelLightmapInfo.lightmapIndex",
+    "offset": 136,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "unk0",
+    "offset": 140,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk1",
+    "offset": 142,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk2",
+    "offset": 144,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk3",
+    "offset": 146,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "lightingHandle",
+    "offset": 148,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk5",
+    "offset": 150,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk6",
+    "offset": 152,
+    "size": 8,
+    "type": "unsigned __int16[4]"
+   },
+   {
+    "name": "cullDist",
+    "offset": 160,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "flags",
+    "offset": 162,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "staticModelId",
+    "offset": 164,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk10",
+    "offset": 166,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk11",
+    "offset": 168,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk12",
+    "offset": 169,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk13",
+    "offset": 170,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk14",
+    "offset": 171,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk15",
+    "offset": 172,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk16",
+    "offset": 173,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk17",
+    "offset": 174,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk18",
+    "offset": 175,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "primaryLightEnvIndex",
+    "offset": 176,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk20",
+    "offset": 177,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "reflectionProbeIndex",
+    "offset": 178,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "firstMtlSkinIndex",
+    "offset": 179,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "sunShadowFlags",
+    "offset": 180,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "transientZone",
+    "offset": 181,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk25",
+    "offset": 182,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk26",
+    "offset": 183,
+    "size": 1,
+    "type": "unsigned __int8"
+   }
+  ],
+  "GfxGpuLightGridZone": [
+   {
+    "name": "numProbes",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "firstProbe",
+    "offset": 4,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "numTetrahedrons",
+    "offset": 8,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "firstTetrahedron",
+    "offset": 12,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "firstVoxelTetrahedronIndex",
+    "offset": 16,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "numVoxelTetrahedronIndices",
+    "offset": 20,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "fallbackProbeData",
+    "offset": 24,
+    "size": 64,
+    "type": "GfxSHProbeData"
+   },
+   {
+    "name": "fallbackProbeData.coeffs",
+    "offset": 24,
+    "size": 58,
+    "type": "unsigned __int16[29]"
+   },
+   {
+    "name": "fallbackProbeData.pad",
+    "offset": 82,
+    "size": 6,
+    "type": "unsigned __int16[3]"
+   }
+  ],
+  "GfxSHProbeData": [
+   {
+    "name": "coeffs",
+    "offset": 0,
+    "size": 58,
+    "type": "unsigned __int16[29]"
+   },
+   {
+    "name": "pad",
+    "offset": 58,
+    "size": 6,
+    "type": "unsigned __int16[3]"
+   }
+  ],
+  "GfxProbeData": [
+   {
+    "name": "data",
+    "offset": 0,
+    "size": 64,
+    "type": "unsigned int[16]"
+   }
+  ],
+  "GfxFrustumLights": [
+   {
+    "name": "indexCount",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "indices",
+    "offset": 8,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "vertexCount",
+    "offset": 16,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "vertices",
+    "offset": 24,
+    "size": 8,
+    "type": "char *"
+   },
+   {
+    "name": "indexBuffer",
+    "offset": 32,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "vertexBuffer",
+    "offset": 40,
+    "size": 8,
+    "type": "void *"
+   }
+  ],
+  "GfxLightViewFrustum": [
+   {
+    "name": "planeCount",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "planes",
+    "offset": 8,
+    "size": 8,
+    "type": "vec4_t *"
+   },
+   {
+    "name": "indexCount",
+    "offset": 16,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "indices",
+    "offset": 24,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "vertexCount",
+    "offset": 32,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "vertices",
+    "offset": 40,
+    "size": 8,
+    "type": "vec3_t *"
+   }
+  ],
+  "GfxLightRegion": [
+   {
+    "name": "hullCount",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "hulls",
+    "offset": 8,
+    "size": 8,
+    "type": "GfxLightRegionHull *"
+   }
+  ],
+  "GfxLightRegionHull": [
+   {
+    "name": "kdopMidPoint",
+    "offset": 0,
+    "size": 36,
+    "type": "float[9]"
+   },
+   {
+    "name": "kdopHalfSize",
+    "offset": 36,
+    "size": 36,
+    "type": "float[9]"
+   },
+   {
+    "name": "axisCount",
+    "offset": 72,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "axis",
+    "offset": 80,
+    "size": 8,
+    "type": "GfxLightRegionAxis *"
+   }
+  ],
+  "GfxCell": [
+   {
+    "name": "bounds",
+    "offset": 0,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "bounds.midPoint",
+    "offset": 0,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "bounds.halfSize",
+    "offset": 12,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "portalCount",
+    "offset": 24,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "portals",
+    "offset": 32,
+    "size": 8,
+    "type": "GfxPortal *"
+   }
+  ],
+  "GfxPortal": [
+   {
+    "name": "writable",
+    "offset": 0,
+    "size": 24,
+    "type": "GfxPortalWritable"
+   },
+   {
+    "name": "writable.isQueued",
+    "offset": 0,
+    "size": 1,
+    "type": "bool"
+   },
+   {
+    "name": "writable.isAncestor",
+    "offset": 1,
+    "size": 1,
+    "type": "bool"
+   },
+   {
+    "name": "writable.recursionDepth",
+    "offset": 2,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "writable.hullPointCount",
+    "offset": 3,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "writable.hullPoints",
+    "offset": 8,
+    "size": 8,
+    "type": "vec2_t *"
+   },
+   {
+    "name": "writable.queuedParent",
+    "offset": 16,
+    "size": 8,
+    "type": "GfxPortal *"
+   },
+   {
+    "name": "plane",
+    "offset": 24,
+    "size": 16,
+    "type": "DpvsPlane"
+   },
+   {
+    "name": "plane.coeffs",
+    "offset": 24,
+    "size": 16,
+    "type": "vec4_t"
+   },
+   {
+    "name": "vertices",
+    "offset": 40,
+    "size": 8,
+    "type": "vec3_t *"
+   },
+   {
+    "name": "cellIndex",
+    "offset": 48,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "closeDistance",
+    "offset": 50,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "vertexCount",
+    "offset": 52,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "hullAxis",
+    "offset": 56,
+    "size": 24,
+    "type": "vec3_t[2]"
+   }
+  ],
+  "GfxSky": [
+   {
+    "name": "skySurfCount",
+    "offset": 0,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "skyStartSurfs",
+    "offset": 8,
+    "size": 8,
+    "type": "int *"
+   },
+   {
+    "name": "skyImage",
+    "offset": 16,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "skySamplerState",
+    "offset": 24,
+    "size": 1,
+    "type": "unsigned __int8"
+   }
+  ],
+  "GfxWorldDpvsPlanes": [
+   {
+    "name": "cellCount",
+    "offset": 0,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "planes",
+    "offset": 8,
+    "size": 8,
+    "type": "cplane_s *"
+   },
+   {
+    "name": "nodes",
+    "offset": 16,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "sceneEntCellBits",
+    "offset": 24,
+    "size": 8,
+    "type": "unsigned int *"
+   }
+  ],
+  "GfxAabbTree": [
+   {
+    "name": "bounds",
+    "offset": 0,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "bounds.midPoint",
+    "offset": 0,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "bounds.halfSize",
+    "offset": 12,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "childCount",
+    "offset": 24,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "surfaceCount",
+    "offset": 26,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "startSurfIndex",
+    "offset": 28,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "smodelIndexCount",
+    "offset": 32,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "smodelIndexes",
+    "offset": 40,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "childrenOffset",
+    "offset": 48,
+    "size": 4,
+    "type": "int"
+   }
+  ],
+  "GfxCellTree": [
+   {
+    "name": "aabbTree",
+    "offset": 0,
+    "size": 8,
+    "type": "GfxAabbTree *"
+   }
+  ],
+  "GfxCellTreeCount": [
+   {
+    "name": "aabbTreeCount",
+    "offset": 0,
+    "size": 4,
+    "type": "int"
+   }
+  ],
+  "GfxSurface": [
+   {
+    "name": "tris",
+    "offset": 0,
+    "size": 20,
+    "type": "srfTriangles_t"
+   },
+   {
+    "name": "tris.vertexLayerData",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "tris.firstVertex",
+    "offset": 4,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "tris.maxEdgeLength",
+    "offset": 8,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "tris.vertexCount",
+    "offset": 12,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "tris.triCount",
+    "offset": 14,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "tris.baseIndex",
+    "offset": 16,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "material",
+    "offset": 24,
+    "size": 8,
+    "type": "Material *"
+   },
+   {
+    "name": "lightmapIndex",
+    "offset": 32,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "flags",
+    "offset": 33,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "sortKey",
+    "offset": 34,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "unk1",
+    "offset": 36,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk2",
+    "offset": 37,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk3",
+    "offset": 38,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk4",
+    "offset": 39,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "transientZone",
+    "offset": 40,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk6",
+    "offset": 41,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk7",
+    "offset": 42,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk8",
+    "offset": 43,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk9",
+    "offset": 44,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk10",
+    "offset": 45,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk11",
+    "offset": 46,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unk12",
+    "offset": 47,
+    "size": 1,
+    "type": "unsigned __int8"
+   }
+  ],
+  "GfxSurfaceBounds": [
+   {
+    "name": "bounds",
+    "offset": 0,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "bounds.midPoint",
+    "offset": 0,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "bounds.halfSize",
+    "offset": 12,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "unk",
+    "offset": 24,
+    "size": 12,
+    "type": "unsigned int[3]"
+   }
+  ],
+  "GfxStaticModelInst": [
+   {
+    "name": "bounds",
+    "offset": 0,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "bounds.midPoint",
+    "offset": 0,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "bounds.halfSize",
+    "offset": 12,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "lightingOrigin",
+    "offset": 24,
+    "size": 12,
+    "type": "float[3]"
+   }
+  ],
+  "GfxLightGrid": [
+   {
+    "name": "unk",
+    "offset": 0,
+    "size": 36,
+    "type": "int[9]"
+   },
+   {
+    "name": "tableVersion",
+    "offset": 36,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "paletteVersion",
+    "offset": 40,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "rangeExponent8BitsEncoding",
+    "offset": 44,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "rangeExponent12BitsEncoding",
+    "offset": 45,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "rangeExponent16BitsEncoding",
+    "offset": 46,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "stageCount",
+    "offset": 47,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "stageLightingContrastGain",
+    "offset": 48,
+    "size": 8,
+    "type": "float *"
+   },
+   {
+    "name": "paletteEntryCount",
+    "offset": 56,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "paletteEntryAddress",
+    "offset": 64,
+    "size": 8,
+    "type": "int *"
+   },
+   {
+    "name": "paletteBitstreamSize",
+    "offset": 72,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "paletteBitstream",
+    "offset": 80,
+    "size": 8,
+    "type": "unsigned __int8 *"
+   },
+   {
+    "name": "skyLightGridColors",
+    "offset": 88,
+    "size": 672,
+    "type": "GfxLightGridColorsHDR"
+   },
+   {
+    "name": "skyLightGridColors.rgb",
+    "offset": 88,
+    "size": 672,
+    "type": "float[56][3]"
+   },
+   {
+    "name": "defaultLightGridColors",
+    "offset": 760,
+    "size": 672,
+    "type": "GfxLightGridColorsHDR"
+   },
+   {
+    "name": "defaultLightGridColors.rgb",
+    "offset": 760,
+    "size": 672,
+    "type": "float[56][3]"
+   },
+   {
+    "name": "tree",
+    "offset": 1432,
+    "size": 80,
+    "type": "GfxLightGridTree"
+   },
+   {
+    "name": "tree.maxDepth",
+    "offset": 1432,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "tree.nodeCount",
+    "offset": 1436,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "tree.leafCount",
+    "offset": 1440,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "tree.coordMinGridSpace",
+    "offset": 1444,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "tree.coordMaxGridSpace",
+    "offset": 1456,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "tree.coordHalfSizeGridSpace",
+    "offset": 1468,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "tree.defaultColorIndexBitCount",
+    "offset": 1480,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "tree.defaultLightIndexBitCount",
+    "offset": 1484,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "tree.p_nodeTable",
+    "offset": 1488,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "tree.leafTableSize",
+    "offset": 1496,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "tree.p_leafTable",
+    "offset": 1504,
+    "size": 8,
+    "type": "unsigned __int8 *"
+   },
+   {
+    "name": "probeData",
+    "offset": 1512,
+    "size": 240,
+    "type": "GfxLightGridProbeData"
+   },
+   {
+    "name": "probeData.gpuVisibleProbesCount",
+    "offset": 1512,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probeData.gpuVisibleProbePositions",
+    "offset": 1520,
+    "size": 8,
+    "type": "GfxGpuLightGridProbePosition *"
+   },
+   {
+    "name": "probeData.gpuVisibleProbesData",
+    "offset": 1528,
+    "size": 8,
+    "type": "GfxProbeData *"
+   },
+   {
+    "name": "probeData.gpuVisibleProbesBuffer",
+    "offset": 1536,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.gpuVisibleProbesView",
+    "offset": 1544,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.gpuVisibleProbesRWView",
+    "offset": 1552,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.probeCount",
+    "offset": 1560,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probeData.probes",
+    "offset": 1568,
+    "size": 8,
+    "type": "GfxProbeData *"
+   },
+   {
+    "name": "probeData.probesBuffer",
+    "offset": 1576,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.probesView",
+    "offset": 1584,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.probesRWView",
+    "offset": 1592,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.probePositions",
+    "offset": 1600,
+    "size": 8,
+    "type": "GfxGpuLightGridProbePosition *"
+   },
+   {
+    "name": "probeData.probePositionsBuffer",
+    "offset": 1608,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.probePositionsView",
+    "offset": 1616,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.zoneCount",
+    "offset": 1624,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probeData.zones",
+    "offset": 1632,
+    "size": 8,
+    "type": "GfxGpuLightGridZone *"
+   },
+   {
+    "name": "probeData.tetrahedronCount",
+    "offset": 1640,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probeData.tetrahedronCountVisible",
+    "offset": 1644,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probeData.tetrahedrons",
+    "offset": 1648,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedron *"
+   },
+   {
+    "name": "probeData.tetrahedronBuffer",
+    "offset": 1656,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.tetrahedronView",
+    "offset": 1664,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.tetrahedronNeighbors",
+    "offset": 1672,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedronNeighbors *"
+   },
+   {
+    "name": "probeData.tetrahedronNeighborsBuffer",
+    "offset": 1680,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.tetrahedronNeighborsView",
+    "offset": 1688,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.tetrahedronVisibility",
+    "offset": 1696,
+    "size": 8,
+    "type": "GfxGpuLightGridTetrahedronVisibility *"
+   },
+   {
+    "name": "probeData.tetrahedronVisibilityBuffer",
+    "offset": 1704,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.tetrahedronVisibilityView",
+    "offset": 1712,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.voxelStartTetrahedronCount",
+    "offset": 1720,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probeData.voxelStartTetrahedron",
+    "offset": 1728,
+    "size": 8,
+    "type": "GfxGpuLightGridVoxelStartTetrahedron *"
+   },
+   {
+    "name": "probeData.voxelStartTetrahedronBuffer",
+    "offset": 1736,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "probeData.voxelStartTetrahedronView",
+    "offset": 1744,
+    "size": 8,
+    "type": "void *"
+   }
+  ],
+  "GfxLightGridTree": [
+   {
+    "name": "maxDepth",
+    "offset": 0,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "nodeCount",
+    "offset": 4,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "leafCount",
+    "offset": 8,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "coordMinGridSpace",
+    "offset": 12,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "coordMaxGridSpace",
+    "offset": 24,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "coordHalfSizeGridSpace",
+    "offset": 36,
+    "size": 12,
+    "type": "int[3]"
+   },
+   {
+    "name": "defaultColorIndexBitCount",
+    "offset": 48,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "defaultLightIndexBitCount",
+    "offset": 52,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "p_nodeTable",
+    "offset": 56,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "leafTableSize",
+    "offset": 64,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "p_leafTable",
+    "offset": 72,
+    "size": 8,
+    "type": "unsigned __int8 *"
+   }
+  ],
+  "GfxLightGridColorsHDR": [
+   {
+    "name": "rgb",
+    "offset": 0,
+    "size": 672,
+    "type": "float[56][3]"
+   }
+  ],
+  "GfxWorldDraw": [
+   {
+    "name": "reflectionProbeData",
+    "offset": 0,
+    "size": 112,
+    "type": "GfxWorldReflectionProbeData"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeCount",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "reflectionProbeData.sharedReflectionProbeCount",
+    "offset": 4,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbes",
+    "offset": 8,
+    "size": 8,
+    "type": "GfxReflectionProbe *"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeArrayImage",
+    "offset": 16,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "reflectionProbeData.probeRelightingCount",
+    "offset": 24,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "reflectionProbeData.probeRelightingData",
+    "offset": 32,
+    "size": 8,
+    "type": "GfxReflectionProbeRelightingData *"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeGBufferImageCount",
+    "offset": 40,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeGBufferImages",
+    "offset": 48,
+    "size": 8,
+    "type": "GfxImage **"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeGBufferTextures",
+    "offset": 56,
+    "size": 8,
+    "type": "GfxRawTexture *"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeInstanceCount",
+    "offset": 64,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeInstances",
+    "offset": 72,
+    "size": 8,
+    "type": "GfxReflectionProbeInstance *"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeLightgridSampleData",
+    "offset": 80,
+    "size": 8,
+    "type": "GfxReflectionProbeSampleData *"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeLightgridSampleDataBuffer",
+    "offset": 88,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeLightgridSampleDataBufferView",
+    "offset": 96,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "reflectionProbeData.reflectionProbeLightgridSampleDataBufferRWView",
+    "offset": 104,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "lightmapReindexData",
+    "offset": 112,
+    "size": 32,
+    "type": "GfxWorldLightmapReindexData"
+   },
+   {
+    "name": "lightmapReindexData.imagePixelSize",
+    "offset": 112,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightmapReindexData.reindexCount",
+    "offset": 116,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightmapReindexData.reindexElement",
+    "offset": 120,
+    "size": 8,
+    "type": "GfxWorldLightmapReindexDataElement *"
+   },
+   {
+    "name": "lightmapReindexData.packedLightmapCount",
+    "offset": 128,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightmapReindexData.packedLightmap",
+    "offset": 136,
+    "size": 8,
+    "type": "GfxWorldPackedLightmap *"
+   },
+   {
+    "name": "iesLookupTexture",
+    "offset": 144,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "decalVolumeCollectionCount",
+    "offset": 152,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "decalVolumeCollections",
+    "offset": 160,
+    "size": 8,
+    "type": "GfxDecalVolumeCollection *"
+   },
+   {
+    "name": "lightmapOverridePrimary",
+    "offset": 168,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "lightmapOverrideSecondary",
+    "offset": 176,
+    "size": 8,
+    "type": "GfxImage *"
+   },
+   {
+    "name": "lightMapCount",
+    "offset": 184,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "lightMaps",
+    "offset": 192,
+    "size": 8,
+    "type": "GfxLightMap **"
+   },
+   {
+    "name": "lightmapTextures",
+    "offset": 200,
+    "size": 8,
+    "type": "GfxTexture *"
+   },
+   {
+    "name": "unused1",
+    "offset": 208,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "unused2",
+    "offset": 216,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "unused3",
+    "offset": 224,
+    "size": 8,
+    "type": "void *"
+   },
+   {
+    "name": "transientZoneCount",
+    "offset": 232,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "transientZones",
+    "offset": 240,
+    "size": 256,
+    "type": "GfxWorldTransientZone *[32]"
+   },
+   {
+    "name": "indexCount",
+    "offset": 496,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "indices",
+    "offset": 504,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "indexBuffer",
+    "offset": 512,
+    "size": 8,
+    "type": "ID3D11Buffer *"
+   },
+   {
+    "name": "volumetrics",
+    "offset": 520,
+    "size": 16,
+    "type": "GfxWorldVolumetrics"
+   },
+   {
+    "name": "volumetrics.volumetricCount",
+    "offset": 520,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "volumetrics.volumetrics",
+    "offset": 528,
+    "size": 8,
+    "type": "GfxVolumetric *"
+   }
+  ],
+  "GfxWorldDpvsStatic": [
+   {
+    "name": "smodelCount",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "staticSurfaceCount",
+    "offset": 4,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "litOpaqueSurfsBegin",
+    "offset": 8,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "litOpaqueSurfsEnd",
+    "offset": 12,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "litDecalSurfsBegin",
+    "offset": 16,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "litDecalSurfsEnd",
+    "offset": 20,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "litTransSurfsBegin",
+    "offset": 24,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "litTransSurfsEnd",
+    "offset": 28,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "emissiveSurfsBegin",
+    "offset": 32,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "emissiveSurfsEnd",
+    "offset": 36,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "smodelVisDataCount",
+    "offset": 40,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "surfaceVisDataCount",
+    "offset": 44,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "primaryLightVisDataCount",
+    "offset": 48,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "reflectionProbeVisDataCount",
+    "offset": 52,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "volumetricVisDataCount",
+    "offset": 56,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "decalVisDataCount",
+    "offset": 60,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "smodelVisData",
+    "offset": 64,
+    "size": 240,
+    "type": "unsigned int *[30]"
+   },
+   {
+    "name": "surfaceVisData",
+    "offset": 304,
+    "size": 240,
+    "type": "unsigned int *[30]"
+   },
+   {
+    "name": "lodData",
+    "offset": 544,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "primaryLightVisData",
+    "offset": 552,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "reflectionProbeVisData",
+    "offset": 560,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "volumetricVisData",
+    "offset": 568,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "decalVisData",
+    "offset": 576,
+    "size": 8,
+    "type": "unsigned int *[1]"
+   },
+   {
+    "name": "tessellationCutoffVisData",
+    "offset": 584,
+    "size": 240,
+    "type": "unsigned int *[30]"
+   },
+   {
+    "name": "sortedSurfIndex",
+    "offset": 824,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "smodelInsts",
+    "offset": 832,
+    "size": 8,
+    "type": "GfxStaticModelInst *"
+   },
+   {
+    "name": "surfaces",
+    "offset": 840,
+    "size": 8,
+    "type": "GfxSurface *"
+   },
+   {
+    "name": "surfacesBounds",
+    "offset": 848,
+    "size": 8,
+    "type": "GfxSurfaceBounds *"
+   },
+   {
+    "name": "smodelDrawInsts",
+    "offset": 856,
+    "size": 8,
+    "type": "GfxStaticModelDrawInst *"
+   },
+   {
+    "name": "surfaceMaterials",
+    "offset": 864,
+    "size": 8,
+    "type": "GfxDrawSurf *"
+   },
+   {
+    "name": "surfaceCastsSunShadow",
+    "offset": 872,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "sortedSmodelIndices",
+    "offset": 880,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   },
+   {
+    "name": "sunShadowOptCount",
+    "offset": 888,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "sunSurfVisDataCount",
+    "offset": 892,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "surfaceCastsSunShadowOpt",
+    "offset": 896,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "constantBuffers",
+    "offset": 904,
+    "size": 8,
+    "type": "char **"
+   },
+   {
+    "name": "usageCount",
+    "offset": 912,
+    "size": 4,
+    "type": "int"
+   }
+  ],
+  "cplane_s": [
+   {
+    "name": "normal",
+    "offset": 0,
+    "size": 12,
+    "type": "float[3]"
+   },
+   {
+    "name": "dist",
+    "offset": 12,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "type",
+    "offset": 16,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "pad",
+    "offset": 17,
+    "size": 3,
+    "type": "unsigned __int8[3]"
+   }
+  ],
+  "GfxHeightfield": [
+   {
+    "name": "bounds",
+    "offset": 0,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "bounds.midPoint",
+    "offset": 0,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "bounds.halfSize",
+    "offset": 12,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "lookupMatrix",
+    "offset": 24,
+    "size": 64,
+    "type": "vec4_t[4]"
+   },
+   {
+    "name": "image",
+    "offset": 88,
+    "size": 8,
+    "type": "GfxImage *"
+   }
+  ],
+  "GfxWorldVolumetrics": [
+   {
+    "name": "volumetricCount",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "volumetrics",
+    "offset": 8,
+    "size": 8,
+    "type": "GfxVolumetric *"
+   }
+  ],
+  "GfxShadowGeometry": [
+   {
+    "name": "surfaceCount",
+    "offset": 0,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "smodelCount",
+    "offset": 2,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "sortedSurfIndex",
+    "offset": 8,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "smodelIndex",
+    "offset": 16,
+    "size": 8,
+    "type": "unsigned __int16 *"
+   }
+  ],
+  "GfxLightAABBNode": [
+   {
+    "name": "bound",
+    "offset": 0,
+    "size": 24,
+    "type": "Bounds"
+   },
+   {
+    "name": "bound.midPoint",
+    "offset": 0,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "bound.halfSize",
+    "offset": 12,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "firstChild",
+    "offset": 24,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "childCount",
+    "offset": 26,
+    "size": 2,
+    "type": "unsigned __int16"
+   }
+  ],
+  "GfxCellTransientInfo": [
+   {
+    "name": "aabbTreeIndex",
+    "offset": 0,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "transientZone",
+    "offset": 2,
+    "size": 2,
+    "type": "unsigned __int16"
+   }
+  ],
+  "GfxGpuLightGridProbePosition": [
+   {
+    "name": "origin",
+    "offset": 0,
+    "size": 12,
+    "type": "float[3]"
+   }
+  ],
+  "GfxGpuLightGridTetrahedron": [
+   {
+    "name": "indexFlags",
+    "offset": 0,
+    "size": 16,
+    "type": "unsigned int[4]"
+   }
+  ],
+  "GfxGpuLightGridTetrahedronNeighbors": [
+   {
+    "name": "neighbors",
+    "offset": 0,
+    "size": 16,
+    "type": "unsigned int[4]"
+   }
+  ],
+  "GfxGpuLightGridTetrahedronVisibility": [
+   {
+    "name": "visibility",
+    "offset": 0,
+    "size": 64,
+    "type": "unsigned int[16]"
+   }
+  ],
+  "GfxGpuLightGridVoxelStartTetrahedron": [
+   {
+    "name": "index",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned int"
+   }
+  ],
+  "GfxVoxelTopDownViewNode": [
+   {
+    "name": "firstNodeIndex",
+    "offset": 0,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "zMin",
+    "offset": 4,
+    "size": 4,
+    "type": "int"
+   },
+   {
+    "name": "zMax",
+    "offset": 8,
+    "size": 4,
+    "type": "int"
+   }
+  ],
+  "GfxVoxelInternalNode": [
+   {
+    "name": "firstNodeIndex",
+    "offset": 0,
+    "size": 8,
+    "type": "int[2]"
+   },
+   {
+    "name": "childNodeMask",
+    "offset": 8,
+    "size": 8,
+    "type": "int[2]"
+   }
+  ],
+  "GfxVoxelLeafNode": [
+   {
+    "name": "lightListAddress",
+    "offset": 0,
+    "size": 2,
+    "type": "unsigned __int16"
+   }
+  ],
+  "XModelDrawInfo": [
+   {
+    "name": "hasGfxEntIndex",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned __int32 : 1"
+   },
+   {
+    "name": "lod",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned __int32 : 4"
+   },
+   {
+    "name": "materialLod",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned __int32 : 1"
+   },
+   {
+    "name": "surfBufSize",
+    "offset": 0,
+    "size": 4,
+    "type": "unsigned __int32 : 24"
+   },
+   {
+    "name": "surfId",
+    "offset": 4,
+    "size": 4,
+    "type": "unsigned __int32 : 24"
+   }
+  ],
+  "GfxHeroOnlyLight": [
+   {
+    "name": "type",
+    "offset": 0,
+    "size": 1,
+    "type": "unsigned __int8"
+   },
+   {
+    "name": "unused",
+    "offset": 1,
+    "size": 3,
+    "type": "unsigned __int8[3]"
+   },
+   {
+    "name": "color",
+    "offset": 4,
+    "size": 12,
+    "type": "float[3]"
+   },
+   {
+    "name": "dir",
+    "offset": 16,
+    "size": 12,
+    "type": "float[3]"
+   },
+   {
+    "name": "up",
+    "offset": 28,
+    "size": 12,
+    "type": "float[3]"
+   },
+   {
+    "name": "origin",
+    "offset": 40,
+    "size": 12,
+    "type": "float[3]"
+   },
+   {
+    "name": "radius",
+    "offset": 52,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "cosHalfFovOuter",
+    "offset": 56,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "cosHalfFovInner",
+    "offset": 60,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "exponent",
+    "offset": 64,
+    "size": 4,
+    "type": "int"
+   }
+  ],
+  "MaterialMemory": [
+   {
+    "name": "material",
+    "offset": 0,
+    "size": 8,
+    "type": "Material *"
+   },
+   {
+    "name": "memory",
+    "offset": 8,
+    "size": 4,
+    "type": "int"
+   }
+  ],
+  "GfxReflectionProbe": [
+   {
+    "name": "livePath",
+    "offset": 0,
+    "size": 8,
+    "type": "char *"
+   },
+   {
+    "name": "origin",
+    "offset": 8,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "angles",
+    "offset": 20,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "probeInstances",
+    "offset": 32,
+    "size": 8,
+    "type": "unsigned int *"
+   },
+   {
+    "name": "probeInstanceCount",
+    "offset": 40,
+    "size": 4,
+    "type": "unsigned int"
+   },
+   {
+    "name": "probeRelightingIndex",
+    "offset": 44,
+    "size": 4,
+    "type": "unsigned int"
+   }
+  ],
+  "GfxReflectionProbeInstance": [
+   {
+    "name": "livePath",
+    "offset": 0,
+    "size": 8,
+    "type": "char *"
+   },
+   {
+    "name": "livePath2",
+    "offset": 8,
+    "size": 8,
+    "type": "char *"
+   },
+   {
+    "name": "probePosition",
+    "offset": 16,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "probeImageIndex",
+    "offset": 28,
+    "size": 2,
+    "type": "unsigned __int16"
+   },
+   {
+    "name": "lodLevel",
+    "offset": 30,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "flags",
+    "offset": 31,
+    "size": 1,
+    "type": "char"
+   },
+   {
+    "name": "probeRotation",
+    "offset": 32,
+    "size": 16,
+    "type": "vec4_t"
+   },
+   {
+    "name": "volumeObb",
+    "offset": 48,
+    "size": 60,
+    "type": "GfxReflectionProbeObb"
+   },
+   {
+    "name": "volumeObb.center",
+    "offset": 48,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "volumeObb.xAxis",
+    "offset": 60,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "volumeObb.yAxis",
+    "offset": 72,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "volumeObb.zAxis",
+    "offset": 84,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "volumeObb.halfSize",
+    "offset": 96,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "priority",
+    "offset": 108,
+    "size": 4,
+    "type": "float"
+   },
+   {
+    "name": "feather",
+    "offset": 112,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "expandProjectionNeg",
+    "offset": 124,
+    "size": 12,
+    "type": "vec3_t"
+   },
+   {
+    "name": "expandProjectionPos",
+    "offset": 136,
+    "size": 12,
+    "type": "vec3_t"
+   }
+  ],
+  "GfxReflectionProbeSampleData": [
+   {
+    "name": "unk",
+    "offset": 0,
+    "size": 32,
+    "type": "float[8]"
+   }
+  ],
+  "GfxDecalVolumeCollection": [
+   {
+    "name": "__pad0",
+    "offset": 0,
+    "size": 388,
+    "type": "char[388]"
+   }
+  ]
+ }
+}

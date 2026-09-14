@@ -174,15 +174,15 @@ namespace ZoneTool::IW5
 					if (elem->visuals.markArray[i].materials[0])
 					{
 						iw7_elem->visuals.markArray[i].materials[0] = mem.manual_allocate<IW7::Material>(8);
-						iw7_elem->visuals.markArray[i].materials[0]->name = mem.duplicate_string(IW7::replace_material_prefix(elem->visuals.markArray[i].materials[0]->name)); // mc
+						iw7_elem->visuals.markArray[i].materials[0]->name = mem.duplicate_string(IW7::resolve_material_name(elem->visuals.markArray[i].materials[0]->name)); // mc
 					}
 					if (elem->visuals.markArray[i].materials[1])
 					{
 						iw7_elem->visuals.markArray[i].materials[1] = mem.manual_allocate<IW7::Material>(8);
-						iw7_elem->visuals.markArray[i].materials[1]->name = mem.duplicate_string(IW7::replace_material_prefix(elem->visuals.markArray[i].materials[1]->name)); // wc
+						iw7_elem->visuals.markArray[i].materials[1]->name = mem.duplicate_string(IW7::resolve_material_name(elem->visuals.markArray[i].materials[1]->name)); // wc
 
 						iw7_elem->visuals.markArray[i].materials[2] = mem.manual_allocate<IW7::Material>(8);
-						iw7_elem->visuals.markArray[i].materials[2]->name = mem.duplicate_string(IW7::replace_material_prefix(elem->visuals.markArray[i].materials[1]->name)); // wc displacement
+						iw7_elem->visuals.markArray[i].materials[2]->name = mem.duplicate_string(IW7::resolve_material_name(elem->visuals.markArray[i].materials[1]->name)); // wc displacement
 					}
 				}
 			}
@@ -203,7 +203,7 @@ namespace ZoneTool::IW5
 						|| elem->elemType == FX_ELEM_TYPE_SPARKFOUNTAIN)
 					{
 						iw7_elem->visuals.array[i].material = mem.manual_allocate<IW7::Material>(8);
-						iw7_elem->visuals.array[i].material->name = mem.duplicate_string(IW7::replace_material_prefix(elem->visuals.array[i].material->name));
+						iw7_elem->visuals.array[i].material->name = mem.duplicate_string(IW7::resolve_material_name(elem->visuals.array[i].material->name));
 					}
 				}
 			}
@@ -221,7 +221,7 @@ namespace ZoneTool::IW5
 					|| elem->elemType == FX_ELEM_TYPE_SPARKFOUNTAIN)
 				{
 					iw7_elem->visuals.instance.material = mem.manual_allocate<IW7::Material>(8);
-					iw7_elem->visuals.instance.material->name = mem.duplicate_string(IW7::replace_material_prefix(elem->visuals.instance.material->name));
+					iw7_elem->visuals.instance.material->name = mem.duplicate_string(IW7::resolve_material_name(elem->visuals.instance.material->name));
 				}
 			}
 

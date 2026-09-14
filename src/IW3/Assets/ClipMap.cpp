@@ -680,7 +680,12 @@ namespace ZoneTool
 						continue;
 					}
 
-					// invScaledAxis = (R*scale)^-1 maps world->model, so its inverse restores the scaled rotation for model->world
+					// CM_LoadStaticModels builds invScaledAxis = transpose(axis) / scale, and CM_TraceStaticModel
+					// uses it as a row vector: local = MatrixTransformVector(world - origin, invScaledAxis).
+					// model->world is therefore the inverse applied the same way (local * inv), i.e.
+					// origin + scale * sum_j local[j] * axis[j] -- exactly the GfxStaticModelDrawInst placement.
+					// Applying inv as a column vector transposes the rotation (checked on stock mp_bog:
+					// 3919 of 4005 static models are rotated and would come out mirrored).
 					const auto& axis = sm.invScaledAxis;
 					const auto det =
 						axis[0][0] * (axis[1][1] * axis[2][2] - axis[1][2] * axis[2][1]) -
@@ -706,9 +711,9 @@ namespace ZoneTool
 
 					const auto to_world = [&](const float* v, float* out)
 					{
-						out[0] = inv[0][0] * v[0] + inv[0][1] * v[1] + inv[0][2] * v[2] + sm.origin[0];
-						out[1] = inv[1][0] * v[0] + inv[1][1] * v[1] + inv[1][2] * v[2] + sm.origin[1];
-						out[2] = inv[2][0] * v[0] + inv[2][1] * v[1] + inv[2][2] * v[2] + sm.origin[2];
+						out[0] = v[0] * inv[0][0] + v[1] * inv[1][0] + v[2] * inv[2][0] + sm.origin[0];
+						out[1] = v[0] * inv[0][1] + v[1] * inv[1][1] + v[2] * inv[2][1] + sm.origin[1];
+						out[2] = v[0] * inv[0][2] + v[1] * inv[1][2] + v[2] * inv[2][2] + sm.origin[2];
 					};
 
 					for (auto k = 0; k < lod.numsurfs; k++)

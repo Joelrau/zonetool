@@ -1,6 +1,9 @@
 #include "stdafx.hpp"
 #include "filesystem.hpp"
 
+#include <unordered_map>
+#include <utility>
+
 namespace zonetool
 {
 	namespace filesystem
@@ -253,6 +256,59 @@ namespace zonetool
 				return std::filesystem::create_directories(name);
 			}
 			return false;
+		}
+
+		namespace
+		{
+			std::vector<std::pair<std::string, std::string>> csv_lines;
+			std::unordered_map<std::string, std::string> csv_renames;
+
+			std::string csv_rename_key(const std::string& type, const std::string& name)
+			{
+				return type + "," + name;
+			}
+		}
+
+		void csv_reset()
+		{
+			csv_lines.clear();
+			csv_renames.clear();
+		}
+
+		void csv_buffer_line(const std::string& type, const std::string& name)
+		{
+			csv_lines.emplace_back(type, name);
+		}
+
+		void csv_register_rename(const std::string& type, const std::string& from,
+			const std::string& to)
+		{
+			if (from != to)
+			{
+				csv_renames[csv_rename_key(type, from)] = to;
+			}
+		}
+
+		std::vector<std::string> csv_take_lines()
+		{
+			std::vector<std::string> out;
+			out.reserve(csv_lines.size());
+
+			for (const auto& [type, name] : csv_lines)
+			{
+				// A referenced asset is spelled ",<name>" in the csv, and its dumper only ever
+				// sees the bare name, so look the rename up without the marker and put it back.
+				const auto referenced = !name.empty() && name.front() == ',';
+				const auto bare = referenced ? name.substr(1) : name;
+
+				const auto rename = csv_renames.find(csv_rename_key(type, bare));
+				const auto resolved = rename != csv_renames.end() ? rename->second : bare;
+
+				out.push_back(type + "," + (referenced ? "," + resolved : resolved));
+			}
+
+			csv_reset();
+			return out;
 		}
 	}
 }

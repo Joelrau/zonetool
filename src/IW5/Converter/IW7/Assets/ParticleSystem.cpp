@@ -1324,19 +1324,19 @@ namespace ZoneTool::IW5
 						// mim
 						moduleData.m_linkedAssetList.assetList[idx].decal.materials[0] = allocator.manual_allocate<IW7::Material>(8);
 						moduleData.m_linkedAssetList.assetList[idx].decal.materials[0]->name = allocator.duplicate_string(
-							IW7::replace_material_prefix(elem->visuals.markArray[idx].materials[0]->name));
+							IW7::resolve_material_name(elem->visuals.markArray[idx].materials[0]->name));
 					}
 					if (elem->visuals.markArray[idx].materials[1])
 					{
 						// wim
 						moduleData.m_linkedAssetList.assetList[idx].decal.materials[1] = allocator.manual_allocate<IW7::Material>(8);
 						moduleData.m_linkedAssetList.assetList[idx].decal.materials[1]->name = allocator.duplicate_string(
-							IW7::replace_material_prefix(elem->visuals.markArray[idx].materials[1]->name));
+							IW7::resolve_material_name(elem->visuals.markArray[idx].materials[1]->name));
 
 						// wim autodisplacement
 						moduleData.m_linkedAssetList.assetList[idx].decal.materials[2] = allocator.manual_allocate<IW7::Material>(8);
 						moduleData.m_linkedAssetList.assetList[idx].decal.materials[2]->name = allocator.duplicate_string(
-							IW7::replace_material_prefix(elem->visuals.markArray[idx].materials[1]->name));
+							IW7::resolve_material_name(elem->visuals.markArray[idx].materials[1]->name));
 					}
 				}
 
@@ -1456,7 +1456,7 @@ namespace ZoneTool::IW5
 
 						moduleData.m_linkedAssetList.assetList[idx].material = allocator.manual_allocate<IW7::Material>(8);
 						moduleData.m_linkedAssetList.assetList[idx].material->name = allocator.duplicate_string(
-							IW7::replace_material_prefix(elem->visuals.array[idx].material->name));
+							IW7::resolve_material_name(elem->visuals.array[idx].material->name));
 					}
 				}
 				else
@@ -1465,7 +1465,7 @@ namespace ZoneTool::IW5
 
 					moduleData.m_linkedAssetList.assetList[0].material = allocator.manual_allocate<IW7::Material>(8);
 					moduleData.m_linkedAssetList.assetList[0].material->name = allocator.duplicate_string(
-						IW7::replace_material_prefix(elem->visuals.instance.material->name));
+						IW7::resolve_material_name(elem->visuals.instance.material->name));
 				}
 
 				//moduleData.m_flags |= IW7::PARTICLE_MODULE_FLAG_HAS_ASSETS;

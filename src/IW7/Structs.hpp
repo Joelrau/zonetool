@@ -5172,21 +5172,42 @@ namespace ZoneTool::IW7
 		float rgb[56][3];
 	}; assert_sizeof(GfxLightGridColorsHDR, 672);
 
-	struct GfxProbeData
-	{
-		unsigned int data[16];
-	}; assert_sizeof(GfxProbeData, 64);
-
 	struct GfxGpuLightGridProbePosition
 	{
 		float origin[3];
 	}; assert_sizeof(GfxGpuLightGridProbePosition, 12);
 
+	// 64 bytes = 32 float16 slots, of which shipped data uses exactly 28. Measured over every
+	// probe of all six authentic maps (mp_paris, mp_afghan, mp_breakneck, cp_zmb, mp_dome_dusk,
+	// mp_frontend - 486k probes) and over every zone fallback:
+	//
+	//   [0..26]  27 L2 spherical-harmonic coefficients, three blocks of nine in CHANNEL order
+	//            (all R, then all G, then all B). Only slots 0, 9 and 18 are non-negative,
+	//            which is what pins the layout as channel-major rather than coefficient-major.
+	//            Within a block the order is the standard real-SH one:
+	//              Y00, Y1-1(y), Y10(z), Y11(x), Y2-2(xy), Y2-1(yz), Y20, Y21(xz), Y22
+	//            Slot 2 of each block carries the vertical term - reconstructing radiance under
+	//            this ordering makes looking up 59x brighter than looking down on mp_paris and
+	//            75x on mp_breakneck, where the IW6/H1 ordering (x, y, z) gives 0.52x, i.e. a
+	//            brighter ground than sky. It also has the lowest reconstruction negativity of
+	//            the candidate orderings.
+	//   [27]     sky/sun visibility in [0, 1]. Genuinely per-probe (0 for 5.5% of mp_frontend's
+	//            probes up to 42.3% of cp_zmb's), and exactly 1.0 in every zone fallback.
+	//   [28..31] zero in every shipped probe and every shipped zone fallback, without exception.
+	//
+	// The coeffs/pad SPLIT is not a judgement call - it comes from the engine's own reflection.
+	// IW8's Load_ProcessStructLayout_GfxSHProbeData registers:
+	//     Load_RegisterStructSize("GfxSHProbeData", 0xC9BD7AA6, 0x40, 0x40)
+	//       member "coeffs", ushort, offset 0,    size 0x3A (58 bytes), count 0x1D (29)
+	//       member "pad",    ushort, offset 0x3A, size 6,               count 3
+	// and IW8's own type export declares exactly `coeffs[29]; pad[3];`. So slot 28 IS a
+	// coefficient as far as the engine is concerned, even though it is zero in every shipped
+	// probe of every map - "always zero in the data" is not the same claim as "padding".
 	struct GfxSHProbeData
 	{
-		unsigned __int16 coeffs[29];
+		unsigned __int16 coeffs[29]; // [0..26] SH, [27] sky visibility, [28] always 0 in shipped data
 		unsigned __int16 pad[3];
-	};
+	}; assert_sizeof(GfxSHProbeData, 64);
 
 	struct GfxGpuLightGridZone
 	{
@@ -5224,12 +5245,12 @@ namespace ZoneTool::IW7
 	{
 		unsigned int gpuVisibleProbesCount;
 		GfxGpuLightGridProbePosition PTR64 gpuVisibleProbePositions;
-		GfxProbeData PTR64 gpuVisibleProbesData; // 64  PTR64 (count  PTR64 0x2000)
+		GfxSHProbeData PTR64 gpuVisibleProbesData; // 64 * (count * 0x2000)
 		void PTR64 gpuVisibleProbesBuffer;
 		void PTR64 gpuVisibleProbesView;
 		void PTR64 gpuVisibleProbesRWView;
 		unsigned int probeCount;
-		GfxProbeData PTR64 probes; // 64  PTR64 count
+		GfxSHProbeData PTR64 probes; // 64 * count
 		void PTR64 probesBuffer;
 		void PTR64 probesView;
 		void PTR64 probesRWView;
@@ -5246,7 +5267,7 @@ namespace ZoneTool::IW7
 		GfxGpuLightGridTetrahedronNeighbors PTR64 tetrahedronNeighbors;
 		void PTR64 tetrahedronNeighborsBuffer;
 		void PTR64 tetrahedronNeighborsView;
-		GfxGpuLightGridTetrahedronVisibility PTR64 tetrahedronVisibility; // 64  PTR64 count
+		GfxGpuLightGridTetrahedronVisibility PTR64 tetrahedronVisibility; // 64 * count
 		void PTR64 tetrahedronVisibilityBuffer;
 		void PTR64 tetrahedronVisibilityView;
 		unsigned int voxelStartTetrahedronCount;
@@ -5314,7 +5335,7 @@ namespace ZoneTool::IW7
 		GfxVoxelInternalNode PTR64 voxelInternalNodeArray;
 		GfxVoxelLeafNode PTR64 voxelLeafNodeArray;
 		unsigned short PTR64 lightListArray;
-		unsigned int PTR64 voxelInternalNodeDynamicLightList; // 2  PTR64 count
+		unsigned int PTR64 voxelInternalNodeDynamicLightList; // 2 * count
 		char __pad0[24];
 	}; assert_sizeof(GfxVoxelTree, 112);
 	assert_offsetof(GfxVoxelTree, voxelTreeHeader, 40);
@@ -5325,7 +5346,7 @@ namespace ZoneTool::IW7
 		unsigned int indexCount;
 		unsigned short PTR64 indices;
 		unsigned int vertexCount;
-		char PTR64 vertices; // 32  PTR64 count
+		char PTR64 vertices; // 32 * count
 		void PTR64 indexBuffer;
 		void PTR64 vertexBuffer;
 	}; assert_sizeof(GfxFrustumLights, 48);

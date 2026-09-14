@@ -1,4 +1,5 @@
 #include "stdafx.hpp"
+#include "IW5/Dumper/IW7/Vision.hpp"
 
 namespace ZoneTool
 {
@@ -147,13 +148,29 @@ namespace ZoneTool
 				
 				// clear referenced assets array because we are done dumping
 				referencedAssets.clear();
+
+				// Visions are rewritten once, after every asset is on disk: the source game's file is
+				// only final once the rawfile dumper has written it.
+				::ZoneTool::IW5::IW7Dumper::convert_visions(fastfile);
 				
-				FileSystem::SetFastFile("");
-				isDumping = false;
-				isVerifying = false;
+				// A dumper may have written an asset out under a different name than the one the
+				// game knows it by - see csv_buffer_line - so the lines are resolved here, once
+				// every asset in the zone has been through its dumper.
+				//
+				// This has to finish before isDumping is cleared: dump_zone is blocked on that flag
+				// from another thread and calls std::exit as soon as it drops, which would kill this
+				// thread mid-write and leave the csv truncated at a buffer boundary.
+				for (const auto& line : zonetool::filesystem::csv_take_lines())
+				{
+					fprintf(csvFile, "%s\n", line.data());
+				}
 
 				FileSystem::FileClose(csvFile);
 				csvFile = nullptr;
+
+				FileSystem::SetFastFile("");
+				isDumping = false;
+				isVerifying = false;
 			}
 
 			// dump shit
@@ -166,6 +183,7 @@ namespace ZoneTool
 				if (!csvFile)
 				{
 					csvFile = FileSystem::FileOpen(fastfile + ".csv", "wb");
+					zonetool::filesystem::csv_reset();
 				}
 
 				// dump assets to disk
@@ -173,7 +191,7 @@ namespace ZoneTool
 				if (csvFile/* && !is_referenced*/)
 				{
 					auto xassettypes = reinterpret_cast<char**>(0x00726840);
-					fprintf(csvFile, "%s,%s\n", xassettypes[asset->type], GetAssetName(asset));
+					zonetool::filesystem::csv_buffer_line(xassettypes[asset->type], GetAssetName(asset));
 				}
 
 				// check if the asset is a reference asset
@@ -252,24 +270,11 @@ namespace ZoneTool
 
 		int fs_fopen_file_read_for_thread(const char* filename, int* file, int thread)
 		{
-			static DWORD func = 0x55B960;
-			int result{};
-
-			__asm
-			{
-				pushad
-
-				mov edx, filename
-				push thread
-				push file
-				call func
-				add esp, 0x8
-				mov result, eax
-
-				popad
-			}
-
-			return result;
+			return Memory::func<int(const char*, int*, int)>(0x55B960)(
+				filename,
+				file,
+				thread
+				);
 		}
 
 		int FS_FOpenFileReadForThread(const char* filename, int* file, int thread)
@@ -286,31 +291,42 @@ namespace ZoneTool
 
 		std::string filesystem_read_big_file(const char* filename)
 		{
-			std::string file_buffer{};
+			Memory::func<void(char*, int)>(0x56CF40)("fs_debug", 1);
 
-			int handle = -1;
-			FS_FOpenFileReadForThread(filename, &handle, 0);
+			int file_handle = 0;
+			const int file_size = FS_FOpenFileReadForThread(
+				filename,
+				&file_handle,
+				0
+			);
 
-			if (handle > 0)
+			if (file_size < 0 || file_handle <= 0)
 			{
-				constexpr unsigned int BUFF_SIZE = 1024;
-
-				while (true)
-				{
-					char buffer[BUFF_SIZE];
-					auto size_read = FS_Read(buffer, BUFF_SIZE, handle);
-
-					file_buffer.append(buffer, size_read);
-
-					if (size_read < BUFF_SIZE)
-					{
-						// We're done!
-						break;
-					}
-				}
-
-				FS_FileClose(handle);
+				return {};
 			}
+
+			if (file_size == 0)
+			{
+				FS_FileClose(file_handle);
+				return {};
+			}
+
+			std::string file_buffer(static_cast<size_t>(file_size), '\0');
+
+			const int bytes_read = FS_Read(
+				file_buffer.data(),
+				file_size,
+				file_handle
+			);
+
+			FS_FileClose(file_handle);
+
+			if (bytes_read < 0)
+			{
+				return {};
+			}
+
+			file_buffer.resize(static_cast<size_t>(bytes_read));
 
 			return file_buffer;
 		}
