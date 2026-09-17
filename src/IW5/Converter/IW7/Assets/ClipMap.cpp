@@ -4,6 +4,7 @@
 
 #include "ClipMap.hpp"
 #include "ClipMapCollision.hpp"
+#include "XModel.hpp"
 #include "ParticleSystem.hpp"
 
 #include "Common/havok_builder.hpp"
@@ -28,27 +29,46 @@ namespace ZoneTool::IW5
 			// to actually contain it, or the brush model silently gets no body.
 			constexpr auto BRUSHMODEL_PHYSICS_ASSET = "scriptbrushmodeldummydefault";
 
+			// The entity-string key stock IW7 pairs with a dummy asset name on every
+			// script_brushmodel and every "?N" trigger entity: a static canonical string id
+			// (0xCAF9), which has no text form in the ship exe. See fix_entity_model_references.
+			constexpr auto PHYSICS_ASSET_KEY = "51961";
+
 			// The trigger equivalent. Stock gives every trigger a Havok compound as well, for
 			// physics bodies overlapping the volume; the script-facing trigger path does not
 			// need it and runs off the slab hulls alone (docs/iw7-triggers.md).
 			constexpr auto TRIGGER_PHYSICS_ASSET = "triggermodeldummydefault";
 
 			// The engine's "all valid contents" mask -- the union of every collisionFilterInfo
-			// bit across all shipped blobs. Stock stores it in shapeContents for triggers.
+			// bit across all shipped blobs. Stock stores it in shapeContents for triggers,
+			// and in the trigger tag's collisionFilterInfo too (mp_fallen 97 of 103 trigger
+			// instances, afghan/paris/breakneck/cp_zmb likewise).
 			constexpr auto ENTS_TRIGGER_CONTENTS = 0xC7FFBFFFu;
 
 			// ShapeTagData::userData bit 48: this surface came from a brush. IW7's player cast
 			// sweeps its separate non-brush shape against anything without it.
 			constexpr auto ENTS_BRUSH_BASIS = 1ull << 48;
 
-			// Attaching Havok bodies to triggers is off by default. Script triggers already
-			// work without them, and a body with the wrong quality would make a trigger
-			// solid -- a worse regression than not having one at all. Set
-			// ZT_HAVOK_TRIGGER_SHAPES=1 to generate them and test.
+			// The low 32 bits of the trigger tag's userData. Every stock map puts the same
+			// value on its trigger tag (0x0001000000040080 in all five checked).
+			constexpr auto ENTS_TRIGGER_SURF_FLAGS = 0x40080ull;
+
+			// Havok bodies on triggers are ON by default, because in MP the touch test needs
+			// one. G_TouchTriggers (0x140424CF0) collects candidates with the classic sector
+			// walk (SV_AreaEntities, 0x140B7B7C0), so a trigger with no body IS found -- but
+			// the per-candidate test in 0x140424DE0 is, for GAME_MODE_MP, an overlap query
+			// against the trigger entity's Havok body (0x14055A0B0: body id from
+			// 0x140549870, -1 when no body -> returns 0). The body only exists when
+			// TriggerModel::physicsAsset and physicsShapeOverrideIdx are set
+			// (0x1404168F0 -> 0x140414810). So without these shapes trigger_hurt,
+			// trigger_multiple and friends never fire in MP. The body's filter is
+			// overwritten with 0x40440008 by InitTrigger (0x140B65630), which shares no bit
+			// with the player mask, so it does not make the volume solid.
+			// ZT_HAVOK_TRIGGER_SHAPES=0 restores the old null-asset triggers for bisecting.
 			bool trigger_shapes_enabled()
 			{
 				const auto* env = std::getenv("ZT_HAVOK_TRIGGER_SHAPES");
-				return env && env[0] == '1';
+				return !(env && env[0] == '0');
 			}
 
 			// Brush-model Havok shapes are ON by default -- without them "model" "*N"
@@ -95,13 +115,11 @@ namespace ZoneTool::IW5
 					dst.models[i].firstWinding = 0;
 					dst.models[i].flags = 0;
 
-					// Both of these are the Havok side of a trigger, used when a physics body
-					// rather than the player overlaps the volume. Stock maps point physicsAsset
-					// at a dummy PhysicsAsset and index a real shape in
-					// MapEnts::havokEntsShapeData; we generate that list empty, and the runtime
-					// only reads the override when physicsAsset is non-null anyway. The
-					// script-facing trigger path reads neither, so this costs script triggers
-					// nothing. 0xFFFF is IW7's "no shape override".
+					// Both of these are the Havok side of a trigger. The spawn path
+					// (SV_SetTriggerModel -> CM_TriggerModelBounds / CM_ContentsOfTriggerModel)
+					// reads neither, but the MP touch test does need the body they produce --
+					// see trigger_shapes_enabled(). generate_mapents fills them in once the
+					// ents shape list exists; 0xFFFF is IW7's "no shape override".
 					dst.models[i].physicsAsset = nullptr;
 					dst.models[i].physicsShapeOverrideIdx = 0xFFFF;
 				}
@@ -233,6 +251,7 @@ namespace ZoneTool::IW5
 				result.reserve(source.size() + 128);
 				size_t cursor = 0;
 				auto rewritten_triggers = 0;
+				auto wired_triggers = 0;
 				auto wired_brushmodels = 0;
 
 				while (cursor < source.size())
@@ -263,6 +282,7 @@ namespace ZoneTool::IW5
 						const auto model_index = static_cast<unsigned int>(
 							std::strtoul(model[2].str().c_str(), nullptr, 10));
 
+						auto is_trigger_model = model_kind == '?';
 						if (entity_class.starts_with("trigger_") && model_kind == '*')
 						{
 							const auto trigger = trigger_for_cmodel(clipmap, model_index);
@@ -273,16 +293,38 @@ namespace ZoneTool::IW5
 								entity.replace(value_pos, value_len, std::to_string(trigger));
 								entity[static_cast<size_t>(model.position(1))] = '?';
 								rewritten_triggers++;
+								is_trigger_model = true;
 							}
 						}
-						else if (entity_class == "script_brushmodel" && model_kind == '*' &&
-							entity.find("\"physicsasset\"") == std::string::npos)
+
+						// Stock pairs every "?N" entity with the trigger dummy the same way it
+						// pairs brush models (mp_fallen 83 of 83, mp_afghan 58 of 58; a few use
+						// TriggerModelStaticDummyDefault). Same rules as below: the body does not
+						// depend on it, and the key must be the number.
+						if (is_trigger_model && trigger_shapes_enabled() &&
+							entity.find(std::string("\n") + PHYSICS_ASSET_KEY + " ") ==
+							std::string::npos)
 						{
-							// This is the spelling used by the target entity parser. It selects the
-							// dummy's motion/body configuration; cmodel::physicsAsset supplies the
-							// actual asset and the shape override supplies its geometry.
-							entity.insert(entity.size() - 1,
-								"\"physicsasset\" \"scriptbrushmodeldummydefault\"\n");
+							entity.insert(entity.size() - 1, std::string(PHYSICS_ASSET_KEY)
+								+ " \"" + TRIGGER_PHYSICS_ASSET + "\"\n");
+							wired_triggers++;
+						}
+						else if (entity_class == "script_brushmodel" && model_kind == '*' &&
+							entity.find(std::string("\n") + PHYSICS_ASSET_KEY + " ") ==
+							std::string::npos)
+						{
+							// Stock IW7 puts this pair on every script_brushmodel (mp_fallen,
+							// mp_afghan: `51961 "scriptbrushmodeldummydefault"`). The body itself
+							// does not depend on it -- 0x1404168F0 / 0x140146DA0 take the asset
+							// and shape override from cmodel_t -- but it is what the stock game
+							// sees, so emit it verbatim. The key has to be the number: IW7's
+							// G_ParseSpawnVars2 (0x140B1E790) keeps a numeric key as-is and hashes
+							// a text key through SL_GetCanonicalString into the dynamic range
+							// (>= 81868), which can never equal a static id like 51961; and
+							// iw7-mod's map_ents parser drops any text key its token table does
+							// not know, which includes this one (0xCAF9 is unnamed there).
+							entity.insert(entity.size() - 1, std::string(PHYSICS_ASSET_KEY)
+								+ " \"" + BRUSHMODEL_PHYSICS_ASSET + "\"\n");
 							wired_brushmodels++;
 						}
 					}
@@ -291,10 +333,11 @@ namespace ZoneTool::IW5
 					cursor = close + 1;
 				}
 
-				if (rewritten_triggers || wired_brushmodels)
+				if (rewritten_triggers || wired_brushmodels || wired_triggers)
 				{
 					ZONETOOL_INFO("mapents: rewrote %d trigger model reference(s), wired %d "
-						"script brush model physics asset(s)", rewritten_triggers, wired_brushmodels);
+						"script brush model and %d trigger physics asset(s)", rewritten_triggers,
+						wired_brushmodels, wired_triggers);
 				}
 				return result;
 			}
@@ -695,14 +738,19 @@ namespace ZoneTool::IW5
 						}
 
 						ZoneTool::IW7::havok::builder::ents_shape shape{};
-						shape.contents = asset->trigger.models[t].contents;
-						// A trigger is the one case stock does use the wildcard for: all 78
-						// trigger shapes in mp_dome_dusk and 63 of breakneck's 106 carry it.
+						// A trigger is the one case stock does use the wildcard for, in BOTH
+						// places: all 78 trigger shapes in mp_dome_dusk and 63 of breakneck's
+						// 106 carry it in shapeContents, and the tag their instances point at
+						// carries it as collisionFilterInfo too. The runtime never reads the
+						// trigger's own contents (0x28000001 etc.) off this list --
+						// CM_ContentsOfTriggerModel takes it from TriggerModel::contents, and
+						// InitTrigger overwrites the body filter with 0x40440008.
+						shape.contents = static_cast<int>(ENTS_TRIGGER_CONTENTS);
 						shape.entity_contents = ENTS_TRIGGER_CONTENTS;
-						// A trigger is a volume, not a surface: nothing walks on it or shoots
-						// it, so it keeps the default material and carries no surface flags.
-						// Only the brush basis, as its hulls are brush-derived.
-						shape.user_data = ENTS_BRUSH_BASIS;
+						// A trigger is a volume, not a surface, so it keeps the default material.
+						// The userData is the one constant every stock map uses on its trigger
+						// tag: brush basis plus 0x40080.
+						shape.user_data = ENTS_BRUSH_BASIS | ENTS_TRIGGER_SURF_FLAGS;
 						shape.name = va("%s:trigger %u", asset->name, t);
 
 						for (const auto& hull : hulls)
@@ -1013,6 +1061,20 @@ namespace ZoneTool::IW5
 							if (new_dynent_def->type == IW7::DYNENT_TYPE_CLUTTER)
 							{
 								memcpy(&new_dynent_def->initialPose, &dynent_def->pose, sizeof(GfxPlacement));
+
+								// A clutter dynent whose model has no PhysCollmap (CoD4's
+								// me_plastic_crate1) would otherwise keep a static mesh body,
+								// which Havok never simulates. Ask the model converter for a
+								// bounds box at the dynent's preset mass; the clipmap dumper
+								// re-dumps the model so the request takes effect.
+								if (dynent_def->xModel && !dynent_def->xModel->physCollmap)
+								{
+									const auto mass = dynent_def->physPreset && dynent_def->physPreset->mass > 0.0f
+										? dynent_def->physPreset->mass
+										: dynent_def->xModel->physPreset && dynent_def->xModel->physPreset->mass > 0.0f
+										? dynent_def->xModel->physPreset->mass : 0.0f;
+									IW7Converter::request_dynamic_box(dynent_def->xModel->name, mass);
+								}
 							}
 							memcpy(&new_dynent_def->pose, &dynent_def->pose, sizeof(GfxPlacement));
 							new_dynent_def->baseModel = reinterpret_cast<IW7::XModel*>(dynent_def->xModel);

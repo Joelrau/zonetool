@@ -1,4 +1,6 @@
 #include "stdafx.hpp"
+#include <map>
+#include <string>
 #include "../Include.hpp"
 
 #include "Common/havok_builder.hpp"
@@ -106,6 +108,61 @@ namespace ZoneTool::IW5
 				convert(IW5::CSurfaceFlags::SURF_FLAG_NOLIGHTMAP, IW7::SurfaceFlags::SURFACE_FLAG_NOLIGHTMAP);
 				convert(IW5::CSurfaceFlags::SURF_FLAG_NODLIGHT, IW7::SurfaceFlags::SURFACE_FLAG_NODLIGHT);
 				return IW7_flags;
+		}
+
+		namespace
+		{
+			std::map<std::string, float> dynamic_box_requests;
+
+			// Six outward faces, counter-clockwise about their normals, CoD units.
+			ZoneTool::IW7::havok::builder::polytope box_polytope(const Bounds& bounds)
+			{
+				ZoneTool::IW7::havok::builder::polytope box{};
+				float mn[3], mx[3];
+				for (auto k = 0; k < 3; k++)
+				{
+					mn[k] = bounds.midPoint[k] - bounds.halfSize[k];
+					mx[k] = bounds.midPoint[k] + bounds.halfSize[k];
+				}
+				for (auto i = 0; i < 8; i++)
+				{
+					box.verts.push_back({(i & 1) ? mx[0] : mn[0], (i & 2) ? mx[1] : mn[1], (i & 4) ? mx[2] : mn[2]});
+				}
+				// (normal axis, sign, the four corners counter-clockwise seen from outside)
+				const struct { int axis; float sign; std::uint8_t idx[4]; } faces[6] = {
+					{0, -1.0f, {0, 4, 6, 2}}, {0, 1.0f, {1, 3, 7, 5}},
+					{1, -1.0f, {0, 1, 5, 4}}, {1, 1.0f, {2, 6, 7, 3}},
+					{2, -1.0f, {0, 2, 3, 1}}, {2, 1.0f, {4, 5, 7, 6}},
+				};
+				for (const auto& f : faces)
+				{
+					ZoneTool::IW7::havok::builder::polytope_face face{};
+					face.plane[f.axis] = f.sign;
+					face.plane[3] = f.sign > 0.0f ? mx[f.axis] : -mn[f.axis];
+					face.indices.assign(f.idx, f.idx + 4);
+					box.faces.emplace_back(std::move(face));
+				}
+				return box;
+			}
+		}
+
+		void request_dynamic_box(const std::string& model, const float mass)
+		{
+			dynamic_box_requests[model] = mass;
+		}
+
+		bool wants_dynamic_box(const std::string& model, float* mass)
+		{
+			const auto it = dynamic_box_requests.find(model);
+			if (it == dynamic_box_requests.end())
+			{
+				return false;
+			}
+			if (mass)
+			{
+				*mass = it->second;
+			}
+			return true;
 		}
 
 		IW7::XModel* GenerateIW7Model(XModel* asset, allocator& mem)
@@ -216,6 +273,121 @@ namespace ZoneTool::IW5
 			//
 			// Per-model blobs are CoD units / 32; see docs/iw7-havok-collision.md.
 			iw7_asset->physicsAsset = nullptr;
+
+			// Wraps a built .hkx in the PhysicsAsset record the zone carries. The runtime
+			// indexes sfxEventAssets[i] / vfxEventAssets[i] and only null-checks the
+			// element, never the array (sub_140573CE0: v19 = *(QWORD*)(8*i + *(QWORD*)(asset+40))),
+			// so each needs a one-element array holding null -- every stock asset ships
+			// numSFX/numVFX == 1 that way.
+			const auto make_physics_asset = [&](const std::vector<std::uint8_t>& blob)
+			{
+				auto* physics = mem.allocate<IW7::PhysicsAsset>();
+				physics->name = mem.duplicate_string(asset->name);
+				physics->havokDataSize = static_cast<unsigned int>(blob.size());
+				physics->havokData = mem.allocate<char>(static_cast<unsigned int>(blob.size()));
+				std::memcpy(physics->havokData, blob.data(), blob.size());
+				physics->numRigidBodies = 1;
+				physics->numSFXEventAssets = 1;
+				physics->sfxEventAssets = mem.allocate<IW7::PhysicsSFXEventAsset PTR64>(1);
+				physics->numVFXEventAssets = 1;
+				physics->vfxEventAssets = mem.allocate<IW7::PhysicsVFXEventAsset PTR64>(1);
+				return physics;
+			};
+
+			// Dynamic models first. A model that carries both a PhysCollmap (the hulls IW5's
+			// physics simulates it with) and a PhysPreset (its mass and material response)
+			// is one IW5 expects to move -- clutter dynents, destructibles, thrown props.
+			// IW7 simulates only what its asset says can move: a dynamic body over convex
+			// shapes with mass properties (stock com_junktire is exactly that), and a
+			// static compressed-mesh body, which is what the path below builds, is inert
+			// no matter how it is instantiated. So such models get the dynamic form from
+			// their collmap hulls, at the preset's mass. The trade is that a static
+			// placement of the same model now collides with the (coarser) collmap hulls
+			// rather than its collision LOD, which is what IW5's own physics used for it.
+			// ZT_MODEL_DYNAMIC=0 keeps every model on the static mesh path.
+			{
+				const auto* env = std::getenv("ZT_MODEL_DYNAMIC");
+				const auto enabled = !(env && env[0] == '0');
+				// The collmap alone is the signal: me_plastic_crate1 is a CoD4 clutter dynent
+				// with a collmap and no preset, and as a static mesh body it just ignored
+				// bullets, because a compressed mesh cannot be simulated.
+				float box_mass = 0.0f;
+				const auto box_fallback = enabled && !asset->physCollmap && wants_dynamic_box(asset->name, &box_mass);
+				if (enabled && (asset->physCollmap || box_fallback))
+				{
+					const auto hulls = asset->physCollmap
+						? collision::extract_phys_collmap(asset->physCollmap) : std::vector<collision::convex_hull>{};
+					ZoneTool::IW7::havok::builder::dynamic_physics_asset_input dynamic{};
+					if (box_fallback)
+					{
+						dynamic.convexes.emplace_back(box_polytope(asset->bounds));
+					}
+					for (const auto& hull : hulls)
+					{
+						ZoneTool::IW7::havok::builder::polytope convex{};
+						convex.verts = hull.verts;
+						for (const auto& face : hull.faces)
+						{
+							ZoneTool::IW7::havok::builder::polytope_face out{};
+							std::memcpy(out.plane, face.plane, sizeof(float[4]));
+							out.indices = face.indices;
+							convex.faces.emplace_back(std::move(out));
+						}
+						dynamic.convexes.emplace_back(std::move(convex));
+					}
+
+					if (dynamic.convexes.empty())
+					{
+						ZONETOOL_WARNING("XModel \"%s\": physCollmap \"%s\" produced no hulls -- "
+							"falling back to the static collision LOD", asset->name,
+							asset->physCollmap && asset->physCollmap->name ? asset->physCollmap->name : "?");
+					}
+					else
+					{
+						// IW5 preset masses sit on a heavier scale than IW7's authored ones: the one
+						// model both games ship, com_junktire, is 18 in IW5's "tire" preset and 5 in
+						// IW7's asset. That matters because IW7's bullet force is fixed at
+						// min(mass/3, 1) * 500 (Physics_ApplyBulletForce, 0x14054C180), so the kick a
+						// prop gets goes as 1/mass -- at 18 the tire moved 0.6 units and stopped.
+						// 0.3 maps the tire onto stock; ZT_MODEL_MASS_SCALE overrides it.
+						auto mass_scale = 0.3f;
+						if (const auto* scale_env = std::getenv("ZT_MODEL_MASS_SCALE"))
+						{
+							char* end = nullptr;
+							const auto value = std::strtof(scale_env, &end);
+							if (end != scale_env && value > 0.0f)
+							{
+								mass_scale = value;
+							}
+						}
+						// no preset: 5 is the single most common stock clutter mass (45 of 400)
+						dynamic.mass = box_fallback && box_mass > 0.0f ? box_mass * mass_scale
+							: asset->physPreset && asset->physPreset->mass > 0.0f
+							? asset->physPreset->mass * mass_scale : 5.0f;
+						// nothing stock is lighter than 1 (31 of 400 sit exactly there)
+						dynamic.mass = std::max(dynamic.mass, 1.0f);
+						// the collmap carries no material; take the model's own surface
+						if (asset->collSurfs && asset->numCollSurfs > 0)
+						{
+							dynamic.material_crc = collision::iw7_material_crc(asset->collSurfs[0].surfFlags);
+						}
+
+						const auto blob = ZoneTool::IW7::havok::builder::build_dynamic_physics_asset(dynamic);
+						if (!blob.empty())
+						{
+							iw7_asset->physicsAsset = make_physics_asset(blob);
+							ZONETOOL_INFO("XModel \"%s\": dynamic physics asset from %s "
+								"\"%s\" (%zu hull(s), preset \"%s\" mass %.2f)", asset->name,
+								box_fallback ? "a bounds box (clutter dynent, no collmap)" : "physCollmap",
+								asset->physCollmap && asset->physCollmap->name ? asset->physCollmap->name : "-",
+								dynamic.convexes.size(),
+								asset->physPreset && asset->physPreset->name ? asset->physPreset->name : "<none>", dynamic.mass);
+						}
+					}
+				}
+			}
+
+			if (!iw7_asset->physicsAsset)
 			{
 				constexpr auto model_scale = 0.03125f;
 				constexpr auto contents_solid = 0x1;

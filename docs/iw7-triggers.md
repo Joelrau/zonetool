@@ -5,9 +5,11 @@ Status: **solved and implemented.** Everything below is checked against shipped 
 `D:\Files\IDB\iw7\iw7_ship_dump.exe.i64`. Nothing here is inferred from struct shape
 alone.
 
-Short version: **IW7 stores trigger volumes exactly where IW5 does.** They are not Havok
-geometry, they are not in the world collision blob, and they need no new format work —
-`MapEnts::trigger` carries them in both games with a binary-compatible hull/slab layout.
+Short version: **IW7 stores trigger volumes exactly where IW5 does.** They are not in the
+world collision blob and the hull/slab layout is binary-compatible, so `MapEnts::trigger`
+passes through. What IW7 adds is a per-trigger Havok compound in
+`MapEnts::havokEntsShapeData` plus a dummy `PhysicsAsset`, and in MP the touch test runs
+against that body (§3) — so the converter generates both as well.
 
 ---
 
@@ -69,7 +71,7 @@ IW7  cp_zmb         142 x 0x28000001    4 x 0x28004000
 uses** — `windingCount == 0` in all of afghan, paris, breakneck, dome_dusk and cp_zmb.
 Leave them empty.
 
-## 3. The runtime path does not go through Havok
+## 3. The spawn path does not go through Havok — the MP touch path does
 
 This was the open question: `TriggerModel::physicsAsset` and `physicsShapeOverrideIdx`
 are set in every stock map (`triggermodeldummydefault` /
@@ -107,12 +109,53 @@ if (fabs(p[0] - hull->bounds.midPoint[0]) < hull->bounds.halfSize[0] && ...) {
 ```
 
 **Neither `physicsAsset` nor `physicsShapeOverrideIdx` is dereferenced anywhere on this
-path.** They are the physics-body side of a trigger (a Havok body overlapping the volume),
-not what makes a script trigger fire. `Load_TriggerModelArray` loads `physicsAsset`
-through the normal nullable asset-pointer path, so null is a legal value in a zone.
+path.** `Load_TriggerModelArray` loads `physicsAsset` through the normal nullable
+asset-pointer path, so null is a legal value in a zone.
 
-Conclusion: a converted map gets working triggers from the struct copy alone, with
-`physicsAsset = nullptr` and `physicsShapeOverrideIdx = 0xFFFF`.
+**But the spawn path is not the touch path, and in MP the touch path does need the
+body.** This was the mistake in the first version of this document (which concluded the
+struct copy alone was enough). `G_TouchTriggers` (`sub_140424CF0`, called from the player
+think) does:
+
+```c
+// sub_140424CF0 -- G_TouchTriggers
+bounds = player->r.box expanded by 20;
+count  = sub_140B7B780(&bounds, touch, 2048, 0x40440008);   // SV_AreaEntities: sector
+                                                            // walk over linked ents,
+                                                            // NOT a Havok query
+sub_140424DE0(player, &bounds, touch, count);
+```
+
+```c
+// sub_140424DE0 -- per candidate
+for (each touched ent) {
+    if (Com_GameMode_GetActiveGameMode() != GAME_MODE_MP /* 2 */
+        || sub_14055A0B0(0, &bounds, sub_140549870(0, ent) /* body id */, ent)) {
+        Scr_Notify(ent, "touch"); ent->handler->touch(ent, player, 1);
+    }
+}
+```
+
+`sub_140549870` returns the entity's Havok body id (`-1` when it has none), and
+`sub_14055A0B0` -- for `modelType` 1/2/3 (radius, rotated radius, disk) -- does an
+analytic test, but for everything else (brush-shaped triggers, `modelType` 4) it returns
+0 unless the body id is valid and one of the body's shapes overlaps the player box. So a
+trigger that was collected by the sector walk but has no body **never fires in MP**.
+The body only exists when both `TriggerModel::physicsAsset` and
+`physicsShapeOverrideIdx` are set: `SV_SetTriggerModel` calls
+`ShouldCreateEntityPhysicsOnInit` and then `sub_140414810` (server
+`G_Utils_CreateEntityPhysics`), whose `sub_1404168F0` (`G_Utils_GetPhysicsAsset`) reads
+exactly those two fields for trigger classnames and bails when the asset is null. IW8's
+named source (`G_ActiveMP_TouchTriggers`, `G_Utils_GetPhysicsAsset`) is the same code.
+
+`InitTrigger` (`sub_140B65630`) then overwrites the new body's collision filter with
+`0x40440008` via `sub_140550EC0`, which shares no bit with the player mask
+(`0x00810011`), so the body does not make the volume solid -- the concern that kept the
+shapes off by default was unfounded.
+
+Conclusion: the struct copy gives IW7 the volumes, but a converted MP map also needs the
+per-trigger Havok compound and the `triggermodeldummydefault` asset, exactly as stock
+ships them. The converter generates both by default (§6).
 
 ## 4. Trigger brushes are correctly absent from the world collision blob
 
@@ -146,9 +189,10 @@ world collision is full of them, and dropping them was a real bug; see P9 in
   `clipMap_t::mapEnts`, instead of attaching a stub carrying only the name. The IW7 dumper
   dumps that same object rather than building a second one, so the clipmap and the MapEnts
   asset cannot disagree.
-- `cmodel_t::physicsShapeOverrideIdx` is `0xFFFF` for every submodel. It used to be `0`
-  for submodel 0, which indexes an empty shape list — `MapEnts::havokEntsShapeData` is
-  null on this path.
+- `cmodel_t::physicsShapeOverrideIdx` / `physicsAsset` and `TriggerModel::physicsAsset` /
+  `physicsShapeOverrideIdx` are filled in by `generate_mapents()` from the ents shape list
+  (brush models and triggers alike); a submodel or trigger without a shape keeps `0xFFFF`
+  and a null asset.
 
 ## 6. Known gaps
 
@@ -172,19 +216,18 @@ world collision is full of them, and dropping them was a real bug; see P9 in
   `stageCount <= 1`. Carrying stage triggers properly needs a matching change to
   `IClipMap::dump` and to the linker.
 
-- **Trigger Havok shapes are generated but off by default.** Stock gives every trigger a
-  compound alongside its slab hulls, for physics bodies overlapping the volume.
-  `collision::extract_trigger_hulls()` builds them — a hull is its AABB intersected with its
-  slabs, each slab being a pair of parallel planes, so the volume is already convex —
-  and this reproduces a closed polytope for all 1,650 trigger hulls across the 18 stock MW3
-  maps, none exceeding its declared bounds. It is gated behind
-  `ZT_HAVOK_TRIGGER_SHAPES=1` because script triggers work without it and read neither
-  field (§3), while a body with the wrong quality would make a trigger *solid* — a worse
-  regression than having none, and not checkable without running the game.
-
-- **`TriggerModel::physicsAsset` is null.** Stock points it at
-  `triggermodeldummydefault`. Referencing that name would require the asset to exist in
-  the converted zone, which it does not; and §3 shows the trigger path does not read it.
+- **Trigger Havok shapes are generated by default** (since 2026-09-17; `ZT_HAVOK_TRIGGER_SHAPES=0`
+  turns them off for bisecting). `collision::extract_trigger_hulls()` builds them — a hull
+  is its AABB intersected with its slabs, each slab being a pair of parallel planes, so the
+  volume is already convex — and this reproduces a closed polytope for all 1,650 trigger
+  hulls across the 18 stock MW3 maps, none exceeding its declared bounds. Each trigger's
+  compound carries the tag every stock map uses for triggers: `collisionFilterInfo`
+  `0xC7FFBFFF`, default material CRC, `userData 0x0001000000040080`; its `shapeContents`
+  is `0xC7FFBFFF` too. `TriggerModel::physicsAsset` points at a generated
+  `triggermodeldummydefault` (byte-identical to stock, see
+  [iw7-ents-shapes.md](iw7-ents-shapes.md) §7) and the IW5→IW7 clipmap dumper writes it
+  under `physicsasset/`. §3 explains why this is required in MP. Confirmed in game on
+  mp_test_h1 (2026-09-17): `trigger_hurt` kills, and the `spinner` brush model blocks.
 
 ## 7. How to re-check any of this
 

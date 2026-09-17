@@ -121,7 +121,7 @@ def check(path, verbose=True):
         if i32(d, sl["convexCounts"].data + 4 * compacted[i]) != L: bad.append(f"shape{i} convexCounts")
         if nodes.size != 2 * L + 1: bad.append(f"shape{i} nodeCount")
         if tail != (2 * L, 0, L, 0, 1, 0): bad.append(f"shape{i} tail {tail}")
-        leaves, visited = [], set()
+        leaves, visited, leaf_node = [], set(), {}
         stack = [(1, 0)]
         while stack:
             n, parent = stack.pop()
@@ -131,9 +131,19 @@ def check(path, verbose=True):
             if u16(d, b + 12) != parent: bad.append(f"shape{i} node{n} parent")
             if u16(d, b + 14) != 0x3F00: bad.append(f"shape{i} node{n} filler")
             w = u32(d, b + 28)
-            if (w & 0xFFFF) == 0: leaves.append(w >> 16)
+            if (w & 0xFFFF) == 0: leaves.append(w >> 16); leaf_node[w >> 16] = n
             else: stack += [(w & 0xFFFF, n), (w >> 16, n)]
         if sorted(leaves) != list(range(L)): bad.append(f"shape{i} leaves {sorted(leaves)}")
+        # The instance transform's w lanes are int24 payloads, not padding: column 0
+        # carries the flags (0x40 on every shipped instance) and the translation carries
+        # the index of the instance's leaf node in the tree above. Zero here is what made
+        # the runtime skip every instance -- bodies existed, nothing overlapped them.
+        for k in range(L):
+            ib = inst.data + k * 128
+            if u32(d, ib + 12) != 0x3F000040: bad.append(f"shape{i}.{k} column0.w {u32(d, ib + 12):08X} != 3F000040 (flags)")
+            if u32(d, ib + 60) != (0x3F000000 | leaf_node.get(k, -1)):
+                bad.append(f"shape{i}.{k} translation.w {u32(d, ib + 60):08X} != leaf node {leaf_node.get(k)}")
+        if u32(d, sp + 140) & 0xFF000000 != 0x3F000000: bad.append(f"shape{i} aabb.min.w {u32(d, sp + 140):08X}")
         for z in (0, nodes.size - 1):
             if d[nodes.data + z * 32: nodes.data + z * 32 + 32] != b'\0' * 32: bad.append(f"shape{i} sentinel{z}")
         amn, amx = v4(sp + 128)[:3], v4(sp + 144)[:3]

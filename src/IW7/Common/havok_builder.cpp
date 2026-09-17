@@ -100,6 +100,12 @@ namespace ZoneTool::IW7
 				constexpr auto SIZEOF_SHAPE_INSTANCE = 128;
 				constexpr auto SIZEOF_DYNAMIC_TREE_NODE = 32;
 
+				// hknp stores small integers in the w lane of a vector as 0.5f with the value
+				// in the low 24 mantissa bits (hkVector4::setInt24W). This is the base, and
+				// the value every shipped hknpShapeInstance carries in its column-0 w lane.
+				constexpr auto INT24_W_BASE = 0x3F000000u;
+				constexpr auto SHAPE_INSTANCE_FLAGS_W = INT24_W_BASE | 0x40u;
+
 				// hknpConvexShape::vertices is padded up to a multiple of four, repeating the
 				// last real vertex, and hknpConvexPolytopeShapeConnectivity::vertexEdges is
 				// padded the same way. True for 1,848 of 1,848 shipped convexes, with every
@@ -1479,7 +1485,23 @@ namespace ZoneTool::IW7
 
 					section_first_run[i] = static_cast<int>(data_runs.size() / SIZEOF_DATA_RUN);
 					auto runs = 0;
-					emit_data_runs(data_runs, section.tags, runs);
+					if (physics_asset)
+					{
+						// A physics asset has no shapeTagData of its own, and IW7 decodes every
+						// composite's tags against ONE global table -- the map's (see
+						// build_ents_shape_list). A real index here therefore lands on whatever
+						// the map's tag N happens to be: our surface index 0 hit world tag 0, a
+						// clip brush, and bullets (which must not hit clip) sailed through
+						// every model. Stock writes 0xFFFF ("no tag": the body's own filter
+						// applies) on 75 of 75 physics-asset meshes; only XModel LOD meshes carry
+						// real ids, through their own per-model codec.
+						const std::vector<std::uint16_t> untagged(section.tags.size(), 0xFFFF);
+						emit_data_runs(data_runs, untagged, runs);
+					}
+					else
+					{
+						emit_data_runs(data_runs, section.tags, runs);
+					}
 					section_run_count[i] = runs;
 				}
 
@@ -2891,19 +2913,34 @@ namespace ZoneTool::IW7
 					// hknpShapeInstance[], immediately after the compound.
 					local_fixups.emplace_back(instances_field, buf.size());
 					std::vector<std::size_t> instance_shape_slots;
+					std::vector<std::size_t> instance_offsets;
 					for (auto i = 0; i < instance_count; i++)
 					{
 						const auto instance_offset = buf.size();
+						instance_offsets.emplace_back(instance_offset);
 						// hkTransform is three rotation columns then the translation. The
 						// convexes are already in the compound's space, so identity.
+						//
+						// The w lanes are NOT padding. hknp packs an int24 into the low
+						// mantissa bits of 0.5f, exactly like the vertex index on a polytope
+						// vertex: column 0 carries the instance flags and the translation
+						// carries the index of this instance's leaf node in the compound's
+						// dynamic tree. Every shipped instance (fallen 126 compounds, afghan
+						// 106) has column0.w == 0x3F000040 and translation.w ==
+						// 0x3F000000 | leafNode (1 for a lone instance; 2,3 for two; 2,4,5
+						// for three -- the leaf numbers the tree below produces). Writing 0
+						// here left every instance flagless, and the runtime's shape queries
+						// skipped them: brush models and trigger bodies existed but nothing
+						// ever overlapped them. The leaf index is patched in once the tree
+						// has been built.
 						buf.write<float>(1.0f); buf.write<float>(0.0f);
-						buf.write<float>(0.0f); buf.write<float>(0.0f);
+						buf.write<float>(0.0f); buf.write<std::uint32_t>(SHAPE_INSTANCE_FLAGS_W);
 						buf.write<float>(0.0f); buf.write<float>(1.0f);
 						buf.write<float>(0.0f); buf.write<float>(0.0f);
 						buf.write<float>(0.0f); buf.write<float>(0.0f);
 						buf.write<float>(1.0f); buf.write<float>(0.0f);
 						buf.write<float>(0.0f); buf.write<float>(0.0f);
-						buf.write<float>(0.0f); buf.write<float>(0.0f);
+						buf.write<float>(0.0f); buf.write<std::uint32_t>(INT24_W_BASE);
 						for (auto c = 0; c < 4; c++)
 						{
 							buf.write<float>(1.0f); // scale
@@ -3217,7 +3254,9 @@ namespace ZoneTool::IW7
 						buf.patch<float>(aabb_slot + k * 4, shape_min[k]);
 						buf.patch<float>(aabb_slot + 16 + k * 4, shape_max[k]);
 					}
-					buf.patch<float>(aabb_slot + 12, 0.0f);
+					// min.w is 0x3F000000 (int24 0) on 189 of 232 shipped compounds and a
+					// small count on the rest; max.w is always 0.
+					buf.patch<std::uint32_t>(aabb_slot + 12, INT24_W_BASE);
 					buf.patch<float>(aabb_slot + 28, 0.0f);
 
 					// --- hknpDynamicCompoundShapeData + its dynamic AABB tree ---
@@ -3321,6 +3360,24 @@ namespace ZoneTool::IW7
 					if (instance_count > 0)
 					{
 						build_tree(0, instance_count, 0);
+					}
+
+					// Each instance's translation.w carries the index of its leaf node (see
+					// the instance writer above). Leaves are the nodes whose data has a zero
+					// low half; the high half is the instance they bound.
+					for (auto n = 1; n < node_count - 1; n++)
+					{
+						const auto& node = nodes[n];
+						if ((node.data & 0xFFFF) != 0)
+						{
+							continue;
+						}
+						const auto instance = static_cast<int>(node.data >> 16);
+						if (instance < instance_count)
+						{
+							buf.patch<std::uint32_t>(instance_offsets[instance] + 48 + 12,
+								INT24_W_BASE | static_cast<std::uint32_t>(n));
+						}
 					}
 
 					local_fixups.emplace_back(nodes_field, buf.size());
@@ -3925,6 +3982,1153 @@ namespace ZoneTool::IW7
 				ZONETOOL_INFO("havok: physics asset \"%s\" built -- %zu bytes",
 					input.body_name.c_str(), file.size());
 
+				return file.data;
+			}
+
+			// ================================================================== dynamic
+			//
+			// A model that moves: hknpPhysicsSystemData with a dynamic body (a motion cinfo,
+			// reservedMotionId 0) over a convex shape built from the model's PhysCollmap,
+			// with mass properties on every shape. Decoded from stock (mp_fallen
+			// com_junktire.hkx -- one polytope; tool_watercan_iw6.hkx -- a two-child
+			// compound; vfx_debris_foliage_flower_vase_a_01.hkx) and IW8's named
+			// hkCompressedMassProperties::pack / hkPackedVector3::pack / unpack.
+
+			namespace
+			{
+				struct mass_properties
+				{
+					float volume = 0.0f;
+					float mass = 0.0f;
+					float com[3] = {0.0f, 0.0f, 0.0f};
+					// full inertia tensor about `com`, for the given mass
+					float inertia[3][3] = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}};
+				};
+
+				// Volume, centroid and inertia of a closed polytope with uniform density 1,
+				// faces wound counter-clockwise about their outward normals. Eberly,
+				// "Polyhedral Mass Properties (Revisited)".
+				mass_properties polytope_mass(const polytope& convex, const float scale)
+				{
+					constexpr float mult[10] = {
+						1.0f / 6.0f, 1.0f / 24.0f, 1.0f / 24.0f, 1.0f / 24.0f,
+						1.0f / 60.0f, 1.0f / 60.0f, 1.0f / 60.0f,
+						1.0f / 120.0f, 1.0f / 120.0f, 1.0f / 120.0f
+					};
+					double intg[10] = {};
+
+					const auto subexpr = [](const double w0, const double w1, const double w2,
+						double& f1, double& f2, double& f3, double& g0, double& g1, double& g2)
+					{
+						const auto temp0 = w0 + w1;
+						f1 = temp0 + w2;
+						const auto temp1 = w0 * w0;
+						const auto temp2 = temp1 + w1 * temp0;
+						f2 = temp2 + w2 * f1;
+						f3 = w0 * temp1 + w1 * temp2 + w2 * f2;
+						g0 = f2 + w0 * (f1 + w0);
+						g1 = f2 + w1 * (f1 + w1);
+						g2 = f2 + w2 * (f1 + w2);
+					};
+
+					for (const auto& face : convex.faces)
+					{
+						for (std::size_t t = 2; t < face.indices.size(); t++)
+						{
+							const std::size_t corner[3] = {
+								face.indices[0], face.indices[t - 1], face.indices[t]
+							};
+							if (corner[0] >= convex.verts.size() || corner[1] >= convex.verts.size()
+								|| corner[2] >= convex.verts.size())
+							{
+								continue;
+							}
+
+							double p[3][3];
+							for (auto c = 0; c < 3; c++)
+							{
+								for (auto k = 0; k < 3; k++)
+								{
+									p[c][k] = static_cast<double>(convex.verts[corner[c]][k]) * scale;
+								}
+							}
+
+							const double a1 = p[1][0] - p[0][0], b1 = p[1][1] - p[0][1], c1 = p[1][2] - p[0][2];
+							const double a2 = p[2][0] - p[0][0], b2 = p[2][1] - p[0][1], c2 = p[2][2] - p[0][2];
+							const double d0 = b1 * c2 - b2 * c1;
+							const double d1 = a2 * c1 - a1 * c2;
+							const double d2 = a1 * b2 - a2 * b1;
+
+							double f1x, f2x, f3x, g0x, g1x, g2x;
+							double f1y, f2y, f3y, g0y, g1y, g2y;
+							double f1z, f2z, f3z, g0z, g1z, g2z;
+							subexpr(p[0][0], p[1][0], p[2][0], f1x, f2x, f3x, g0x, g1x, g2x);
+							subexpr(p[0][1], p[1][1], p[2][1], f1y, f2y, f3y, g0y, g1y, g2y);
+							subexpr(p[0][2], p[1][2], p[2][2], f1z, f2z, f3z, g0z, g1z, g2z);
+
+							intg[0] += d0 * f1x;
+							intg[1] += d0 * f2x;
+							intg[2] += d1 * f2y;
+							intg[3] += d2 * f2z;
+							intg[4] += d0 * f3x;
+							intg[5] += d1 * f3y;
+							intg[6] += d2 * f3z;
+							intg[7] += d0 * (p[0][1] * g0x + p[1][1] * g1x + p[2][1] * g2x);
+							intg[8] += d1 * (p[0][2] * g0y + p[1][2] * g1y + p[2][2] * g2y);
+							intg[9] += d2 * (p[0][0] * g0z + p[1][0] * g1z + p[2][0] * g2z);
+						}
+					}
+
+					for (auto i = 0; i < 10; i++)
+					{
+						intg[i] *= mult[i];
+					}
+
+					mass_properties out{};
+					const auto volume = intg[0];
+					if (volume <= 1e-12)
+					{
+						return out;
+					}
+
+					const double cx = intg[1] / volume, cy = intg[2] / volume, cz = intg[3] / volume;
+					// inertia about the centroid, unit density
+					const double ixx = intg[5] + intg[6] - volume * (cy * cy + cz * cz);
+					const double iyy = intg[4] + intg[6] - volume * (cz * cz + cx * cx);
+					const double izz = intg[4] + intg[5] - volume * (cx * cx + cy * cy);
+					const double ixy = -(intg[7] - volume * cx * cy);
+					const double iyz = -(intg[8] - volume * cy * cz);
+					const double ixz = -(intg[9] - volume * cz * cx);
+
+					out.volume = static_cast<float>(volume);
+					out.mass = static_cast<float>(volume);
+					out.com[0] = static_cast<float>(cx);
+					out.com[1] = static_cast<float>(cy);
+					out.com[2] = static_cast<float>(cz);
+					out.inertia[0][0] = static_cast<float>(ixx);
+					out.inertia[1][1] = static_cast<float>(iyy);
+					out.inertia[2][2] = static_cast<float>(izz);
+					out.inertia[0][1] = out.inertia[1][0] = static_cast<float>(ixy);
+					out.inertia[1][2] = out.inertia[2][1] = static_cast<float>(iyz);
+					out.inertia[0][2] = out.inertia[2][0] = static_cast<float>(ixz);
+					return out;
+				}
+
+				// Rescale a unit-density result to a real mass.
+				void set_mass(mass_properties& mp, const float mass)
+				{
+					if (mp.volume <= 0.0f)
+					{
+						mp.mass = mass;
+						return;
+					}
+					const auto factor = mass / mp.volume;
+					mp.mass = mass;
+					for (auto& row : mp.inertia)
+					{
+						for (auto& value : row)
+						{
+							value *= factor;
+						}
+					}
+				}
+
+				// Combine children (each about its own centroid) into one body: mass-weighted
+				// centroid, parallel-axis shift of every child tensor.
+				mass_properties combine_mass(const std::vector<mass_properties>& parts)
+				{
+					mass_properties out{};
+					for (const auto& p : parts)
+					{
+						out.volume += p.volume;
+						out.mass += p.mass;
+						for (auto k = 0; k < 3; k++)
+						{
+							out.com[k] += p.com[k] * p.mass;
+						}
+					}
+					if (out.mass <= 0.0f)
+					{
+						return out;
+					}
+					for (auto k = 0; k < 3; k++)
+					{
+						out.com[k] /= out.mass;
+					}
+					for (const auto& p : parts)
+					{
+						const float d[3] = {p.com[0] - out.com[0], p.com[1] - out.com[1], p.com[2] - out.com[2]};
+						const auto dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+						for (auto i = 0; i < 3; i++)
+						{
+							for (auto j = 0; j < 3; j++)
+							{
+								out.inertia[i][j] += p.inertia[i][j]
+									+ p.mass * ((i == j ? dd : 0.0f) - d[i] * d[j]);
+							}
+						}
+					}
+					return out;
+				}
+
+				// Symmetric 3x3 eigen-decomposition (cyclic Jacobi). `axes` columns are the
+				// principal axes, `diag` the principal moments.
+				void diagonalise(const float (&m)[3][3], float (&diag)[3], float (&axes)[3][3])
+				{
+					double a[3][3], v[3][3];
+					for (auto i = 0; i < 3; i++)
+					{
+						for (auto j = 0; j < 3; j++)
+						{
+							a[i][j] = m[i][j];
+							v[i][j] = i == j ? 1.0 : 0.0;
+						}
+					}
+
+					for (auto sweep = 0; sweep < 50; sweep++)
+					{
+						const auto off = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
+						if (off < 1e-24)
+						{
+							break;
+						}
+						for (auto p = 0; p < 3; p++)
+						{
+							for (auto q = p + 1; q < 3; q++)
+							{
+								if (std::fabs(a[p][q]) < 1e-30)
+								{
+									continue;
+								}
+								const auto theta = (a[q][q] - a[p][p]) / (2.0 * a[p][q]);
+								const auto t = (theta >= 0.0 ? 1.0 : -1.0)
+									/ (std::fabs(theta) + std::sqrt(theta * theta + 1.0));
+								const auto c = 1.0 / std::sqrt(t * t + 1.0);
+								const auto s = t * c;
+								for (auto k = 0; k < 3; k++)
+								{
+									const auto akp = a[k][p], akq = a[k][q];
+									a[k][p] = c * akp - s * akq;
+									a[k][q] = s * akp + c * akq;
+								}
+								for (auto k = 0; k < 3; k++)
+								{
+									const auto apk = a[p][k], aqk = a[q][k];
+									a[p][k] = c * apk - s * aqk;
+									a[q][k] = s * apk + c * aqk;
+								}
+								for (auto k = 0; k < 3; k++)
+								{
+									const auto vkp = v[k][p], vkq = v[k][q];
+									v[k][p] = c * vkp - s * vkq;
+									v[k][q] = s * vkp + c * vkq;
+								}
+							}
+						}
+					}
+
+					// keep a right-handed frame so it converts to a rotation
+					const double det = v[0][0] * (v[1][1] * v[2][2] - v[1][2] * v[2][1])
+						- v[0][1] * (v[1][0] * v[2][2] - v[1][2] * v[2][0])
+						+ v[0][2] * (v[1][0] * v[2][1] - v[1][1] * v[2][0]);
+					if (det < 0.0)
+					{
+						for (auto k = 0; k < 3; k++)
+						{
+							v[k][2] = -v[k][2];
+						}
+					}
+
+					for (auto i = 0; i < 3; i++)
+					{
+						diag[i] = static_cast<float>(std::max(a[i][i], 0.0));
+						for (auto j = 0; j < 3; j++)
+						{
+							axes[i][j] = static_cast<float>(v[i][j]);
+						}
+					}
+				}
+
+				// Rotation matrix (columns = axes) to quaternion (x, y, z, w).
+				void quat_from_axes(const float (&r)[3][3], float (&q)[4])
+				{
+					const auto trace = r[0][0] + r[1][1] + r[2][2];
+					if (trace > 0.0f)
+					{
+						const auto s = std::sqrt(trace + 1.0f) * 2.0f;
+						q[3] = 0.25f * s;
+						q[0] = (r[2][1] - r[1][2]) / s;
+						q[1] = (r[0][2] - r[2][0]) / s;
+						q[2] = (r[1][0] - r[0][1]) / s;
+					}
+					else if (r[0][0] > r[1][1] && r[0][0] > r[2][2])
+					{
+						const auto s = std::sqrt(1.0f + r[0][0] - r[1][1] - r[2][2]) * 2.0f;
+						q[3] = (r[2][1] - r[1][2]) / s;
+						q[0] = 0.25f * s;
+						q[1] = (r[0][1] + r[1][0]) / s;
+						q[2] = (r[0][2] + r[2][0]) / s;
+					}
+					else if (r[1][1] > r[2][2])
+					{
+						const auto s = std::sqrt(1.0f + r[1][1] - r[0][0] - r[2][2]) * 2.0f;
+						q[3] = (r[0][2] - r[2][0]) / s;
+						q[0] = (r[0][1] + r[1][0]) / s;
+						q[1] = 0.25f * s;
+						q[2] = (r[1][2] + r[2][1]) / s;
+					}
+					else
+					{
+						const auto s = std::sqrt(1.0f + r[2][2] - r[0][0] - r[1][1]) * 2.0f;
+						q[3] = (r[1][0] - r[0][1]) / s;
+						q[0] = (r[0][2] + r[2][0]) / s;
+						q[1] = (r[1][2] + r[2][1]) / s;
+						q[2] = 0.25f * s;
+					}
+					const auto length = std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+					if (length > 0.0f)
+					{
+						for (auto& c : q)
+						{
+							c /= length;
+						}
+					}
+				}
+
+				// hkPackedVector3: three int16 lanes and a shared power-of-two scale stored
+				// as the top 16 bits of a float. IW8's unpack is
+				//     value = float(int16 << 16) * float_from_bits(exp16 << 16)
+				// so with scale 2^k the lane is round(v / 2^(16+k)); k is the smallest
+				// exponent that keeps the largest lane inside int16. Checked against the
+				// vase: inertia 2.62e-5 packs to 0x2880 (2^-46) with lane 28168.
+				void pack_vector3(const float* v, std::uint16_t (&out)[4])
+				{
+					auto largest = 0.0f;
+					for (auto k = 0; k < 3; k++)
+					{
+						largest = std::max(largest, std::fabs(v[k]));
+					}
+					auto k = -46;
+					if (largest > 0.0f)
+					{
+						int exponent = 0;
+						std::frexp(largest / 32767.0f, &exponent); // largest/32767 = m * 2^exponent, m in [0.5,1)
+						k = exponent - 16;
+					}
+					const auto scale = std::ldexp(1.0f, 16 + k);
+					for (auto i = 0; i < 3; i++)
+					{
+						const auto lane = static_cast<int>(std::lround(v[i] / scale));
+						out[i] = static_cast<std::uint16_t>(static_cast<std::int16_t>(
+							std::max(-32767, std::min(32767, lane))));
+					}
+					out[3] = static_cast<std::uint16_t>((127 + k) << 7);
+				}
+
+				// hkPackedUnitVector as hkCompressedMassProperties::pack uses it: the high
+				// half of (int)(q * 30000 * 65536) + 0x80000000 per lane. Unpack normalises,
+				// so the scale only sets precision; 30000 reproduces the stock words.
+				void pack_quat(const float (&q)[4], std::uint16_t (&out)[4])
+				{
+					for (auto i = 0; i < 4; i++)
+					{
+						const auto scaled = static_cast<std::int32_t>(q[i] * 1966080000.0f);
+						const auto shifted = static_cast<std::uint32_t>(scaled) + 0x80000000u;
+						out[i] = static_cast<std::uint16_t>(shifted >> 16);
+					}
+				}
+
+				struct compressed_mass
+				{
+					std::uint16_t com[4];
+					std::uint16_t inertia[4];
+					std::uint16_t axes[4];
+					float mass;
+					float volume;
+					// the diagonalised form, for the motion cinfo
+					float diag[3];
+					float quat[4];
+				};
+
+				compressed_mass compress_mass(const mass_properties& mp)
+				{
+					compressed_mass out{};
+					float axes[3][3];
+					diagonalise(mp.inertia, out.diag, axes);
+					quat_from_axes(axes, out.quat);
+					pack_vector3(mp.com, out.com);
+					pack_vector3(out.diag, out.inertia);
+					pack_quat(out.quat, out.axes);
+					out.mass = mp.mass;
+					out.volume = mp.volume;
+					return out;
+				}
+			}
+
+			std::vector<std::uint8_t> build_dynamic_physics_asset(const dynamic_physics_asset_input& input)
+			{
+				struct half_edge
+				{
+					std::uint16_t face = 0;
+					std::uint8_t edge = 0;
+				};
+
+				// Body quality / material / motion-properties name CRCs live in the asset's
+				// lookup arrays, exactly as for the static dummy, plus the third one that
+				// every dynamic stock asset fills (0x9F53AC92 on all of them).
+				constexpr auto MOTION_INFINITE = 0x5F7FFFF0u; // maxLinearAccelerationDistancePerStep / maxRotationPerStep
+				constexpr auto CHILD_DENSITY = 1000.0f; // stock child mass properties are volume x 1000
+
+				if (input.convexes.empty())
+				{
+					ZONETOOL_ERROR("havok: dynamic asset \"%s\" has no convexes", input.body_name.c_str());
+					return {};
+				}
+
+				byte_buffer buf;
+				std::vector<std::pair<std::size_t, std::size_t>> local_fixups;
+				std::vector<std::pair<std::size_t, std::size_t>> global_fixups;
+				std::vector<std::pair<std::size_t, int>> virtual_fixups;
+				const auto align16 = [&] { buf.align(16, 0); };
+
+				// class-name indices, in the order written to __classnames__ below
+				enum : int
+				{
+					CLASS_ASSET, CLASS_SYSTEM_DATA, CLASS_CONVEX, CLASS_PROPERTIES,
+					CLASS_MASS, CLASS_CONNECTIVITY, CLASS_COMPOUND, CLASS_COMPOUND_DATA,
+					CLASS_COUNT
+				};
+
+				const auto compound = input.convexes.size() > 1;
+				const auto instance_count = static_cast<int>(input.convexes.size());
+
+				// ---------------------------------------------------- mass properties
+				std::vector<mass_properties> child_mass;
+				for (const auto& convex : input.convexes)
+				{
+					child_mass.emplace_back(polytope_mass(convex, input.scale));
+				}
+				auto body_mass = combine_mass(child_mass);
+				if (body_mass.volume <= 0.0f)
+				{
+					ZONETOOL_WARNING("havok: dynamic asset \"%s\" has no volume -- hull(s) not "
+						"closed?", input.body_name.c_str());
+				}
+				set_mass(body_mass, input.mass);
+				for (auto& child : child_mass)
+				{
+					set_mass(child, child.volume * CHILD_DENSITY);
+				}
+				const auto body_compressed = compress_mass(body_mass);
+
+				// --- HavokPhysicsAsset (144) ---
+				virtual_fixups.emplace_back(static_cast<std::size_t>(0), CLASS_ASSET);
+				buf.reserve(8); // isRagdoll + pad
+				const auto system_data_slot = buf.reserve(8);
+				std::array<std::size_t, 8> lookup_field{};
+				const int lookup_count[8] = {1, 1, 1, 1, 1, 1, 0, 1};
+				for (auto i = 0; i < 8; i++)
+				{
+					lookup_field[i] = buf.size();
+					write_hk_array_header(buf, lookup_count[i]);
+				}
+				const std::uint32_t lookup_value[8] = {
+					input.body_quality_crc, input.material_crc, input.motion_properties_crc, 0, 0, 0, 0, 0
+				};
+				for (auto i = 0; i < 8; i++)
+				{
+					if (!lookup_count[i])
+					{
+						continue;
+					}
+					local_fixups.emplace_back(lookup_field[i], buf.size());
+					buf.write<std::uint32_t>(lookup_value[i]);
+					align16();
+				}
+
+				// --- hknpPhysicsSystemData (120) ---
+				const auto system_data_offset = buf.size();
+				global_fixups.emplace_back(system_data_slot, system_data_offset);
+				virtual_fixups.emplace_back(system_data_offset, CLASS_SYSTEM_DATA);
+				buf.reserve(16); // hkReferencedObject
+				write_hk_array_header(buf, 0); // materials
+				write_hk_array_header(buf, 0); // motionProperties
+				const auto motion_cinfos_field = buf.size();
+				write_hk_array_header(buf, 1); // motionCinfos
+				const auto body_cinfos_field = buf.size();
+				write_hk_array_header(buf, 1); // bodyCinfos
+				write_hk_array_header(buf, 0); // constraintCinfos
+				const auto referenced_field = buf.size();
+				write_hk_array_header(buf, 1); // referencedObjects
+				const auto system_name_slot = buf.reserve(8); // name
+				align16();
+
+				// --- hknpMotionCinfo (96) ---
+				local_fixups.emplace_back(motion_cinfos_field, buf.size());
+				buf.write<std::uint16_t>(0xFFFF); // motionPropertiesId -- resolved from the lookup
+				buf.write<std::uint8_t>(1); // enableDeactivation
+				buf.write<std::uint8_t>(0);
+				buf.write<float>(body_mass.mass > 0.0f ? 1.0f / body_mass.mass : 0.0f); // inverseMass
+				buf.write<std::uint32_t>(MOTION_INFINITE);
+				buf.write<std::uint32_t>(MOTION_INFINITE);
+				for (auto k = 0; k < 3; k++)
+				{
+					buf.write<float>(body_compressed.diag[k] > 0.0f ? 1.0f / body_compressed.diag[k] : 0.0f);
+				}
+				buf.write<float>(1.0f); // inverseInertiaLocal.w
+				for (auto k = 0; k < 3; k++)
+				{
+					buf.write<float>(body_mass.com[k]); // centerOfMassWorld -- body at the origin
+				}
+				buf.write<float>(0.0f);
+				for (auto k = 0; k < 4; k++)
+				{
+					buf.write<float>(body_compressed.quat[k]); // orientation = principal axes
+				}
+				buf.reserve(32); // linear + angular velocity
+				align16();
+
+				// --- hknpBodyCinfo (160) --- as the static dummy, but pointing at motion 0
+				const auto body_offset = buf.size();
+				local_fixups.emplace_back(body_cinfos_field, body_offset);
+				const auto body_shape_slot = buf.reserve(8);
+				buf.write<std::int32_t>(0); // flags
+				buf.write<std::uint32_t>(input.body_contents); // collisionFilterInfo
+				buf.write<std::uint16_t>(0xFFFF); // materialId
+				buf.write<std::uint8_t>(0xFF); // qualityId
+				buf.reserve(5);
+				buf.write<std::uint64_t>(0); // userData
+				const auto body_name_slot = buf.reserve(8);
+				buf.write<std::uint8_t>(0); // motionType
+				buf.reserve(7);
+				for (auto i = 0; i < 2; i++)
+				{
+					buf.write<float>(0.0f);
+					buf.write<float>(0.0f);
+					buf.write<float>(0.0f);
+					buf.write<float>(1.0f);
+				}
+				buf.reserve(32); // velocities
+				buf.write<float>(-1.0f); // mass -- "use the shape's"
+				buf.reserve(12);
+				buf.write<std::uint16_t>(0xFFFF); // motionPropertiesId
+				buf.write<std::uint16_t>(0);
+				buf.write<std::uint32_t>(0x7FFFFFFFu); // reservedBodyId
+				buf.write<std::uint32_t>(0); // reservedMotionId -> motionCinfos[0]: this is what makes it dynamic
+				buf.write<std::uint32_t>(0); // collisionLookAheadDistance
+				buf.reserve(16);
+				if (buf.size() - body_offset != 160)
+				{
+					ZONETOOL_ERROR("havok: hknpBodyCinfo is %zu bytes, expected 160", buf.size() - body_offset);
+					return {};
+				}
+
+				local_fixups.emplace_back(body_name_slot, buf.size());
+				buf.write(input.body_name.c_str(), input.body_name.size() + 1);
+				align16();
+
+				local_fixups.emplace_back(referenced_field, buf.size());
+				const auto referenced_slot = buf.reserve(8);
+				align16();
+
+				local_fixups.emplace_back(system_name_slot, buf.size());
+				const char* system_name = "Default Physics System Data";
+				buf.write(system_name, std::strlen(system_name) + 1);
+				align16();
+
+				// ----------------------------------------------------------- shapes
+				const auto write_rel_array = [&](const std::size_t field, const std::size_t count)
+				{
+					buf.patch<std::uint16_t>(field, static_cast<std::uint16_t>(count));
+					buf.patch<std::uint16_t>(field + 2, static_cast<std::uint16_t>(buf.size() - field));
+				};
+
+				// hkRefCountedProperties -> hknpShapeMassProperties, hung off `properties_slot`
+				const auto write_mass_properties = [&](const std::size_t properties_slot,
+					const compressed_mass& cm)
+				{
+					const auto properties_offset = buf.size();
+					global_fixups.emplace_back(properties_slot, properties_offset);
+					virtual_fixups.emplace_back(properties_offset, CLASS_PROPERTIES);
+					const auto entries_field = buf.size();
+					write_hk_array_header(buf, 1);
+					local_fixups.emplace_back(entries_field, buf.size());
+					const auto mass_slot = buf.reserve(8);
+					buf.write<std::uint16_t>(0xF100); // key -- mass properties
+					buf.write<std::uint16_t>(0);
+					buf.reserve(4);
+					align16();
+
+					const auto mass_offset = buf.size();
+					global_fixups.emplace_back(mass_slot, mass_offset);
+					virtual_fixups.emplace_back(mass_offset, CLASS_MASS);
+					buf.reserve(16); // hkReferencedObject
+					for (const auto w : cm.com) buf.write<std::uint16_t>(w);
+					for (const auto w : cm.inertia) buf.write<std::uint16_t>(w);
+					for (const auto w : cm.axes) buf.write<std::uint16_t>(w);
+					buf.write<float>(cm.mass);
+					buf.write<float>(cm.volume);
+					align16();
+				};
+
+				// One hknpConvexPolytopeShape + payloads + connectivity. Same bytes as the
+				// ents writer, plus a properties pointer carrying the mass properties.
+				// Returns the object offset, or 0 on failure.
+				const auto write_convex = [&](const polytope& convex, const compressed_mass& cm,
+					const int index, float (&mn)[3], float (&mx)[3]) -> std::size_t
+				{
+					auto index_total = 0u;
+					for (const auto& face : convex.faces)
+					{
+						index_total += static_cast<unsigned int>(face.indices.size());
+					}
+					const auto vertex_count = padded_vertex_count(convex.verts.size());
+					if (convex.verts.empty() || vertex_count > 255 || convex.faces.size() > 0xFFFF
+						|| index_total > 0xFFFF)
+					{
+						ZONETOOL_ERROR("havok: convex %d of \"%s\" exceeds the format limits "
+							"(%zu verts, %zu faces, %u indices)", index, input.body_name.c_str(),
+							convex.verts.size(), convex.faces.size(), index_total);
+						return 0;
+					}
+
+					const auto convex_offset = buf.size();
+					virtual_fixups.emplace_back(convex_offset, CLASS_CONVEX);
+					buf.reserve(16); // hkReferencedObject
+					buf.write<std::uint16_t>(static_cast<std::uint16_t>(CONVEX_SHAPE_FLAGS));
+					buf.write<std::uint8_t>(0); // numShapeKeyBits
+					buf.write<std::uint8_t>(static_cast<std::uint8_t>(CONVEX_DISPATCH_TYPE));
+					buf.write<float>(0.0f); // convexRadius
+					buf.write<std::uint64_t>(0); // userData
+					const auto properties_slot = buf.reserve(8);
+					buf.reserve(8);
+					const auto vertices_field = buf.size();
+					buf.reserve(4);
+					buf.reserve(12);
+					const auto planes_field = buf.size();
+					buf.reserve(4);
+					const auto faces_field = buf.size();
+					buf.reserve(4);
+					const auto indices_field = buf.size();
+					buf.reserve(4);
+					buf.reserve(4);
+					const auto connectivity_slot = buf.reserve(8);
+					buf.reserve(8);
+					if (buf.size() - convex_offset != SIZEOF_CONVEX_POLYTOPE_SHAPE)
+					{
+						ZONETOOL_ERROR("havok: hknpConvexPolytopeShape is %zu bytes, expected %d",
+							buf.size() - convex_offset, SIZEOF_CONVEX_POLYTOPE_SHAPE);
+						return 0;
+					}
+
+					// connectivity, as in build_ents_shape_list
+					std::vector<half_edge> vertex_edges(vertex_count);
+					std::vector<bool> vertex_seen(vertex_count, false);
+					std::vector<half_edge> face_links(index_total);
+					std::map<std::pair<std::uint8_t, std::uint8_t>, half_edge> directed;
+					for (auto f = 0u; f < convex.faces.size(); f++)
+					{
+						const auto& face = convex.faces[f];
+						for (auto e = 0u; e < face.indices.size(); e++)
+						{
+							const auto from = face.indices[e];
+							const auto to = face.indices[(e + 1) % face.indices.size()];
+							const half_edge self{static_cast<std::uint16_t>(f), static_cast<std::uint8_t>(e)};
+							if (from < vertex_seen.size() && !vertex_seen[from])
+							{
+								vertex_seen[from] = true;
+								vertex_edges[from] = self;
+							}
+							directed[{from, to}] = self;
+						}
+					}
+					auto global = 0u;
+					auto unmatched = 0;
+					for (auto f = 0u; f < convex.faces.size(); f++)
+					{
+						const auto& face = convex.faces[f];
+						for (auto e = 0u; e < face.indices.size(); e++)
+						{
+							const auto from = face.indices[e];
+							const auto to = face.indices[(e + 1) % face.indices.size()];
+							const auto twin = directed.find({to, from});
+							if (twin != directed.end())
+							{
+								face_links[global] = twin->second;
+							}
+							else
+							{
+								face_links[global] = {static_cast<std::uint16_t>(f), static_cast<std::uint8_t>(e)};
+								unmatched++;
+							}
+							global++;
+						}
+					}
+					if (unmatched)
+					{
+						ZONETOOL_WARNING("havok: convex %d of \"%s\" has %d unpaired edge(s) -- "
+							"hull is not closed", index, input.body_name.c_str(), unmatched);
+					}
+
+					write_rel_array(vertices_field, vertex_count);
+					for (auto j = 0u; j < vertex_count; j++)
+					{
+						const auto source = std::min<std::size_t>(j, convex.verts.size() - 1);
+						const auto& v = convex.verts[source];
+						for (auto k = 0; k < 3; k++)
+						{
+							const auto value = v[k] * input.scale;
+							buf.write<float>(value);
+							mn[k] = std::min(mn[k], value);
+							mx[k] = std::max(mx[k], value);
+						}
+						buf.write<std::uint32_t>(INT24_W_BASE | static_cast<std::uint32_t>(source));
+					}
+					align16();
+
+					write_rel_array(planes_field, convex.faces.size());
+					for (const auto& face : convex.faces)
+					{
+						for (auto k = 0; k < 3; k++)
+						{
+							buf.write<float>(face.plane[k]);
+						}
+						buf.write<float>(-face.plane[3] * input.scale);
+					}
+					align16();
+
+					write_rel_array(faces_field, convex.faces.size());
+					auto first_index = 0u;
+					for (auto f = 0u; f < convex.faces.size(); f++)
+					{
+						const auto& face = convex.faces[f];
+						buf.write<std::uint16_t>(static_cast<std::uint16_t>(first_index));
+						buf.write<std::uint8_t>(static_cast<std::uint8_t>(face.indices.size()));
+						auto smallest = 45.0f;
+						for (auto e = 0u; e < face.indices.size(); e++)
+						{
+							const auto& twin = face_links[first_index + e];
+							if (twin.face == f || twin.face >= convex.faces.size())
+							{
+								continue;
+							}
+							const auto& other = convex.faces[twin.face].plane;
+							auto dot = face.plane[0] * other[0] + face.plane[1] * other[1] + face.plane[2] * other[2];
+							dot = std::max(-1.0f, std::min(1.0f, dot));
+							const auto dihedral = 180.0f - static_cast<float>(std::acos(dot) * 57.29577951308232);
+							smallest = std::min(smallest, dihedral * 0.5f);
+						}
+						const auto half_radians = smallest * 0.017453292519943295f;
+						auto quantised = static_cast<int>((half_radians - 1.1920929e-7f) * 41720.875f + 0.5f);
+						quantised = std::max(0, std::min(65535, quantised)) >> 8;
+						buf.write<std::uint8_t>(static_cast<std::uint8_t>(quantised));
+						first_index += static_cast<unsigned int>(face.indices.size());
+					}
+					align16();
+
+					write_rel_array(indices_field, index_total);
+					for (const auto& face : convex.faces)
+					{
+						for (const auto idx : face.indices)
+						{
+							buf.write<std::uint8_t>(idx);
+						}
+					}
+					align16();
+
+					// properties (mass) come right after the shape in stock, then connectivity
+					write_mass_properties(properties_slot, cm);
+
+					for (auto j = convex.verts.size(); j < vertex_count; j++)
+					{
+						vertex_edges[j] = vertex_edges[convex.verts.size() - 1];
+					}
+					const auto connectivity_offset = buf.size();
+					global_fixups.emplace_back(connectivity_slot, connectivity_offset);
+					virtual_fixups.emplace_back(connectivity_offset, CLASS_CONNECTIVITY);
+					buf.reserve(16);
+					const auto vertex_edges_field = buf.size();
+					write_hk_array_header(buf, static_cast<int>(vertex_edges.size()));
+					const auto face_links_field = buf.size();
+					write_hk_array_header(buf, static_cast<int>(face_links.size()));
+					const auto write_edges = [&](const std::size_t field, const std::vector<half_edge>& edges)
+					{
+						if (edges.empty())
+						{
+							return;
+						}
+						local_fixups.emplace_back(field, buf.size());
+						for (const auto& edge : edges)
+						{
+							buf.write<std::uint16_t>(edge.face);
+							buf.write<std::uint8_t>(edge.edge);
+							buf.write<std::uint8_t>(0);
+						}
+						align16();
+					};
+					write_edges(vertex_edges_field, vertex_edges);
+					write_edges(face_links_field, face_links);
+					return convex_offset;
+				};
+
+				std::size_t root_offset = 0;
+				if (!compound)
+				{
+					float mn[3] = {FLT_MAX, FLT_MAX, FLT_MAX}, mx[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+					root_offset = write_convex(input.convexes[0], body_compressed, 0, mn, mx);
+					if (!root_offset)
+					{
+						return {};
+					}
+				}
+				else
+				{
+					// --- hknpDynamicCompoundShape (208) --- as in build_ents_shape_list, with
+					// a properties pointer for the body's mass.
+					const auto compound_offset = buf.size();
+					root_offset = compound_offset;
+					virtual_fixups.emplace_back(compound_offset, CLASS_COMPOUND);
+					buf.reserve(16);
+					buf.write<std::uint16_t>(static_cast<std::uint16_t>(COMPOUND_SHAPE_FLAGS));
+					auto key_bits = 0;
+					for (auto n = instance_count; n > 0; n >>= 1)
+					{
+						key_bits++;
+					}
+					buf.write<std::uint8_t>(static_cast<std::uint8_t>(key_bits));
+					buf.write<std::uint8_t>(static_cast<std::uint8_t>(COMPOUND_DISPATCH_TYPE));
+					buf.write<float>(0.0f);
+					buf.write<std::uint64_t>(0);
+					const auto compound_properties_slot = buf.reserve(8);
+					buf.reserve(8);
+					buf.write<std::uint32_t>(0xFFFFFFFFu);
+					buf.write<std::uint32_t>(0);
+					write_hk_array_header(buf, 0);
+					write_hk_array_header(buf, 0);
+					buf.write<std::uint32_t>(0xFFFFFFFFu); // shapeTagCodecInfo
+					buf.reserve(4);
+					const auto instances_field = buf.size();
+					write_hk_array_header(buf, instance_count);
+					buf.write<std::int32_t>(-1);
+					buf.reserve(4);
+					buf.reserve(8);
+					const auto aabb_slot = buf.reserve(32);
+					buf.write<std::uint8_t>(1); // isMutable
+					buf.reserve(7);
+					buf.reserve(16);
+					buf.reserve(8);
+					const auto bvd_slot = buf.reserve(8);
+					buf.reserve(8);
+					if (buf.size() - compound_offset != SIZEOF_DYNAMIC_COMPOUND_SHAPE)
+					{
+						ZONETOOL_ERROR("havok: hknpDynamicCompoundShape is %zu bytes, expected %d",
+							buf.size() - compound_offset, SIZEOF_DYNAMIC_COMPOUND_SHAPE);
+						return {};
+					}
+
+					local_fixups.emplace_back(instances_field, buf.size());
+					std::vector<std::size_t> instance_shape_slots;
+					std::vector<std::size_t> instance_offsets;
+					for (auto i = 0; i < instance_count; i++)
+					{
+						instance_offsets.emplace_back(buf.size());
+						buf.write<float>(1.0f); buf.write<float>(0.0f);
+						buf.write<float>(0.0f); buf.write<std::uint32_t>(SHAPE_INSTANCE_FLAGS_W);
+						buf.write<float>(0.0f); buf.write<float>(1.0f);
+						buf.write<float>(0.0f); buf.write<float>(0.0f);
+						buf.write<float>(0.0f); buf.write<float>(0.0f);
+						buf.write<float>(1.0f); buf.write<float>(0.0f);
+						buf.write<float>(0.0f); buf.write<float>(0.0f);
+						buf.write<float>(0.0f); buf.write<std::uint32_t>(INT24_W_BASE);
+						for (auto c = 0; c < 4; c++)
+						{
+							buf.write<float>(1.0f);
+						}
+						instance_shape_slots.emplace_back(buf.reserve(8));
+						// shapeTag: a physics asset has no tag table, and the runtime resolves a
+						// tag against the MAP's global table, so 0 would mean "world tag 0" (a
+						// clip brush on mp_test_h1, invisible to bullets). Stock uses 0xFFFF on
+						// every compound instance in every physics asset (232 of 232).
+						buf.write<std::uint16_t>(0xFFFF);
+						buf.write<std::uint16_t>(0xFFFF); // destructionTag
+						buf.reserve(36);
+					}
+					align16();
+
+					// the compound's own mass properties sit right after its instances in stock
+					write_mass_properties(compound_properties_slot, body_compressed);
+
+					float shape_min[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
+					float shape_max[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+					std::vector<std::array<float, 6>> convex_bounds;
+					for (auto c = 0; c < instance_count; c++)
+					{
+						float mn[3] = {FLT_MAX, FLT_MAX, FLT_MAX}, mx[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+						const auto convex_offset = write_convex(input.convexes[c],
+							compress_mass(child_mass[c]), c, mn, mx);
+						if (!convex_offset)
+						{
+							return {};
+						}
+						global_fixups.emplace_back(instance_shape_slots[c], convex_offset);
+						convex_bounds.push_back({mn[0], mn[1], mn[2], mx[0], mx[1], mx[2]});
+						for (auto k = 0; k < 3; k++)
+						{
+							shape_min[k] = std::min(shape_min[k], mn[k]);
+							shape_max[k] = std::max(shape_max[k], mx[k]);
+						}
+					}
+					for (auto k = 0; k < 3; k++)
+					{
+						buf.patch<float>(aabb_slot + k * 4, shape_min[k]);
+						buf.patch<float>(aabb_slot + 16 + k * 4, shape_max[k]);
+					}
+					buf.patch<std::uint32_t>(aabb_slot + 12,
+						INT24_W_BASE | static_cast<std::uint32_t>(instance_count - 1));
+					buf.patch<float>(aabb_slot + 28, 0.0f);
+
+					// --- hknpDynamicCompoundShapeData + tree --- (mirrors the ents writer)
+					struct tree_node
+					{
+						float mn[3] = {0.0f, 0.0f, 0.0f};
+						float mx[3] = {0.0f, 0.0f, 0.0f};
+						std::uint16_t parent = 0;
+						std::uint32_t data = 0;
+					};
+					const auto bvd_offset = buf.size();
+					global_fixups.emplace_back(bvd_slot, bvd_offset);
+					virtual_fixups.emplace_back(bvd_offset, CLASS_COMPOUND_DATA);
+					buf.reserve(16);
+					const auto nodes_field = buf.size();
+					const auto node_count = 2 * instance_count + 1;
+					write_hk_array_header(buf, node_count);
+					buf.write<std::int32_t>(2 * instance_count);
+					buf.reserve(4);
+					buf.write<std::int32_t>(instance_count);
+					buf.reserve(4);
+					buf.write<std::int32_t>(1);
+					buf.reserve(4);
+					if (buf.size() - bvd_offset != SIZEOF_DYNAMIC_COMPOUND_SHAPE_DATA)
+					{
+						ZONETOOL_ERROR("havok: hknpDynamicCompoundShapeData is %zu bytes, expected %d",
+							buf.size() - bvd_offset, SIZEOF_DYNAMIC_COMPOUND_SHAPE_DATA);
+						return {};
+					}
+					align16();
+
+					std::vector<tree_node> nodes(node_count);
+					auto next_node = 1;
+					std::vector<int> order(instance_count);
+					for (auto i = 0; i < instance_count; i++)
+					{
+						order[i] = i;
+					}
+					std::function<int(int, int, std::uint16_t)> build_tree =
+						[&](const int first, const int count, const std::uint16_t parent) -> int
+					{
+						const auto self = next_node++;
+						auto& node = nodes[self];
+						node.parent = parent;
+						for (auto k = 0; k < 3; k++)
+						{
+							node.mn[k] = FLT_MAX;
+							node.mx[k] = -FLT_MAX;
+						}
+						for (auto i = 0; i < count; i++)
+						{
+							const auto& b = convex_bounds[order[first + i]];
+							for (auto k = 0; k < 3; k++)
+							{
+								node.mn[k] = std::min(node.mn[k], b[k]);
+								node.mx[k] = std::max(node.mx[k], b[k + 3]);
+							}
+						}
+						if (count == 1)
+						{
+							node.data = static_cast<std::uint32_t>(order[first]) << 16;
+							return self;
+						}
+						auto axis = 0;
+						auto widest = node.mx[0] - node.mn[0];
+						for (auto k = 1; k < 3; k++)
+						{
+							if (node.mx[k] - node.mn[k] > widest)
+							{
+								widest = node.mx[k] - node.mn[k];
+								axis = k;
+							}
+						}
+						const auto centre = [&](const int idx)
+						{
+							const auto& b = convex_bounds[idx];
+							return (b[axis] + b[axis + 3]) * 0.5f;
+						};
+						std::sort(order.begin() + first, order.begin() + first + count,
+							[&](const int a, const int b) { return centre(a) < centre(b); });
+						const auto half = count / 2;
+						const auto left = build_tree(first, half, static_cast<std::uint16_t>(self));
+						const auto right = build_tree(first + half, count - half, static_cast<std::uint16_t>(self));
+						nodes[self].data = static_cast<std::uint32_t>(left) | (static_cast<std::uint32_t>(right) << 16);
+						return self;
+					};
+					build_tree(0, instance_count, 0);
+
+					for (auto n = 1; n < node_count - 1; n++)
+					{
+						const auto& node = nodes[n];
+						if ((node.data & 0xFFFF) != 0)
+						{
+							continue;
+						}
+						const auto instance = static_cast<int>(node.data >> 16);
+						if (instance < instance_count)
+						{
+							buf.patch<std::uint32_t>(instance_offsets[instance] + 48 + 12,
+								INT24_W_BASE | static_cast<std::uint32_t>(n));
+						}
+					}
+
+					local_fixups.emplace_back(nodes_field, buf.size());
+					for (auto n = 0; n < node_count; n++)
+					{
+						const auto& node = nodes[n];
+						const auto used = (n != 0 && n != node_count - 1);
+						for (auto k = 0; k < 3; k++)
+						{
+							buf.write<float>(used ? node.mn[k] : 0.0f);
+						}
+						buf.write<std::uint16_t>(used ? node.parent : 0);
+						buf.write<std::uint16_t>(used ? 0x3F00 : 0);
+						for (auto k = 0; k < 3; k++)
+						{
+							buf.write<float>(used ? node.mx[k] : 0.0f);
+						}
+						buf.write<std::uint32_t>(used ? node.data : 0);
+					}
+					align16();
+				}
+
+				global_fixups.emplace_back(body_shape_slot, root_offset);
+				global_fixups.emplace_back(referenced_slot, root_offset);
+				const auto data_size = buf.size();
+
+				// ------------------------------------------------------ class names
+				byte_buffer names;
+				const auto write_name = [&](const std::uint32_t sig, const char* name)
+				{
+					names.write<std::uint32_t>(sig);
+					names.write<std::uint8_t>(0x09);
+					const auto offset = names.size();
+					names.write(name, std::strlen(name) + 1);
+					return offset;
+				};
+				write_name(SIG_HK_CLASS, "hkClass");
+				write_name(SIG_HK_CLASS_MEMBER, "hkClassMember");
+				write_name(SIG_HK_CLASS_ENUM, "hkClassEnum");
+				write_name(SIG_HK_CLASS_ENUM_ITEM, "hkClassEnumItem");
+				std::array<std::size_t, CLASS_COUNT> name_offsets{};
+				name_offsets[CLASS_ASSET] = write_name(SIG_PHYSICS_ASSET, "HavokPhysicsAsset");
+				name_offsets[CLASS_SYSTEM_DATA] = write_name(SIG_PHYSICS_SYSTEM_DATA, "hknpPhysicsSystemData");
+				if (compound)
+				{
+					name_offsets[CLASS_COMPOUND] = write_name(SIG_DYNAMIC_COMPOUND_SHAPE, "hknpDynamicCompoundShape");
+				}
+				name_offsets[CLASS_PROPERTIES] = write_name(SIG_REF_COUNTED_PROPERTIES, "hkRefCountedProperties");
+				name_offsets[CLASS_MASS] = write_name(SIG_SHAPE_MASS_PROPERTIES, "hknpShapeMassProperties");
+				name_offsets[CLASS_CONVEX] = write_name(SIG_CONVEX_POLYTOPE_SHAPE, "hknpConvexPolytopeShape");
+				name_offsets[CLASS_CONNECTIVITY] = write_name(SIG_CONVEX_POLYTOPE_CONNECTIVITY, "hknpConvexPolytopeShapeConnectivity");
+				if (compound)
+				{
+					name_offsets[CLASS_COMPOUND_DATA] = write_name(SIG_DYNAMIC_COMPOUND_SHAPE_DATA, "hknpDynamicCompoundShapeData");
+				}
+				names.align(16, 0xFF);
+
+				// ------------------------------------------------------ fixup tables
+				std::sort(local_fixups.begin(), local_fixups.end(),
+					[](const std::pair<std::size_t, std::size_t>& a, const std::pair<std::size_t, std::size_t>& b)
+					{
+						return a.second < b.second;
+					});
+				byte_buffer fixups;
+				for (const auto& fixup : local_fixups)
+				{
+					fixups.write<std::int32_t>(static_cast<std::int32_t>(fixup.first));
+					fixups.write<std::int32_t>(static_cast<std::int32_t>(fixup.second));
+				}
+				fixups.align(16, 0xFF);
+				const auto local_size = fixups.size();
+				std::sort(global_fixups.begin(), global_fixups.end());
+				for (const auto& fixup : global_fixups)
+				{
+					fixups.write<std::int32_t>(static_cast<std::int32_t>(fixup.first));
+					fixups.write<std::int32_t>(2);
+					fixups.write<std::int32_t>(static_cast<std::int32_t>(fixup.second));
+				}
+				fixups.align(16, 0xFF);
+				const auto global_size = fixups.size() - local_size;
+				std::sort(virtual_fixups.begin(), virtual_fixups.end());
+				for (const auto& fixup : virtual_fixups)
+				{
+					fixups.write<std::int32_t>(static_cast<std::int32_t>(fixup.first));
+					fixups.write<std::int32_t>(0);
+					fixups.write<std::int32_t>(static_cast<std::int32_t>(name_offsets[fixup.second]));
+				}
+				fixups.align(16, 0xFF);
+				const auto virtual_size = fixups.size() - local_size - global_size;
+
+				// ------------------------------------------------------------ output
+				byte_buffer file;
+				file.write<std::uint32_t>(HK_MAGIC0);
+				file.write<std::uint32_t>(HK_MAGIC1);
+				file.write<std::int32_t>(0);
+				file.write<std::int32_t>(HK_FILE_VERSION);
+				file.write<std::uint8_t>(8);
+				file.write<std::uint8_t>(1);
+				file.write<std::uint8_t>(0);
+				file.write<std::uint8_t>(1);
+				file.write<std::int32_t>(3);
+				file.write<std::int32_t>(2);
+				file.write<std::int32_t>(0);
+				file.write<std::int32_t>(0);
+				file.write<std::int32_t>(static_cast<std::int32_t>(name_offsets[CLASS_ASSET]));
+				const char* version = "hk_2014.2.5-r1";
+				const auto version_length = std::strlen(version) + 1;
+				file.write(version, version_length);
+				file.fill(16 - version_length, 0xFF);
+				file.write<std::int32_t>(0);
+				file.write<std::uint16_t>(HK_MAX_PREDICATE);
+				file.write<std::uint16_t>(0);
+
+				const auto names_start = HK_HEADER_SIZE + 3 * HK_SECTION_HEADER_SIZE;
+				const auto data_start = names_start + names.size();
+				const auto write_section_header = [&](const char* tag, const std::size_t abs,
+					const std::size_t payload, const std::size_t local, const std::size_t global,
+					const std::size_t virt)
+				{
+					char name[19] = {};
+					std::strncpy(name, tag, sizeof(name));
+					file.write(name, sizeof(name));
+					file.write<std::uint8_t>(0xFF);
+					file.write<std::int32_t>(static_cast<std::int32_t>(abs));
+					file.write<std::int32_t>(static_cast<std::int32_t>(payload));
+					file.write<std::int32_t>(static_cast<std::int32_t>(payload + local));
+					file.write<std::int32_t>(static_cast<std::int32_t>(payload + local + global));
+					const auto end = payload + local + global + virt;
+					file.write<std::int32_t>(static_cast<std::int32_t>(end));
+					file.write<std::int32_t>(static_cast<std::int32_t>(end));
+					file.write<std::int32_t>(static_cast<std::int32_t>(end));
+					file.fill(16, 0xFF);
+				};
+				write_section_header("__classnames__", names_start, names.size(), 0, 0, 0);
+				write_section_header("__types__", data_start, 0, 0, 0, 0);
+				write_section_header("__data__", data_start, data_size, local_size, global_size, virtual_size);
+				file.write(names.data.data(), names.size());
+				file.write(buf.data.data(), buf.size());
+				file.write(fixups.data.data(), fixups.size());
+
+				ZONETOOL_INFO("havok: dynamic physics asset \"%s\" built -- %d convex(es), mass %.2f, "
+					"volume %.4f, %zu bytes", input.body_name.c_str(), instance_count,
+					body_mass.mass, body_mass.volume, file.size());
 				return file.data;
 			}
 		}

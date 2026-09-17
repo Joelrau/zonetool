@@ -4,9 +4,11 @@ Status: **decoded and generated.** Every layout below was read out of shipped IW
 and cross-checked against IW7's own reflection tables
 ([iw7-havok-reflection.txt](iw7-havok-reflection.txt)) and the ship binary. Convex
 compounds are emitted for IW5 brush models by `havok::builder::build_ents_shape_list`
-(§7), and the result validates against every stock-derived invariant (§8). It has not been
-tested in game -- and a brush model still needs a `PhysicsAsset` the converter cannot
-generate, see §7.
+(§7), and the result validates against every stock-derived invariant (§8). The dummy
+`PhysicsAsset` a brush model or trigger needs beside it is generated too (§7). Brush
+models are wired by default; triggers too since 2026-09-17, because the MP touch test
+runs against the trigger's body ([iw7-triggers.md](iw7-triggers.md) §3). Both confirmed
+working in game on mp_test_h1 (2026-09-17) once the instance w lanes were fixed (§6).
 
 The headline: **this blob does not need the compressed-mesh work.** Brush models and
 triggers are convex polytopes in dynamic compounds, and every structure involved —
@@ -104,11 +106,15 @@ else                      shapeIdx = -1;
 
 So **both** fields are required, and they are consistent in shipped data: in
 `mp_dome_dusk`, exactly the 41 cmodels with a `physicsAsset` have a shape index, and the
-17 with a null asset have `0xFFFF`. The asset names come from the entity string — key
-`51961` on a `script_brushmodel` entity holds `scriptbrushmodeldummydefault` /
-`scriptbrushmodeldummyfixed` / `scriptbrushmodeldummy_mpairdropcrate`; trigger entities
-carry `triggermodeldummydefault`. IW5 entities have no such key, so a converter has to
-synthesise it.
+17 with a null asset have `0xFFFF`. The runtime takes the asset from `cmodel_t` /
+`TriggerModel` (above), not from the entity string. Stock entity strings do also carry
+key `51961` (a static canonical string id, `0xCAF9`, with no text form in the ship exe)
+on every `script_brushmodel`, holding `scriptbrushmodeldummydefault` /
+`scriptbrushmodeldummyfixed` / `scriptbrushmodeldummy_mpairdropcrate`; the converter
+emits that pair verbatim for parity, but nothing in the body-creation path reads it.
+It must be emitted as the number: `G_ParseSpawnVars2` hashes a text key into the
+dynamic canonical range, and iw7-mod's map_ents parser drops text keys its token table
+does not know (0xCAF9 is one of them).
 
 `WorldCollision_GetMapEntsShape` is a one-liner and settles the indexing:
 
@@ -262,6 +268,19 @@ indices   size=24 offset=280  -> cp+72+280 = cp+352   (24 x 1)
 `hknpShapeInstance` is 128 bytes: `+0 transform` (`hkTransform`: 3 rotation columns then
 translation, all `hkVector4f`), `+64 scale` (`(1,1,1,1)`), `+80 shape*`, `+88 shapeTag:u16`
 (indexes `shapeTagData`), `+90 destructionTag:u16` (`0xFFFF`), `+92 padding[30]`.
+
+**The transform's w lanes are payload, not padding.** hknp packs an int24 into the low
+mantissa bits of `0.5f` (`hkVector4::setInt24W`), the same trick as the polytope vertex
+index. Column 0's w is the instance **flags**: `0x3F000040` on all 232 instances in
+mp_fallen + mp_afghan. The translation's w is the index of the instance's **leaf node in
+the compound's dynamic tree** (§ below): `0x3F000001` for a lone instance (the root is
+the leaf), `2,3` for two instances, `2,4,5` for three, and so on. The compound's own
+`aabb.min.w` is `0x3F000000` on 189 of 232 compounds (a small count on the rest) and
+`aabb.max.w` is 0. Writing zeros here (as this generator did until 2026-09-17) produces
+a file that passes every structural check and loads, but the runtime's shape queries skip
+every instance: brush-model and trigger bodies were created and nothing ever overlapped
+them -- players walked through `script_brushmodel`s and `trigger_hurt` never fired.
+Confirmed fixed in game on mp_test_h1. `entscheck.py` now enforces all three lanes.
 
 ### `hknpDynamicCompoundShapeData` — 56 bytes, and its tree
 
@@ -429,6 +448,9 @@ silently wrong:
 - Object pointers were emitted as local fixups instead of global ones.
 - Convex vertex arrays were not padded to a multiple of four.
 - The vertex `w` lane was written as `0.0f` instead of `0x3F000000 | index`.
+- The instance transform's w lanes (flags, leaf node index) were written as `0.0f`. This
+  one survived every offline check and only showed up as "body exists, overlap returns 0"
+  at runtime.
 - Fixup tables were not padded to a 16-byte boundary with `0xFF`. Every section offset in
   every shipped file is 16-aligned, with 0–12 bytes of slack between tables; this affected
   the world emitter as well.

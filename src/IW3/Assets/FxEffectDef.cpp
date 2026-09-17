@@ -2,6 +2,14 @@
 #include "IW4/Assets/FxEffectDef.hpp"
 #include "Material.hpp"
 #include "FxMaterialDeps.hpp"
+#include "XModel.hpp"
+
+// The IW5->IW7 model converter's request registry (Converter/IW7/Assets/XModel.hpp);
+// declared here because that header drags in IW7 types this project does not see.
+namespace ZoneTool::IW5::IW7Converter
+{
+	bool wants_dynamic_box(const std::string& model, float* mass);
+}
 
 namespace ZoneTool
 {
@@ -66,6 +74,36 @@ namespace ZoneTool
 
 			// dump fx
 			IW4::IFxEffectDef::dump(iw4_asset);
+
+			// The IW7 particle converter turns model elements with FX_ELEM_USE_MODEL_PHYSICS
+			// into real physics bodies, which need a dynamic physics asset on the model. It
+			// registers those models; run each through the model chain again so the asset on
+			// disk is the dynamic one, whatever was written for it before this effect.
+			if (zonetool::dumping_target == zonetool::dump_target::iw7)
+			{
+				std::vector<XModel*> redumped;
+				const auto count = asset->elemDefCountLooping + asset->elemDefCountOneShot + asset->elemDefCountEmission;
+				for (auto e = 0; e < count; e++)
+				{
+					const auto& elem = asset->elemDefs[e];
+					if (elem.elemType != FX_ELEM_TYPE_MODEL || (elem.flags & FX_ELEM_USE_MODEL_PHYSICS) == 0)
+					{
+						continue;
+					}
+					for (auto v = 0; v < elem.visualCount; v++)
+					{
+						auto* model = elem.visualCount > 1 ? elem.visuals.array[v].model : elem.visuals.instance.model;
+						if (!model || !model->name || !IW5::IW7Converter::wants_dynamic_box(model->name, nullptr)
+							|| std::find(redumped.begin(), redumped.end(), model) != redumped.end())
+						{
+							continue;
+						}
+						redumped.emplace_back(model);
+						ZONETOOL_INFO("fx \"%s\": re-dumping xmodel \"%s\" with a dynamic physics asset", asset->name, model->name);
+						IXModel::dump(model);
+					}
+				}
+			}
 		}
 	}
 }

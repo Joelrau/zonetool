@@ -2,6 +2,7 @@
 #include "../Include.hpp"
 
 #include "ParticleSystem.hpp"
+#include "XModel.hpp"
 
 #include "IW5/Structs.hpp"
 #include "IW5/Dumper/IW7/Assets/Material.hpp"
@@ -57,6 +58,21 @@ namespace ZoneTool::IW5
 				break;
 			}
 			return 0;
+		}
+
+		// Stock vfx debris masses are 1-2; nothing stock is lighter than 1.
+		constexpr auto FX_MODEL_PHYSICS_MASS = 1.0f;
+
+		// Real physics bodies for FX_ELEM_USE_MODEL_PHYSICS model elements are OPT-IN
+		// (ZT_FX_MODEL_PHYSICS=1). With the dynamic asset in place the pieces do become
+		// Havok bodies, but two stock behaviours are still missing: the particle's launch
+		// velocity is not handed to the body (chunks drop straight down) and the bodies do
+		// not collide with the world the way clutter dynents do. Both need a stock vfx with
+		// physics decoded first. Until then the ray-cast emulation stays the default.
+		bool fx_model_physics_enabled()
+		{
+			const auto* env = std::getenv("ZT_FX_MODEL_PHYSICS");
+			return env && env[0] == '1';
 		}
 
 		IW7::PARTICLE_ELEMENT_TYPE convert_elem_type(IW5::FxElemType type)
@@ -1348,10 +1364,26 @@ namespace ZoneTool::IW5
 			moduleData.type = module.moduleType;
 			moduleData.m_flags = 0;
 
-			// m_usePhysics makes AddModule allocate physics instances that need an IW7 physics asset on the model,
-			// FX_ELEM_USE_MODEL_PHYSICS is emulated by generate_physics_ray_cast_module instead
-			moduleData.m_usePhysics = false;
+			// m_usePhysics makes AddModule allocate physics instances that need an IW7 physics
+			// asset on the model -- a DYNAMIC one, or the piece never moves (a compressed-mesh
+			// body cannot be simulated). Models get that asset by being registered here: the
+			// model converter builds one from the model's PhysCollmap, or a bounds box when it
+			// has none, and the IW3 fx dumper re-dumps the model afterwards. This is what stock
+			// does for its vfx debris (spheres / small convexes with mass properties). Elements
+			// without model physics keep the ray-cast emulation.
+			moduleData.m_usePhysics = fx_model_physics_enabled() && (elem->flags & FX_ELEM_USE_MODEL_PHYSICS) != 0;
 			moduleData.m_motionBlurHQ = false;
+			if (moduleData.m_usePhysics)
+			{
+				for (auto idx = 0; idx < elem->visualCount; idx++)
+				{
+					const auto* model = elem->visualCount > 1 ? elem->visuals.array[idx].model : elem->visuals.instance.model;
+					if (model && model->name)
+					{
+						request_dynamic_box(model->name, FX_MODEL_PHYSICS_MASS);
+					}
+				}
+			}
 
 			if (elem->visualCount)
 			{
@@ -1503,6 +1535,13 @@ namespace ZoneTool::IW5
 			// IW5 only tests collision (and so impact effects / die on touch) with FX_ELEM_USE_COLLISION,
 			// model physics collides on its own
 			if ((elem->flags & (FX_ELEM_USE_COLLISION | FX_ELEM_USE_MODEL_PHYSICS)) == 0)
+			{
+				return;
+			}
+
+			// a model element that is a real physics body does not also ray cast
+			if (elem->elemType == FX_ELEM_TYPE_MODEL && fx_model_physics_enabled()
+				&& (elem->flags & FX_ELEM_USE_MODEL_PHYSICS) != 0)
 			{
 				return;
 			}

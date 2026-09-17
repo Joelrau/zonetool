@@ -228,6 +228,33 @@ namespace ZoneTool::IW7
 			std::vector<std::uint8_t> build_model_physics_asset(const mesh_input& input,
 				const physics_asset_input& physics_asset);
 
+			// A model that is meant to move: one dynamic body over the model's PhysCollmap
+			// hulls (a single hknpConvexPolytopeShape, or an hknpDynamicCompoundShape of
+			// them), every shape carrying hknpShapeMassProperties, plus the hknpMotionCinfo
+			// a dynamic body needs. This is what IW7 attaches to clutter and other
+			// physics-simulated props (stock com_junktire, tool_watercan_iw6); a static
+			// compressed-mesh body cannot be simulated. Geometry is CoD units, model space,
+			// scaled by `scale`. See docs/iw7-ents-shapes.md and docs/iw7-havok-collision.md.
+			struct dynamic_physics_asset_input
+			{
+				std::vector<polytope> convexes;
+				std::string body_name = "tag_origin"; // what every stock dynamic body is called
+				// The body's mass. Stock values are author-set round numbers (5, 2, 25, 100),
+				// the same convention as IW5's PhysPreset::mass, which is where it comes from.
+				float mass = 5.0f;
+				// hknpBodyCinfo::collisionFilterInfo. Stock clutter (com_junktire) uses the
+				// same shot-only 0x3180 as static props: the player pushes clutter, it does
+				// not block him.
+				std::uint32_t body_contents = 0x3180u;
+				std::uint32_t material_crc = 0x1AB7BC33u;
+				std::uint32_t body_quality_crc = 0x7923E35Cu; // "default", as on the dummies
+				// motionPropertiesNameCRCLookup[0]; 0x9F53AC92 on every dynamic stock asset
+				std::uint32_t motion_properties_crc = 0x9F53AC92u;
+				float scale = 1.0f / 32.0f;
+			};
+
+			std::vector<std::uint8_t> build_dynamic_physics_asset(const dynamic_physics_asset_input& input);
+
 			// XModel::physicsLODData. This is a HavokPhysicsXModelLOD packfile containing
 			// collision geometry for the model's streamed LODs. `lod_name` is both the
 			// packfile entry name and the XModel script-string table entry.

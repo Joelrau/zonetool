@@ -3,6 +3,14 @@
 #include "H1/Utils/PhysWorld/generate.hpp"
 
 #include "MapEnts.hpp"
+#include "XModel.hpp"
+
+// The IW5->IW7 model converter's request registry (Converter/IW7/Assets/XModel.hpp);
+// declared here because that header drags in IW7 types this project does not see.
+namespace ZoneTool::IW5::IW7Converter
+{
+	bool wants_dynamic_box(const std::string& model, float* mass);
+}
 
 namespace ZoneTool
 {
@@ -749,6 +757,33 @@ namespace ZoneTool
 
 			// dump clipmap
 			IW4::IClipMap::dump(iw4_asset);
+
+			// The IW7 target simulates clutter dynents with a dynamic Havok body built from
+			// the model's PhysCollmap. A clutter model with no physGeoms (me_plastic_crate1)
+			// was registered for a bounds-box asset during that conversion; the model itself
+			// may already be on disk with a static one, so run it through the model chain
+			// again now that the request is known. Done here rather than in the IW5 dumper
+			// because the IW5-level dynent xModel pointers are placeholders on this path.
+			if (zonetool::dumping_target == zonetool::dump_target::iw7)
+			{
+				std::vector<XModel*> redumped;
+				for (auto list = 0; list < 2; list++)
+				{
+					for (unsigned short i = 0; i < asset->dynEntCount[list]; i++)
+					{
+						auto* model = asset->dynEntDefList[list] ? asset->dynEntDefList[list][i].xModel : nullptr;
+						if (!model || !model->name || model->physGeoms
+							|| !IW5::IW7Converter::wants_dynamic_box(model->name, nullptr)
+							|| std::find(redumped.begin(), redumped.end(), model) != redumped.end())
+						{
+							continue;
+						}
+						redumped.emplace_back(model);
+						ZONETOOL_INFO("clipmap: re-dumping xmodel \"%s\" with a dynamic bounds-box physics asset", model->name);
+						IXModel::dump(model);
+					}
+				}
+			}
 		}
 	}
 }
