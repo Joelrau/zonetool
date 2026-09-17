@@ -27,6 +27,7 @@ using namespace zonetool;
 #include "Assets/PhysicsAsset.hpp"
 #include "Assets/ParticleSystem.hpp"
 #include "Assets/RawFile.hpp"
+#include "Assets/ScriptableDef.hpp"
 #include "Assets/XAnimParts.hpp"
 #include "Assets/XModel.hpp"
 #include "Assets/XSurface.hpp"

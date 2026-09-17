@@ -44,10 +44,9 @@ namespace ZoneTool::IW7
 				constexpr auto HK_SECTION_HEADER_SIZE = 64;
 				constexpr auto HK_MAX_PREDICATE = 21;
 
-				// Every vertex this writer emits is a shared vertex, so the field that bounds
-				// a section is hkcdStaticMeshTreeBaseSection::m_numSharedIndices, a uint8.
-				// (m_numPackedVertices, also a uint8, is always 0 here.) Stock agrees: the
-				// widest section in any shipped world blob carries 252-255 shared indices.
+				// Both the shared-index and packed-vertex counters in a section are uint8.
+				// The shared default follows stock; ZT_HAVOK_VERTEX_STORAGE=packed is a
+				// controlled diagnostic path using the same limit and section topology.
 				constexpr auto MAX_SHARED_INDICES_PER_SECTION = 255;
 				// hkcdStaticMeshTreeBasePrimitive::m_indices is uint8[4].
 				constexpr auto MAX_VERTEX_INDEX = 255;
@@ -89,6 +88,7 @@ namespace ZoneTool::IW7
 				constexpr auto SIG_DYNAMIC_COMPOUND_SHAPE_DATA = 0xF33DC3CCu;
 				constexpr auto SIG_PHYSICS_ASSET = 0x0DFB2195u;
 				constexpr auto SIG_PHYSICS_SYSTEM_DATA = 0xB26317A4u;
+				constexpr auto SIG_XMODEL_LOD = 0x93FC3CBDu;
 				constexpr auto SIG_REF_COUNTED_PROPERTIES = 0x7C574867u;
 				constexpr auto SIG_SHAPE_MASS_PROPERTIES = 0xE9191728u;
 
@@ -266,20 +266,104 @@ namespace ZoneTool::IW7
 					return packed;
 				}
 
+				void unpack_vertex(const std::uint32_t packed, const float* codec_parms,
+					float(&out)[3])
+				{
+					auto shift = 0;
+					for (auto i = 0; i < 3; i++)
+					{
+						const auto mask = (1u << PACKED_BITS[i]) - 1u;
+						const auto raw = (packed >> shift) & mask;
+						out[i] = codec_parms[i]
+							+ static_cast<float>(raw) * codec_parms[3 + i];
+						shift += PACKED_BITS[i];
+					}
+				}
+
+				enum class vertex_storage
+				{
+					shared,
+					packed,
+				};
+
+				vertex_storage selected_vertex_storage()
+				{
+					const auto* env = std::getenv("ZT_HAVOK_VERTEX_STORAGE");
+					if (!env || !env[0] || !std::strcmp(env, "shared"))
+					{
+						return vertex_storage::shared;
+					}
+
+					if (!std::strcmp(env, "packed"))
+					{
+						return vertex_storage::packed;
+					}
+
+					ZONETOOL_WARNING("havok: ZT_HAVOK_VERTEX_STORAGE=\"%s\" is invalid; "
+						"using shared vertices", env);
+					return vertex_storage::shared;
+				}
+
 				// ------------------------------------------------------------ sections
+
+				// The low nibble of a custom primitive's descriptor word. Type 2 is the only
+				// one stock world blobs use: it is the convex form, whose vertex run follows in
+				// the next word. Bits 4-5 are the layer, 0 in every stock descriptor.
+				constexpr auto CUSTOM_PRIMITIVE_CONVEX = 0x2u;
+				constexpr auto MAX_CONVEX_VERTICES = 255u; // numVertices is the descriptor's high byte
+				constexpr auto CONVEX_FLAT_TOLERANCE = 1e-4f; // Havok units
+				// A section is addressed through ONE 65,536-vertex page of sharedVertices.
+				constexpr std::size_t SHARED_VERTEX_PAGE_SIZE = 0x10000;
+
+				// One local slot of a section's sharedVerticesIndex range.
+				enum class slot_kind : std::uint8_t
+				{
+					vertex,        // a listed vertex; verts[slot] is its position
+					convex_record, // word 0 of a convex record: the descriptor
+					convex_start,  // word 1 of a convex record: the run's page-relative start
+				};
 
 				struct build_section
 				{
+					// One entry per local slot, record words included, so verts.size() IS the
+					// section's numSharedIndices. A record slot holds a copy of its convex's
+					// first vertex purely as a placeholder: it is never welded onto, never
+					// written to the vertex pool, and always lies inside the section domain.
 					std::vector<std::array<float, 3>> verts;
+					std::vector<slot_kind> slot_kinds;
 					std::vector<std::array<std::uint8_t, 4>> primitives;
 					std::vector<std::uint16_t> tags;
 					std::vector<int> contents;
 					std::vector<std::uint32_t> material_crcs;
 					std::vector<std::uint64_t> user_data;
 					std::vector<bool> quads;
+					// Per primitive: -1 for a triangle or quad, otherwise the index into
+					// `convexes` of the convex custom primitive it is.
+					std::vector<int> custom_index;
+					// The vertex runs of this section's convex customs, in primitive order.
+					std::vector<std::vector<std::array<float, 3>>> convexes;
 					float codec_parms[6] = {};
 					float mins[3] = {};
 					float maxs[3] = {};
+
+					std::size_t listed_vertex_count() const
+					{
+						return static_cast<std::size_t>(std::count(slot_kinds.begin(),
+							slot_kinds.end(), slot_kind::vertex));
+					}
+
+					// What this section consumes from the shared vertex pool: its listed
+					// vertices plus every convex run. This, not verts.size(), is what has to
+					// fit inside one page.
+					std::size_t pool_vertex_count() const
+					{
+						auto count = listed_vertex_count();
+						for (const auto& run : convexes)
+						{
+							count += run.size();
+						}
+						return count;
+					}
 				};
 
 				void finalise_section_codec(build_section& section)
@@ -290,12 +374,42 @@ namespace ZoneTool::IW7
 						section.maxs[i] = -FLT_MAX;
 					}
 
-					for (const auto& v : section.verts)
+					// Written as explicit compares through one helper on purpose. The obvious
+					// form -- std::min/std::max inside a slot loop that `continue`s past record
+					// slots -- is miscompiled by MSVC 2022 at /O2 (x86): the stored domains came
+					// out covering only the first few slots and convexes, and inverted on some
+					// sections. /Od and #pragma optimize("", off) both produce correct domains,
+					// and so does this form at /O2.
+					const auto grow = [&section](const std::array<float, 3>& v)
 					{
 						for (auto i = 0; i < 3; i++)
 						{
-							section.mins[i] = std::min(section.mins[i], v[i]);
-							section.maxs[i] = std::max(section.maxs[i], v[i]);
+							if (v[i] < section.mins[i])
+							{
+								section.mins[i] = v[i];
+							}
+							if (v[i] > section.maxs[i])
+							{
+								section.maxs[i] = v[i];
+							}
+						}
+					};
+
+					for (auto s = 0u; s < section.verts.size(); s++)
+					{
+						if (section.slot_kinds[s] == slot_kind::vertex)
+						{
+							grow(section.verts[s]);
+						}
+					}
+
+					// The section domain has to bound the convexes too -- their runs are
+					// quantised over the tree domain, which is built from these.
+					for (const auto& run : section.convexes)
+					{
+						for (const auto& v : run)
+						{
+							grow(v);
 						}
 					}
 
@@ -391,7 +505,10 @@ namespace ZoneTool::IW7
 							auto found = -1;
 							for (auto v = 0u; v < current.verts.size(); v++)
 							{
-								if (current.verts[v][0] == corners[i][0] &&
+								// Never weld onto a convex record's slot: it only carries a
+								// placeholder position, and its word is not a vertex index.
+								if (current.slot_kinds[v] == slot_kind::vertex &&
+									current.verts[v][0] == corners[i][0] &&
 									current.verts[v][1] == corners[i][1] &&
 									current.verts[v][2] == corners[i][2])
 								{
@@ -406,6 +523,7 @@ namespace ZoneTool::IW7
 								std::array<float, 3> v{};
 								std::memcpy(v.data(), corners[i], sizeof(float[3]));
 								current.verts.emplace_back(v);
+								current.slot_kinds.emplace_back(slot_kind::vertex);
 							}
 
 							indices[i] = static_cast<std::uint8_t>(found);
@@ -419,10 +537,61 @@ namespace ZoneTool::IW7
 
 						current.primitives.emplace_back(indices);
 						current.quads.emplace_back(quad);
+						current.custom_index.emplace_back(-1);
 						current.tags.emplace_back(tri.surface_tag);
 						current.contents.emplace_back(tri.contents);
 						current.material_crcs.emplace_back(tri.material_crc);
 						current.user_data.emplace_back(tri.user_data);
+					}
+
+					// Convex custom primitives, appended after the triangles and sharing their
+					// sections -- stock mixes the two freely (1,409 of mp_fallen's 2,111
+					// sections do). A custom costs one primitive and TWO local shared-index
+					// slots (descriptor + start). Its vertex run costs pool vertices but no
+					// slots. Every section's pool consumption stays under one page by
+					// construction: at most 255 listed vertices plus 127 runs of at most 255.
+					auto convexes_rejected = 0;
+					std::map<std::string, int> rejection_reasons;
+
+					for (const auto& cvx : input.convexes)
+					{
+						if (const auto* reason = convex_rejection(cvx.verts))
+						{
+							convexes_rejected++;
+							rejection_reasons[reason]++;
+							continue;
+						}
+
+						if (current.verts.size() + 2 > MAX_SHARED_INDICES_PER_SECTION ||
+							current.primitives.size() >= MAX_PRIMITIVES_PER_SECTION ||
+							current.pool_vertex_count() + cvx.verts.size() > SHARED_VERTEX_PAGE_SIZE)
+						{
+							flush();
+						}
+
+						const auto r = current.verts.size();
+						if (r > MAX_VERTEX_INDEX)
+						{
+							// Unreachable given the flush above; kept so a future limit change
+							// cannot silently truncate the record slot into a uint8.
+							ZONETOOL_ERROR("havok: convex record slot %zu does not fit a uint8", r);
+							continue;
+						}
+
+						current.verts.emplace_back(cvx.verts.front());
+						current.slot_kinds.emplace_back(slot_kind::convex_record);
+						current.verts.emplace_back(cvx.verts.front());
+						current.slot_kinds.emplace_back(slot_kind::convex_start);
+
+						const auto rb = static_cast<std::uint8_t>(r);
+						current.primitives.push_back({rb, rb, rb, rb});
+						current.quads.emplace_back(false);
+						current.custom_index.emplace_back(static_cast<int>(current.convexes.size()));
+						current.convexes.emplace_back(cvx.verts);
+						current.tags.emplace_back(cvx.surface_tag);
+						current.contents.emplace_back(cvx.contents);
+						current.material_crcs.emplace_back(cvx.material_crc);
+						current.user_data.emplace_back(cvx.user_data);
 					}
 
 					flush();
@@ -432,6 +601,19 @@ namespace ZoneTool::IW7
 						ZONETOOL_INFO("havok: dropped %d degenerate triangle(s); emitting them "
 							"would have produced primitives the runtime reads as custom "
 							"primitives", degenerate_dropped);
+					}
+
+					if (convexes_rejected)
+					{
+						std::string reasons;
+						for (const auto& [reason, count] : rejection_reasons)
+						{
+							reasons += (reasons.empty() ? "" : ", ") + std::to_string(count)
+								+ " " + reason;
+						}
+						ZONETOOL_WARNING("havok: rejected %d of %zu convex(es), which are NOT in "
+							"the mesh (%s)", convexes_rejected, input.convexes.size(),
+							reasons.c_str());
 					}
 
 					return sections;
@@ -525,6 +707,17 @@ namespace ZoneTool::IW7
 				constexpr auto NIBBLE_MAX = 15;
 				constexpr auto NIBBLE_SCALE = 226.0f; // Havok's divisor; see the note above
 
+				// Diagnostic only: zero-inset nodes are a valid stock encoding and decode to
+				// their complete parent AABB.  They disable tree culling without changing any
+				// primitive, tag, vertex, or collision-filter data.  This distinguishes a
+				// compressed-tree traversal error from a mesh/query error when a ray hits a
+				// face but a player convex cast does not.
+				bool loose_bvh_enabled()
+				{
+					const auto* env = std::getenv("ZT_HAVOK_BVH_LOOSE");
+					return env && env[0] == '1';
+				}
+
 				// Largest n in [0,15] with (n*n / 226) * extent <= inset.
 				int quantise_inset(const float inset, const float extent)
 				{
@@ -579,6 +772,12 @@ namespace ZoneTool::IW7
 				// children must then be encoded against.
 				aabb encode_node_aabb(std::uint8_t* xyz, const aabb& parent, const aabb& child)
 				{
+					if (loose_bvh_enabled())
+					{
+						xyz[0] = xyz[1] = xyz[2] = 0;
+						return parent;
+					}
+
 					aabb decoded{};
 					for (auto i = 0; i < 3; i++)
 					{
@@ -730,12 +929,146 @@ namespace ZoneTool::IW7
 			// hangs it off a HavokPhysicsAsset with a static body. The hknpCompressedMeshShape
 			// and its data are byte-for-byte the same either way, which is why this is one
 			// function rather than two.
-			std::vector<std::uint8_t> build_mesh_blob(const mesh_input& input,
-				const physics_asset_input* physics_asset)
+			const char* convex_rejection(const std::vector<std::array<float, 3>>& verts)
 			{
-				if (input.triangles.empty())
+				if (verts.size() < 4)
 				{
-					ZONETOOL_ERROR("havok: refusing to build a mesh blob from 0 triangles");
+					return "fewer than 4 vertices";
+				}
+				if (verts.size() > MAX_CONVEX_VERTICES)
+				{
+					return "more than 255 vertices";
+				}
+
+				for (auto i = 0u; i < verts.size(); i++)
+				{
+					for (auto j = i + 1; j < verts.size(); j++)
+					{
+						if (verts[i] == verts[j])
+						{
+							return "repeated vertices";
+						}
+					}
+				}
+
+				// Flat: every vertex within CONVEX_FLAT_TOLERANCE of one plane. The planes tried
+				// are those through vertex triples -- every triple up to 32 vertices, which
+				// covers every face plane of the hull, and beyond that one well-spread triple
+				// (a vertex, the farthest vertex from it, and the farthest from that line).
+				// Each candidate gives an upper bound on the true minimum width, so anything
+				// reported flat really is flat.
+				const auto sub = [](const std::array<float, 3>& a, const std::array<float, 3>& b)
+				{
+					return std::array<double, 3>{
+						static_cast<double>(a[0]) - b[0],
+						static_cast<double>(a[1]) - b[1],
+						static_cast<double>(a[2]) - b[2]};
+				};
+				const auto cross = [](const std::array<double, 3>& a, const std::array<double, 3>& b)
+				{
+					return std::array<double, 3>{
+						a[1] * b[2] - a[2] * b[1],
+						a[2] * b[0] - a[0] * b[2],
+						a[0] * b[1] - a[1] * b[0]};
+				};
+				const auto dot = [](const std::array<double, 3>& a, const std::array<double, 3>& b)
+				{
+					return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+				};
+
+				// Max distance of any vertex from the plane through a, b, c; negative if the
+				// triple is collinear and defines no plane.
+				const auto width_for = [&](const std::size_t a, const std::size_t b,
+					const std::size_t c) -> double
+				{
+					auto n = cross(sub(verts[b], verts[a]), sub(verts[c], verts[a]));
+					const auto length = std::sqrt(dot(n, n));
+					if (length < 1e-12)
+					{
+						return -1.0;
+					}
+					auto width = 0.0;
+					for (const auto& v : verts)
+					{
+						width = std::max(width, std::fabs(dot(sub(v, verts[a]), n)) / length);
+					}
+					return width;
+				};
+
+				auto any_plane = false;
+				if (verts.size() <= 32)
+				{
+					for (auto a = 0u; a < verts.size(); a++)
+					{
+						for (auto b = a + 1; b < verts.size(); b++)
+						{
+							for (auto c = b + 1; c < verts.size(); c++)
+							{
+								const auto width = width_for(a, b, c);
+								if (width < 0.0)
+								{
+									continue;
+								}
+								any_plane = true;
+								if (width <= CONVEX_FLAT_TOLERANCE)
+								{
+									return "flat within 1e-4";
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					std::size_t b = 0, c = 0;
+					auto best = -1.0;
+					for (auto i = 1u; i < verts.size(); i++)
+					{
+						const auto d = sub(verts[i], verts[0]);
+						if (dot(d, d) > best)
+						{
+							best = dot(d, d);
+							b = i;
+						}
+					}
+					best = -1.0;
+					const auto axis = sub(verts[b], verts[0]);
+					for (auto i = 1u; i < verts.size(); i++)
+					{
+						const auto n = cross(axis, sub(verts[i], verts[0]));
+						if (dot(n, n) > best)
+						{
+							best = dot(n, n);
+							c = i;
+						}
+					}
+					const auto width = width_for(0, b, c);
+					if (width >= 0.0)
+					{
+						any_plane = true;
+						if (width <= CONVEX_FLAT_TOLERANCE)
+						{
+							return "flat within 1e-4";
+						}
+					}
+				}
+
+				if (!any_plane)
+				{
+					return "collinear";
+				}
+
+				return nullptr;
+			}
+
+			std::vector<std::uint8_t> build_mesh_blob(const mesh_input& input,
+				const physics_asset_input* physics_asset, const std::string* xmodel_lod_name = nullptr,
+				std::vector<shape_tag>* out_tags = nullptr)
+			{
+				if (input.triangles.empty() && input.convexes.empty())
+				{
+					ZONETOOL_ERROR("havok: refusing to build a mesh blob from 0 triangles "
+						"and 0 convexes");
 					return {};
 				}
 
@@ -745,6 +1078,26 @@ namespace ZoneTool::IW7
 					ZONETOOL_ERROR("havok: no sections produced");
 					return {};
 				}
+
+				std::size_t total_customs = 0;
+				for (const auto& section : sections)
+				{
+					total_customs += section.convexes.size();
+				}
+
+				auto vertex_format = selected_vertex_storage();
+				if (vertex_format == vertex_storage::packed && total_customs)
+				{
+					// A convex record lives in sharedVerticesIndex and its run in
+					// sharedVertices; neither exists on the packed path, and stock has no
+					// packed-vertex custom primitive to copy.
+					ZONETOOL_WARNING("havok: ZT_HAVOK_VERTEX_STORAGE=packed cannot carry %zu "
+						"convex custom primitive(s); using shared vertices for this blob",
+						total_customs);
+					vertex_format = vertex_storage::shared;
+				}
+				ZONETOOL_INFO("havok: vertex storage %s (ZT_HAVOK_VERTEX_STORAGE)",
+					vertex_format == vertex_storage::packed ? "packed" : "shared");
 
 				// ------------------------------------------------------- shape tags
 				// primitiveDataRuns.value indexes shapeTagData, so build the palette of
@@ -787,6 +1140,20 @@ namespace ZoneTool::IW7
 					}
 				}
 
+				// The palette as the 24-byte records it will become. The shapeTagData write
+				// loop below emits straight from this, and `out_tags` hands the same vector
+				// back, so a caller that chains this table into the ents list is holding
+				// exactly what the blob carries -- contents are masked here, once, rather
+				// than at two sites that could drift apart.
+				std::vector<shape_tag> tag_records;
+				tag_records.reserve(palette.size());
+				for (const auto& entry : palette)
+				{
+					tag_records.emplace_back(shape_tag{
+						filter_contents(static_cast<std::uint32_t>(std::get<0>(entry))),
+						std::get<1>(entry), std::get<2>(entry)});
+				}
+
 				// -------------------------------------------------------- key space
 				// A primitive key packs (section, primitive, triangle-within-primitive).
 				// triangleIsInterior has one bit per key and quadIsFlat one per primitive
@@ -817,16 +1184,29 @@ namespace ZoneTool::IW7
 				for (const auto& section : sections)
 				{
 					total_prims += section.primitives.size();
-					total_verts += section.verts.size();
+					// Pool vertices this mesh actually emits -- listed vertices plus convex
+					// runs, excluding page padding. Record slots are not vertices.
+					total_verts += section.pool_vertex_count();
 				}
 
-				// A triangle owns one key, a quad two -- its second triangle is key | 1.
+				// A triangle owns one key, a quad two -- its second triangle is key | 1 -- and a
+				// convex custom primitive exactly one. mesh_triangles is the triangle count
+				// alone (quads as two), which is what the shape list's triCounts carries:
+				// stock mp_afghan reports 188,886 there beside 7,790 customs.
 				auto num_primitive_keys = 0;
+				auto mesh_triangles = 0;
 				for (const auto& section : sections)
 				{
 					for (auto pi = 0u; pi < section.primitives.size(); pi++)
 					{
-						num_primitive_keys += section.quads[pi] ? 2 : 1;
+						if (section.custom_index[pi] >= 0)
+						{
+							num_primitive_keys += 1;
+							continue;
+						}
+						const auto keys = section.quads[pi] ? 2 : 1;
+						num_primitive_keys += keys;
+						mesh_triangles += keys;
 					}
 				}
 
@@ -875,6 +1255,22 @@ namespace ZoneTool::IW7
 					for (auto p = 0u; p < section.primitives.size(); p++)
 					{
 						prim_boxes[p].reset();
+						// A convex custom's leaf box is the AABB of its vertex run, from the
+						// same source floats the triangle boxes use.
+						if (section.custom_index[p] >= 0)
+						{
+							for (const auto& v : section.convexes[section.custom_index[p]])
+							{
+								aabb point{};
+								for (auto c = 0; c < 3; c++)
+								{
+									point.lo[c] = v[c];
+									point.hi[c] = v[c];
+								}
+								prim_boxes[p].add(point);
+							}
+							continue;
+						}
 						// Four corners for a quad, three for a triangle -- a quad's fourth
 						// corner is outside the box its first three describe.
 						for (auto k = 0; k < (section.quads[p] ? 4 : 3); k++)
@@ -896,14 +1292,17 @@ namespace ZoneTool::IW7
 				}
 
 				byte_buffer primitives;
+				byte_buffer packed_vertices;
 				byte_buffer shared_vertices;
 				byte_buffer shared_vertex_index;
 				byte_buffer data_runs;
 				std::vector<int> section_first_prim(sections.size());
+				std::vector<int> section_first_packed(sections.size());
 				std::vector<int> section_first_vert(sections.size());
 				std::vector<int> section_page(sections.size());
 				std::vector<int> section_first_run(sections.size());
 				std::vector<int> section_run_count(sections.size());
+				auto quantised_duplicate_runs = 0;
 
 				for (auto i = 0u; i < sections.size(); i++)
 				{
@@ -915,7 +1314,25 @@ namespace ZoneTool::IW7
 						primitives.write(prim.data(), 4);
 					}
 
-					// All geometry goes in as shared vertices, laid out section by section.
+					if (vertex_format == vertex_storage::packed)
+					{
+						// Packed vertices are addressed directly from the section's local indices.
+						// Its 11/11/10 codec is section-local, so no shared-index table or page
+						// is involved. This is supported by the runtime, although stock world
+						// meshes overwhelmingly prefer shared vertices.
+						section_first_packed[i] =
+							static_cast<int>(packed_vertices.size() / sizeof(std::uint32_t));
+						for (const auto& vertex : section.verts)
+						{
+							packed_vertices.write<std::uint32_t>(
+								pack_vertex(vertex.data(), section.codec_parms));
+						}
+						section_first_vert[i] = 0;
+						section_page[i] = 0;
+					}
+					else
+					{
+						// Shared vertices are laid out section by section.
 					//
 					// The runtime resolves one as
 					//     sharedVertices[0x10000 * section.page
@@ -936,55 +1353,141 @@ namespace ZoneTool::IW7
 					// up to the boundary first. A section holds at most
 					// MAX_SHARED_INDICES_PER_SECTION vertices, so the padding is bounded by
 					// that and costs at most a couple of kilobytes across a whole map.
-					auto vert_base = shared_vertices.size() / 8;
-					const auto vert_needed = section.verts.size();
+					//
+					// A convex custom's vertex run has to sit inside the section's page as well
+					// (its start word is page-relative, and stock never crosses a page), so what
+					// is checked against the boundary is the section's whole pool consumption:
+					// listed vertices first, then each convex run, contiguously.
+						auto vert_base = shared_vertices.size() / 8;
+						const auto vert_needed = section.pool_vertex_count();
 
-					if (vert_needed > 0
-						&& ((vert_base + vert_needed - 1) >> 16) != (vert_base >> 16))
-					{
-						const auto next_page = ((vert_base >> 16) + 1) << 16;
-						while (shared_vertices.size() / 8 < next_page)
+						if (vert_needed > 0
+							&& ((vert_base + vert_needed - 1) >> 16) != (vert_base >> 16))
 						{
-							shared_vertices.write<std::uint64_t>(0);
+							const auto next_page = ((vert_base >> 16) + 1) << 16;
+							while (shared_vertices.size() / 8 < next_page)
+							{
+								shared_vertices.write<std::uint64_t>(0);
+							}
+							vert_base = next_page;
 						}
-						vert_base = next_page;
-					}
 
-					section_page[i] = static_cast<int>(vert_base >> 16);
+						section_page[i] = static_cast<int>(vert_base >> 16);
 
-					if (section_page[i] > 0xFF)
-					{
-						ZONETOOL_ERROR("havok: section %u needs vertex page %d, but the page "
-							"field is a uint8 -- the mesh has more than %u shared vertices",
-							i, section_page[i], 0x100u << 16);
-						return {};
-					}
+						if (section_page[i] > 0xFF)
+						{
+							ZONETOOL_ERROR("havok: section %u needs vertex page %d, but the page "
+								"field is a uint8 -- the mesh has more than %u shared vertices",
+								i, section_page[i], 0x100u << 16);
+							return {};
+						}
 
 					// firstSharedVertexIndex indexes sharedVerticesIndex, not the vertex pool,
 					// and is packed into 24 bits alongside numPackedVertices.
-					section_first_vert[i] = static_cast<int>(shared_vertex_index.size() / 2);
+						section_first_vert[i] = static_cast<int>(shared_vertex_index.size() / 2);
 
-					if (section_first_vert[i] > 0xFFFFFF)
-					{
-						ZONETOOL_ERROR("havok: sharedVerticesIndex has %d entries, which does "
-							"not fit the section's 24-bit first-index field",
-							section_first_vert[i]);
-						return {};
-					}
+						if (section_first_vert[i] > 0xFFFFFF)
+						{
+							ZONETOOL_ERROR("havok: sharedVerticesIndex has %d entries, which does "
+								"not fit the section's 24-bit first-index field",
+								section_first_vert[i]);
+							return {};
+						}
 
-					const auto page_base = static_cast<std::size_t>(section_page[i]) << 16;
-					for (auto v = 0u; v < section.verts.size(); v++)
-					{
-						shared_vertices.write<std::uint64_t>(
-							pack_shared_vertex(section.verts[v].data(), world_min, world_max));
-						shared_vertex_index.write<std::uint16_t>(
-							static_cast<std::uint16_t>(vert_base + v - page_base));
+						const auto page_base = static_cast<std::size_t>(section_page[i]) << 16;
+
+						// Where each convex run lands: straight after the listed vertices, in
+						// primitive order.
+						const auto listed = section.listed_vertex_count();
+						std::vector<std::size_t> run_start(section.convexes.size());
+						{
+							auto next = vert_base + listed;
+							for (auto c = 0u; c < section.convexes.size(); c++)
+							{
+								run_start[c] = next;
+								next += section.convexes[c].size();
+							}
+						}
+
+						// sharedVerticesIndex in local slot order. Record slots map to the
+						// custom that owns them through the primitive whose indices name them.
+						std::vector<int> slot_custom(section.verts.size(), -1);
+						for (auto p = 0u; p < section.primitives.size(); p++)
+						{
+							const auto custom = section.custom_index[p];
+							if (custom >= 0)
+							{
+								slot_custom[section.primitives[p][0]] = custom;
+								slot_custom[section.primitives[p][0] + 1u] = custom;
+							}
+						}
+
+						auto listed_written = 0u;
+						for (auto v = 0u; v < section.verts.size(); v++)
+						{
+							switch (section.slot_kinds[v])
+							{
+							case slot_kind::vertex:
+								shared_vertices.write<std::uint64_t>(
+									pack_shared_vertex(section.verts[v].data(), world_min, world_max));
+								shared_vertex_index.write<std::uint16_t>(
+									static_cast<std::uint16_t>(vert_base + listed_written - page_base));
+								listed_written++;
+								break;
+							case slot_kind::convex_record:
+								shared_vertex_index.write<std::uint16_t>(static_cast<std::uint16_t>(
+									(section.convexes[slot_custom[v]].size() << 8)
+									| CUSTOM_PRIMITIVE_CONVEX));
+								break;
+							case slot_kind::convex_start:
+								shared_vertex_index.write<std::uint16_t>(static_cast<std::uint16_t>(
+									run_start[slot_custom[v]] - page_base));
+								break;
+							}
+						}
+
+						// Listed vertices are in the pool; now the runs, which nothing in
+						// sharedVerticesIndex lists beyond their record.
+						for (const auto& run : section.convexes)
+						{
+							std::vector<std::uint64_t> packed_run;
+							packed_run.reserve(run.size());
+							for (const auto& vertex : run)
+							{
+								packed_run.emplace_back(
+									pack_shared_vertex(vertex.data(), world_min, world_max));
+								shared_vertices.write<std::uint64_t>(packed_run.back());
+							}
+
+							// Stock runs are distinct points. The input is (convex_rejection), but
+							// quantisation over a very large domain could still merge two.
+							std::sort(packed_run.begin(), packed_run.end());
+							if (std::adjacent_find(packed_run.begin(), packed_run.end())
+								!= packed_run.end())
+							{
+								quantised_duplicate_runs++;
+							}
+						}
+
+						if (shared_vertices.size() / 8 != vert_base + vert_needed)
+						{
+							ZONETOOL_ERROR("havok: section %u wrote %zu pool vertices, expected %zu",
+								i, shared_vertices.size() / 8 - vert_base, vert_needed);
+							return {};
+						}
 					}
 
 					section_first_run[i] = static_cast<int>(data_runs.size() / SIZEOF_DATA_RUN);
 					auto runs = 0;
 					emit_data_runs(data_runs, section.tags, runs);
 					section_run_count[i] = runs;
+				}
+
+				if (quantised_duplicate_runs)
+				{
+					ZONETOOL_WARNING("havok: %d convex vertex run(s) have two vertices that "
+						"quantise to the same shared vertex over this tree domain",
+						quantised_duplicate_runs);
 				}
 
 				// ------------------------------------------------------------ simd tree
@@ -1039,13 +1542,27 @@ namespace ZoneTool::IW7
 							item.lo[c] = FLT_MAX;
 							item.hi[c] = -FLT_MAX;
 						}
-						for (auto k = 0; k < (section.quads[pi] ? 4 : 3); k++)
+						const auto grow = [&item](const std::array<float, 3>& v)
 						{
-							const auto& v = section.verts[section.primitives[pi][k]];
 							for (auto c = 0; c < 3; c++)
 							{
 								item.lo[c] = std::min(item.lo[c], v[c]);
 								item.hi[c] = std::max(item.hi[c], v[c]);
+							}
+						};
+						if (section.custom_index[pi] >= 0)
+						{
+							// One leaf per convex custom, boxed by its vertex run.
+							for (const auto& v : section.convexes[section.custom_index[pi]])
+							{
+								grow(v);
+							}
+						}
+						else
+						{
+							for (auto k = 0; k < (section.quads[pi] ? 4 : 3); k++)
+							{
+								grow(section.verts[section.primitives[pi][k]]);
 							}
 						}
 						items.emplace_back(item);
@@ -1208,7 +1725,7 @@ namespace ZoneTool::IW7
 						world_contents);
 				}
 
-				if (!physics_asset)
+				if (!physics_asset && !xmodel_lod_name)
 				{
 					// --- HavokPhysicsShapeList (152 bytes) ---
 					// Assigns the OUTER shape_list_offset -- the virtual fixup that registers this
@@ -1273,12 +1790,19 @@ namespace ZoneTool::IW7
 					local_fixups.push_back({name_ptr_slot, name_payload});
 
 					record_array(3, buf.size());
+					// UNRESOLVED: what vertCounts counts is not known. It equals the shared
+					// vertex pool size on mp_frontend (307) but not on mp_afghan (220,497 against
+					// a 176,653-entry pool). This keeps writing the vertices the mesh emits --
+					// listed vertices plus convex runs, page padding excluded -- until stock is
+					// understood.
 					buf.write<std::int32_t>(static_cast<std::int32_t>(total_verts));
 					align16();
 					// The TRIANGLE count, not the primitive count: stock mp_frontend reports 240
-					// here against 128 primitives, i.e. quads counted as two.
+					// here against 128 primitives, i.e. quads counted as two. Convex custom
+					// primitives are excluded -- stock mp_afghan reports 188,886 triangles here
+					// beside 7,790 customs -- and counted in convexCounts instead.
 					record_array(4, buf.size());
-					buf.write<std::int32_t>(static_cast<std::int32_t>(num_primitive_keys));
+					buf.write<std::int32_t>(static_cast<std::int32_t>(mesh_triangles));
 					align16();
 
 					// minMaxes: two hkVector4f, min then max.
@@ -1322,12 +1846,11 @@ namespace ZoneTool::IW7
 						// Bits 32..39 are a third region: a 1-based per-glass-piece index, set
 						// on GLASS_PANE and GLASS_SOLID tags and nowhere else. It arrives
 						// already packed into the triangle's user_data.
-						buf.write<std::uint32_t>(
-							filter_contents(static_cast<std::uint32_t>(std::get<0>(palette[i]))));
-						buf.write<std::uint32_t>(std::get<1>(palette[i]));
+						buf.write<std::uint32_t>(tag_records[i].collision_filter);
+						buf.write<std::uint32_t>(tag_records[i].material_crc);
 						buf.write<std::uint16_t>(0xFFFF); // materialId -- "none"
 						buf.reserve(6); // pad, userData is at +16
-						buf.write<std::uint64_t>(std::get<2>(palette[i]));
+						buf.write<std::uint64_t>(tag_records[i].user_data);
 					}
 					align16();
 
@@ -1347,7 +1870,45 @@ namespace ZoneTool::IW7
 					buf.write<std::uint32_t>(world_contents);
 					align16();
 					record_array(9, buf.size());
-					buf.write<std::int32_t>(0); // convexCounts
+					// This is not the compressed mesh's (ignored) numConvexShapes member. It is
+					// the number of convex custom primitives in the mesh: stock mp_afghan
+					// reports 7,790 and carries exactly 7,790 customs. Counted from what was
+					// actually emitted, so a convex the builder rejected is not claimed.
+					buf.write<std::int32_t>(static_cast<std::int32_t>(total_customs));
+					align16();
+					shape_ptr_slots.push_back(shape_ptr_slot);
+				}
+				else if (xmodel_lod_name)
+				{
+					// --- HavokPhysicsXModelLOD (48 bytes) ---
+					// Stock XModels hold one hknpCompressedMeshShape per authored physics
+					// LOD. A converted IW5 model has one collision mesh, so emit its LOD0
+					// entry. The final 16-byte record is invariant across stock models.
+					virtual_fixups.emplace_back(static_cast<std::size_t>(0), 0);
+					const auto shapes_field = buf.size();
+					write_hk_array_header(buf, 1);
+					const auto names_field = buf.size();
+					write_hk_array_header(buf, 1);
+					const auto lod_info_field = buf.size();
+					write_hk_array_header(buf, 1);
+
+					const auto shape_ptr_slot = buf.size();
+					local_fixups.push_back({shapes_field, shape_ptr_slot});
+					buf.reserve(8);
+					align16();
+
+					const auto name_ptr_slot = buf.size();
+					local_fixups.push_back({names_field, name_ptr_slot});
+					buf.reserve(8);
+					const auto name_offset = buf.size();
+					local_fixups.push_back({name_ptr_slot, name_offset});
+					buf.write(xmodel_lod_name->c_str(), xmodel_lod_name->size() + 1);
+					align16();
+
+					local_fixups.push_back({lod_info_field, buf.size()});
+					buf.write<std::uint32_t>(0x00680000u);
+					buf.write<std::uint32_t>(1u);
+					buf.write<std::uint64_t>(0u);
 					align16();
 					shape_ptr_slots.push_back(shape_ptr_slot);
 				}
@@ -1467,7 +2028,7 @@ namespace ZoneTool::IW7
 
 				// --- hknpCompressedMeshShape (160 bytes) ---
 				const auto shape_offset = buf.size();
-				if (!physics_asset)
+				if (!physics_asset && !xmodel_lod_name)
 				{
 					virtual_fixups.emplace_back(shape_list_offset, 0);
 				}
@@ -1549,9 +2110,17 @@ namespace ZoneTool::IW7
 						for (auto k = 0; k < 4; k++)
 						{
 							const auto& v = section.verts[section.primitives[pi][k]];
-							unpack_shared_vertex(
-								pack_shared_vertex(v.data(), world_min, world_max),
-								world_min, world_max, corner[k]);
+							if (vertex_format == vertex_storage::packed)
+							{
+								unpack_vertex(pack_vertex(v.data(), section.codec_parms),
+									section.codec_parms, corner[k]);
+							}
+							else
+							{
+								unpack_shared_vertex(
+									pack_shared_vertex(v.data(), world_min, world_max),
+									world_min, world_max, corner[k]);
+							}
 						}
 
 						float e1[3], e2[3], n[3];
@@ -1628,12 +2197,11 @@ namespace ZoneTool::IW7
 				const auto tree_svi_field = buf.size();
 				write_hk_array_header(buf, static_cast<int>(shared_vertex_index.size() / 2));
 				const auto tree_packed_field = buf.size();
-				write_hk_array_header(buf, 0);
+				write_hk_array_header(buf, static_cast<int>(packed_vertices.size() / 4));
 				const auto tree_shared_field = buf.size();
 				write_hk_array_header(buf, static_cast<int>(shared_vertices.size() / 8));
 				const auto tree_runs_field = buf.size();
 				write_hk_array_header(buf, static_cast<int>(data_runs.size() / SIZEOF_DATA_RUN));
-				(void)tree_packed_field;
 
 				if (buf.size() - tree_offset != SIZEOF_MESH_TREE)
 				{
@@ -1694,20 +2262,36 @@ namespace ZoneTool::IW7
 					buf.write<float>(0.0f);
 					for (auto c = 0; c < 3; c++) buf.write<float>(section.maxs[c]);
 					buf.write<float>(0.0f);
-					// A section with no packed vertices writes this sentinel codec, exactly
-					// as every shipped numPackedVertices == 0 section does.
-					for (auto c = 0; c < 3; c++) buf.write<float>(FLT_MAX);
-					for (auto c = 0; c < 3; c++) buf.write<float>(-INFINITY);
-					buf.write<std::uint32_t>(0); // firstPackedVertex
-					// sharedVertices packs (firstSharedVertexIndex << 8) | numPackedVertices.
+					if (vertex_format == vertex_storage::packed)
+					{
+						for (auto c = 0; c < 6; c++)
+						{
+							buf.write<float>(section.codec_parms[c]);
+						}
+					}
+					else
+					{
+						// A section with no packed vertices writes this sentinel codec, exactly
+						// as every shipped numPackedVertices == 0 section does.
+						for (auto c = 0; c < 3; c++) buf.write<float>(FLT_MAX);
+						for (auto c = 0; c < 3; c++) buf.write<float>(-INFINITY);
+					}
 					buf.write<std::uint32_t>(
-						static_cast<std::uint32_t>(section_first_vert[i] << 8));
+						static_cast<std::uint32_t>(section_first_packed[i]));
+					// sharedVertices packs (firstSharedVertexIndex << 8) | numPackedVertices.
+					// This descriptor is used even when the section has no shared indices:
+					// stock packed-only physics assets store their packed count in its low byte.
+					buf.write<std::uint32_t>(static_cast<std::uint32_t>(
+						(section_first_vert[i] << 8) |
+						(vertex_format == vertex_storage::packed ? section.verts.size() : 0)));
 					buf.write<std::uint32_t>(static_cast<std::uint32_t>(
 						(section_first_prim[i] << 8) | section.primitives.size()));
 					buf.write<std::uint32_t>(static_cast<std::uint32_t>(
 						(section_first_run[i] << 8) | section_run_count[i]));
-					buf.write<std::uint8_t>(0); // numPackedVertices
-					buf.write<std::uint8_t>(static_cast<std::uint8_t>(section.verts.size()));
+					buf.write<std::uint8_t>(vertex_format == vertex_storage::packed
+						? static_cast<std::uint8_t>(section.verts.size()) : 0); // numPackedVertices
+					buf.write<std::uint8_t>(vertex_format == vertex_storage::shared
+						? static_cast<std::uint8_t>(section.verts.size()) : 0); // numSharedIndices
 					buf.write<std::uint16_t>(static_cast<std::uint16_t>(leaf_nodes[i])); // leafIndex
 					// Which 65,536-vertex page of sharedVertices this section's indices are
 					// relative to. See the paging note where sharedVerticesIndex is built.
@@ -1736,13 +2320,26 @@ namespace ZoneTool::IW7
 				buf.write(primitives.data.data(), primitives.size());
 				align16();
 
-				local_fixups.push_back({tree_svi_field, buf.size()});
-				buf.write(shared_vertex_index.data.data(), shared_vertex_index.size());
-				align16();
+				if (!shared_vertex_index.data.empty())
+				{
+					local_fixups.push_back({tree_svi_field, buf.size()});
+					buf.write(shared_vertex_index.data.data(), shared_vertex_index.size());
+					align16();
+				}
 
-				local_fixups.push_back({tree_shared_field, buf.size()});
-				buf.write(shared_vertices.data.data(), shared_vertices.size());
-				align16();
+				if (!packed_vertices.data.empty())
+				{
+					local_fixups.push_back({tree_packed_field, buf.size()});
+					buf.write(packed_vertices.data.data(), packed_vertices.size());
+					align16();
+				}
+
+				if (!shared_vertices.data.empty())
+				{
+					local_fixups.push_back({tree_shared_field, buf.size()});
+					buf.write(shared_vertices.data.data(), shared_vertices.size());
+					align16();
+				}
 
 				local_fixups.push_back({tree_runs_field, buf.size()});
 				buf.write(data_runs.data.data(), data_runs.size());
@@ -1767,7 +2364,15 @@ namespace ZoneTool::IW7
 				write_name(SIG_HK_CLASS_ENUM_ITEM, "hkClassEnumItem");
 
 				std::array<std::size_t, 4> name_offsets{};
-				if (!physics_asset)
+				if (xmodel_lod_name)
+				{
+					name_offsets[0] = write_name(SIG_XMODEL_LOD, "HavokPhysicsXModelLOD");
+					name_offsets[1] = write_name(SIG_COMPRESSED_MESH_SHAPE,
+						"hknpCompressedMeshShape");
+					name_offsets[2] = write_name(SIG_COMPRESSED_MESH_SHAPE_DATA,
+						"hknpCompressedMeshShapeData");
+				}
+				else if (!physics_asset)
 				{
 					name_offsets[0] = write_name(SIG_SHAPE_LIST, "HavokPhysicsShapeList");
 					name_offsets[1] = write_name(SIG_COMPRESSED_MESH_SHAPE,
@@ -1895,17 +2500,23 @@ namespace ZoneTool::IW7
 				{
 					ZONETOOL_INFO("  tag %2u  filter 0x%08X (raw 0x%08X)  crc 0x%08X  "
 						"userData 0x%016llX", i,
-						filter_contents(static_cast<std::uint32_t>(std::get<0>(palette[i]))),
+						tag_records[i].collision_filter,
 						static_cast<std::uint32_t>(std::get<0>(palette[i])),
-						std::get<1>(palette[i]),
-						static_cast<unsigned long long>(std::get<2>(palette[i])));
+						tag_records[i].material_crc,
+						static_cast<unsigned long long>(tag_records[i].user_data));
 				}
 
-				ZONETOOL_INFO("havok: %s built -- %zu triangles, %d sections, %d surface tags, "
+				ZONETOOL_INFO("havok: %s built -- %zu input triangles (%d mesh triangles), "
+					"%zu convex custom primitives, %d sections, %d surface tags, "
 					"contents 0x%08X, %zu bytes",
 					physics_asset ? "model physics asset" : "world shape",
-					input.triangles.size(), section_count, tag_count, world_contents,
-					file.size());
+					input.triangles.size(), mesh_triangles, total_customs, section_count,
+					tag_count, world_contents, file.size());
+
+				if (out_tags)
+				{
+					*out_tags = tag_records;
+				}
 
 				return file.data;
 			}
@@ -1926,9 +2537,10 @@ namespace ZoneTool::IW7
 			//   compoundData (56) | tree nodes (32 * (2L+1))
 			//
 			// with every array payload 16-byte aligned.
-			std::vector<std::uint8_t> build_world_shape(const mesh_input& input)
+			std::vector<std::uint8_t> build_world_shape(const mesh_input& input,
+				std::vector<shape_tag>* out_tags)
 			{
-				return build_mesh_blob(input, nullptr);
+				return build_mesh_blob(input, nullptr, nullptr, out_tags);
 			}
 
 			std::vector<std::uint8_t> build_model_physics_asset(const mesh_input& input,
@@ -1937,7 +2549,14 @@ namespace ZoneTool::IW7
 				return build_mesh_blob(input, &physics_asset);
 			}
 
-			std::vector<std::uint8_t> build_ents_shape_list(const ents_input& input)
+			std::vector<std::uint8_t> build_model_physics_lod(const mesh_input& input,
+				const std::string& lod_name)
+			{
+				return build_mesh_blob(input, nullptr, &lod_name);
+			}
+
+			std::vector<std::uint8_t> build_ents_shape_list(const ents_input& input,
+				ents_tag_merge* out_merge)
 			{
 				// A half-edge, addressed the way Havok does it: which face it belongs to and
 				// its position in that face's index run.
@@ -2002,34 +2621,58 @@ namespace ZoneTool::IW7
 				// gameplay bits that ride in the low 32 -- LADDER, SLICK, NOPENETRATE, STAIRS,
 				// MANTLEON -- on exactly the geometry (doors, hatches, ladders, moving
 				// platforms) most likely to need them.
-				using ents_tag = std::tuple<int, std::uint32_t, std::uint64_t>;
-				std::vector<ents_tag> palette;
+				//
+				// The table STARTS as the world blob's, verbatim, whenever the caller has one
+				// (ents_input::world_tags). That is not tidiness: IW7 decodes every shape's
+				// raw tags against the single table registered by
+				// HavokPhysics_SetMainShapeList, so a world mesh whose tag 4 means "wall"
+				// resolves against whatever this list's entry 4 happens to be. Building the
+				// two tables independently is what made converted walls decode as garbage
+				// filters and stop stopping the player while still catching bullets. Shipped
+				// maps hold the invariant exactly -- mp_fallen's ents table is its 216 world
+				// records followed by 3 extras, mp_afghan's 132 followed by 4, mp_frontend's
+				// 7 with nothing appended.
+				std::vector<shape_tag> palette = input.world_tags;
+				const auto prefix_size = palette.size();
+				// Which prefix records the shapes actually land on. A flag per record rather
+				// than a counter because tag_for runs twice over the same shapes -- once to
+				// size the table, once while writing the instances.
+				std::vector<bool> prefix_used(prefix_size, false);
 				const auto tag_for = [&](const ents_shape& shape)
 				{
-					const ents_tag key{shape.contents, shape.material_crc, shape.user_data};
+					// Compare on the RECORD, not on the source fields: contents is masked on
+					// the way in on both paths, so two shapes whose raw contents differ only
+					// in a compile-only bit are the same 24 bytes and must share one entry.
+					const shape_tag key{
+						filter_contents(static_cast<std::uint32_t>(shape.contents)),
+						shape.material_crc, shape.user_data};
 					for (auto i = 0u; i < palette.size(); i++)
 					{
 						if (palette[i] == key)
 						{
+							if (i < prefix_size)
+							{
+								prefix_used[i] = true;
+							}
 							return static_cast<std::uint16_t>(i);
 						}
 					}
+					// Anything the world table does not already carry lands after it, in
+					// first-use order, so the prefix stays byte-identical and in place.
 					palette.emplace_back(key);
 					return static_cast<std::uint16_t>(palette.size() - 1);
 				};
 
-				// Keep at least one tag: the material table the runtime registers should not
-				// be empty even when there is no geometry.
-				if (shapes.empty())
+				for (const auto* shape : shapes)
 				{
-					palette.emplace_back(ents_tag{1, DEFAULT_MATERIAL_CRC, 0});
+					tag_for(*shape);
 				}
-				else
+
+				// Keep at least one tag: the material table the runtime registers should not
+				// be empty even when there is no geometry and no world table to inherit.
+				if (palette.empty())
 				{
-					for (const auto* shape : shapes)
-					{
-						tag_for(*shape);
-					}
+					palette.emplace_back(shape_tag{filter_contents(1), DEFAULT_MATERIAL_CRC, 0});
 				}
 
 				// --- HavokPhysicsShapeList (152 bytes) ---
@@ -2153,12 +2796,11 @@ namespace ZoneTool::IW7
 				record_array(7, buf.size());
 				for (const auto& entry : palette)
 				{
-					buf.write<std::uint32_t>(
-						filter_contents(static_cast<std::uint32_t>(std::get<0>(entry))));
-					buf.write<std::uint32_t>(std::get<1>(entry)); // materialCRC
+					buf.write<std::uint32_t>(entry.collision_filter);
+					buf.write<std::uint32_t>(entry.material_crc); // materialCRC
 					buf.write<std::uint16_t>(0xFFFF); // materialId -- resolved at load
 					buf.reserve(6);
-					buf.write<std::uint64_t>(std::get<2>(entry)); // userData
+					buf.write<std::uint64_t>(entry.user_data); // userData
 				}
 				align16();
 
@@ -2838,9 +3480,24 @@ namespace ZoneTool::IW7
 					convex_total += static_cast<int>(shape->convexes.size());
 				}
 
+				std::size_t reused = 0;
+				for (const auto used : prefix_used)
+				{
+					reused += used ? 1 : 0;
+				}
+
 				ZONETOOL_INFO("havok: ents shape list built -- %d shapes, %d convexes, "
-					"%zu surface tags, %zu bytes", shape_count, convex_total, palette.size(),
-					file.size());
+					"%zu surface tags (%zu inherited from the world table, %zu of those in "
+					"use, %zu appended), %zu bytes", shape_count, convex_total, palette.size(),
+					prefix_size, reused, palette.size() - prefix_size, file.size());
+
+				if (out_merge)
+				{
+					out_merge->prefix = prefix_size;
+					out_merge->total = palette.size();
+					out_merge->reused = reused;
+					out_merge->appended = palette.size() - prefix_size;
+				}
 
 				return file.data;
 			}

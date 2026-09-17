@@ -1,4 +1,5 @@
 #include "stdafx.hpp"
+#include <unordered_set>
 
 #include "Converter/IW7/Assets/IwiImage.hpp"
 #include "Converter/IW7/Assets/PackedImage.hpp"
@@ -450,6 +451,8 @@ namespace ZoneTool
 			"mo",
 			"ev",
 			"eq",
+			// particle_cloud_* techsets carry no prefix of their own, stock materials on them are el/ with type 71
+			"particle",
 		};
 
 		std::uint8_t prefixes_types[] =
@@ -457,7 +460,13 @@ namespace ZoneTool
 			MTL_TYPE_MODEL_SELFVIS,
 			MTL_TYPE_EFFECT_VERTLIT,
 			MTL_TYPE_EFFECT_QUAD,
+			MTL_TYPE_EFFECT_LMAP,
 		};
+
+		std::string material_prefix_for(const std::string& prefix)
+		{
+			return prefix == "particle" ? "el" : prefix;
+		}
 
 		// The p0 counterpart of a techset, or empty if it has none. Keyed on the IW5 name,
 		// like the table itself, so several IW5 techsets collapsing onto one IW7 target each
@@ -466,6 +475,12 @@ namespace ZoneTool
 		// staying unpacked.
 		std::string get_packed_techset(const std::string& techset, const bool effect_vertlit)
 		{
+			// "_sat" variants share their base techset's slots (see get_mapped_techset)
+			if (techset.ends_with("_sat") && !mapped_techsets.contains(techset))
+			{
+				return get_packed_techset(techset.substr(0, techset.size() - 4), effect_vertlit);
+			}
+
 			const auto& table = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
 			const auto it = table.find(techset);
 			if (it != table.end() && !it->second.techset[techset_map_type_e::packed].empty())
@@ -489,6 +504,11 @@ namespace ZoneTool
 		// The pa0 counterpart, on the same terms as get_packed_techset above.
 		std::string get_packed_alpha_techset(const std::string& techset, const bool effect_vertlit)
 		{
+			if (techset.ends_with("_sat") && !mapped_techsets.contains(techset))
+			{
+				return get_packed_alpha_techset(techset.substr(0, techset.size() - 4), effect_vertlit);
+			}
+
 			const auto& table = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
 			const auto it = table.find(techset);
 			if (it != table.end() && !it->second.techset[techset_map_type_e::packed_alpha].empty())
@@ -506,6 +526,132 @@ namespace ZoneTool
 			}
 
 			return {};
+		}
+
+		// IW3/IW4/IW5 effect techsets are named from a fixed set of features
+		// (effect[_zfeather][_falloff|_distfalloff][_outdoor][_add|_blend|_multiply][_nofog][_eyeoffset][_spot...]),
+		// and so are IW7's (eq_effect[_zfeather][_outdoor]_<blend>_lin[_ct][_nofog][_eyeoffset]_ndw_nocast).
+		// The table above only names five of them, so everything else (effect_add, effect_zfeather,
+		// effect_blend, ...) fell through to "2d", which doesn't draw as a particle. Build the IW7 name from the
+		// features and only accept techsets that stock materials actually ship on; features IW7 has no match
+		// for are dropped one at a time. Falloff is left out on purpose: those techsets take falloff
+		// parameters the converter doesn't write.
+		const std::unordered_set<std::string> stock_effect_techsets =
+		{
+			"eq_effect_add_lin_ct_ndw_nocast",
+			"eq_effect_add_lin_ct_nofog_ndw_nocast",
+			"eq_effect_add_lin_ndw_nocast",
+			"eq_effect_add_lin_nofog_ndw_nocast",
+			"eq_effect_blend_lin_ct_ndw_nocast",
+			"eq_effect_blend_lin_ndw_nocast",
+			"eq_effect_blend_lin_nofog_ndw_nocast",
+			"eq_effect_zfeather_add_lin_ct_eyeoffset_ndw_nocast",
+			"eq_effect_zfeather_add_lin_ct_ndw_nocast",
+			"eq_effect_zfeather_add_lin_ct_nofog_eyeoffset_ndw_nocast",
+			"eq_effect_zfeather_add_lin_ct_nofog_ndw_nocast",
+			"eq_effect_zfeather_add_lin_eyeoffset_ndw_nocast",
+			"eq_effect_zfeather_add_lin_ndw_nocast",
+			"eq_effect_zfeather_add_lin_nofog_eyeoffset_ndw_nocast",
+			"eq_effect_zfeather_add_lin_nofog_ndw_nocast",
+			"eq_effect_zfeather_blend_lin_ct_ndw_nocast",
+			"eq_effect_zfeather_blend_lin_ct_nofog_ndw_nocast",
+			"eq_effect_zfeather_blend_lin_eyeoffset_ndw_nocast",
+			"eq_effect_zfeather_blend_lin_ndw_nocast",
+			"eq_effect_zfeather_blend_lin_nofog_eyeoffset_ndw_nocast",
+			"eq_effect_zfeather_blend_lin_nofog_ndw_nocast",
+			"eq_effect_zfeather_outdoor_blend_lin_ndw_nocast",
+			"ev_effect_add_lin_ct_ndw_nocast",
+			"ev_effect_add_lin_nofog_ndw_nocast",
+			"ev_effect_blend_lin_ct_ndw_nocast",
+			"ev_effect_blend_lin_ndw_nocast",
+			"ev_effect_blend_lin_nofog_ndw_nocast",
+			"ev_effect_zfeather_add_lin_ndw_nocast",
+			"ev_effect_zfeather_blend_lin_ct_ndw_nocast",
+			"ev_effect_zfeather_blend_lin_ndw_nocast",
+			"particle_cloud_add_ct_lin",
+			"particle_cloud_add_lin",
+			"particle_cloud_blend_ct_lin",
+			"particle_cloud_blend_lin",
+			"particle_cloud_outdoor_add_lin",
+			"particle_cloud_outdoor_blend_lin",
+			"particle_cloud_spark_add_ct_lin",
+			"particle_cloud_spark_add_lin",
+			"particle_cloud_spark_blend_ct_lin",
+		};
+
+		std::string map_effect_techset_by_features(const std::string& techset, const bool effect_vertlit, const bool color_tint)
+		{
+			std::vector<std::string> parts;
+			for (std::size_t start = 0, end; start <= techset.size(); start = end + 1)
+			{
+				end = techset.find('_', start);
+				if (end == std::string::npos) end = techset.size();
+				parts.emplace_back(techset.substr(start, end - start));
+			}
+
+			const auto has = [&](const char* part) { return std::find(parts.begin(), parts.end(), part) != parts.end(); };
+
+			const bool is_cloud = techset.starts_with("particle_cloud");
+			if (!is_cloud && !techset.starts_with("effect"))
+			{
+				return {};
+			}
+
+			// shadow-map spot variants only differ in lighting, which IW7 handles itself
+			const bool add = has("add");
+			const bool nofog = has("nofog");
+			const bool eyeoffset = has("eyeoffset");
+			const bool outdoor = has("outdoor");
+
+			if (is_cloud)
+			{
+				const bool spark = has("spark") || has("sparkf");
+				for (const auto tint : { color_tint, false })
+				{
+					for (const auto keep_variant : { true, false })
+					{
+						std::string name = "particle_cloud";
+						if (keep_variant && spark) name += "_spark";
+						else if (keep_variant && outdoor) name += "_outdoor";
+						name += (add || spark) ? "_add" : "_blend";
+						name += tint ? "_ct_lin" : "_lin";
+						if (stock_effect_techsets.contains(name)) return name;
+					}
+				}
+				return {};
+			}
+
+			// multiply and (dist)falloff have no counterpart the converter can feed, the blend mode is kept
+			const bool zfeather = has("zfeather");
+			// "effect" and IW5's "effect_blend" are both blended quads
+			const std::string blend = add ? "add" : "blend";
+
+			const char* prefix = effect_vertlit ? "ev" : "eq";
+			// drop features in the order they matter least
+			for (const auto tint : { color_tint, false })
+			{
+				for (auto drop = 0; drop < 5; drop++)
+				{
+					const bool use_outdoor = outdoor && drop < 1;
+					const bool use_eyeoffset = eyeoffset && drop < 2;
+					const bool use_nofog = nofog && drop < 3;
+					const bool use_zfeather = zfeather && drop < 4;
+
+					std::string name = std::string(prefix) + "_effect";
+					if (use_zfeather) name += "_zfeather";
+					if (use_outdoor) name += "_outdoor";
+					name += "_" + blend + "_lin";
+					if (tint) name += "_ct";
+					if (use_nofog) name += "_nofog";
+					if (use_eyeoffset) name += "_eyeoffset";
+					name += "_ndw_nocast";
+
+					if (stock_effect_techsets.contains(name)) return name;
+				}
+			}
+
+			// the vertlit table has few entries; a quad effect is still a valid material for a particle
+			return effect_vertlit ? map_effect_techset_by_features(techset, false, color_tint) : std::string{};
 		}
 
 		std::string get_mapped_techset(const std::string& techset, const bool effect_vertlit, const bool color_tint)
@@ -539,6 +685,21 @@ namespace ZoneTool
 					auto tech = regular->second.techset[color_tint ? techset_map_type_e::color_tint : techset_map_type_e::regular];
 					return tech.empty() ? regular->second.techset[techset_map_type_e::regular] : tech;
 				}
+			}
+
+			// IW5 "_sat" world/model techsets only add saturation, the base techset has the same slots
+			if (techset.ends_with("_sat"))
+			{
+				const auto base = techset.substr(0, techset.size() - 4);
+				if (mapped_techsets.contains(base))
+				{
+					return get_mapped_techset(base, effect_vertlit, color_tint);
+				}
+			}
+
+			if (auto effect = map_effect_techset_by_features(techset, effect_vertlit, color_tint); !effect.empty())
+			{
+				return effect;
 			}
 
 			return "2d";
@@ -576,7 +737,7 @@ namespace ZoneTool
 				{
 					const auto slash_pos = name.find('/');
 					const size_t replace_len = (slash_pos == std::string::npos) ? 0 : slash_pos + 1;
-					const std::string replacement = prefix + "/";
+					const std::string replacement = material_prefix_for(prefix) + "/";
 
 					std::string replaced = name;
 					replaced.replace(0, replace_len, replacement);
@@ -1411,7 +1572,9 @@ namespace ZoneTool
 					matdata["cameraRegion"] = 11;
 				}
 
-				ordered_json constant_table;
+				// an array from the start: CONSTANT_TABLE_ADD_IF_NOT_FOUND inserts into it, which throws on null
+				// (particle_cloud materials carry no constants of their own but need textureAtlas)
+				ordered_json constant_table = ordered_json::array();
 				for (int i = 0; i < asset->constantCount && techset != "2d"; i++)
 				{
 					ordered_json table;

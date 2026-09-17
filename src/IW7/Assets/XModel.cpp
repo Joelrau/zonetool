@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 
+#include "../Common/havok.hpp"
+
 namespace ZoneTool::IW7
 {
 	void IXModel::dump(XModel* asset)
@@ -51,8 +53,8 @@ namespace ZoneTool::IW7
 		dump.dump_asset(asset->physicsAsset);
 		dump.dump_asset(asset->physicsFXShape);
 
-		// unknown
-		dump.dump_array(asset->physicsLODData, asset->physicsLODDataSize);
+		const auto havok_data_path = "xmodel\\"s + asset->name + "_lod";
+		havok::binary::dump_havok_data(havok_data_path, asset->physicsLODData, asset->physicsLODDataSize);
 
 		for (unsigned int i = 0; i < asset->physicsLODDataNameCount; i++)
 		{

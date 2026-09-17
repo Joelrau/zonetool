@@ -5,6 +5,7 @@
 #include "IW7/Assets/ClipMap.hpp"
 #include "IW7/Assets/MapEnts.hpp"
 #include "IW7/Assets/PhysicsAsset.hpp"
+#include "IW7/Assets/ScriptableDef.hpp"
 
 #include <algorithm>
 
@@ -58,6 +59,18 @@ namespace ZoneTool::IW5::IW7Dumper
 		for (unsigned int i = 0; i < iw7_mapents->trigger.count; i++)
 		{
 			dump_physics(iw7_mapents->trigger.models[i].physicsAsset);
+		}
+
+		// dump dynent scriptables
+		// Generated destruct-dynent scriptables are appended after the authored runtime
+		// slots.  They still need a standalone scriptable asset on disk for x64-zt's
+		// MapEnts references to resolve during parsing.
+		for (unsigned int i = 0; i < iw7_mapents->scriptableMapEnts.totalInstanceCount; i++)
+		{
+			if (iw7_mapents->scriptableMapEnts.instances[i].contextHeader.context.def)
+			{
+				IW7::IScriptableDef::dump(iw7_mapents->scriptableMapEnts.instances[i].contextHeader.context.def);
+			}
 		}
 	}
 }

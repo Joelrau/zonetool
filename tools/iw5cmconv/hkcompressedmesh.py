@@ -266,15 +266,78 @@ def decode_section_tree(d, section):
 
 def custom_shape_type(d, mesh_tree, section, index0) -> int:
     """Shape type of a custom primitive: the low nibble of the sharedVerticesIndex word
-    its indices[0] points at. 0 = GSK, 1 = SET_SHAPE_KEY_A, 2 = NOP (IW8
-    hknpCompressedMeshShapeInternals::s_customPrimitiveToShapeType). Stock IW7 world
-    blobs use 2 exclusively."""
+    its indices[0] points at, indexing IW8's
+    hknpCompressedMeshShapeInternals::s_customPrimitiveToShapeType. Stock IW7 world blobs
+    use 2 exclusively, and type 2 is a CONVEX -- see decode_custom. (It was long
+    described here as a NOP; it is not: IW7's player movement cast collides with these
+    and with nothing else in the world mesh.)"""
     if index0 < section.num_packed_vertices:
         return -1
     j = (section.shared_vertices_raw >> 8) + index0 - section.num_packed_vertices
     if not (0 <= j < mesh_tree.shared_vertices_index.size):
         return -1
     return u16(d, mesh_tree.shared_vertices_index.data + j * 2) & 0xF
+
+
+CUSTOM_PRIMITIVE_CONVEX = 2
+
+
+@dataclass
+class DecodedCustom:
+    """A convex custom primitive (type 2), as stock IW7 stores brushes.
+
+    For a primitive whose indices[1] == indices[2] == indices[3], with r = indices[0]
+    and svi = sharedVerticesIndex[first + r - numPackedVertices ...]:
+
+        svi[r]   descriptor = (numVertices << 8) | (layer << 4) | type
+        svi[r+1] start, page-relative
+        vertices = sharedVertices[page*65536 + start .. page*65536 + start + numVertices]
+
+    Verified on stock mp_frontend and mp_afghan: 7,798 of 7,798 decode this way. The run
+    is not listed in sharedVerticesIndex beyond the record.
+    """
+    section: int
+    primitive: int
+    record_slot: int                  # r, the section-local slot of the descriptor
+    descriptor: int                   # raw word, or -1 if unreadable
+    start: int                        # page-relative run start, or -1 if unreadable
+    run_start: int                    # global index into sharedVertices, or -1
+    # Decoded positions; None when the record or run is unreadable (out of range).
+    vertices: Optional[List[Tuple[float, float, float]]] = None
+
+    @property
+    def shape_type(self) -> int:
+        return self.descriptor & 0xF if self.descriptor >= 0 else -1
+
+    @property
+    def layer(self) -> int:
+        return (self.descriptor >> 4) & 0x3 if self.descriptor >= 0 else -1
+
+    @property
+    def num_vertices(self) -> int:
+        return self.descriptor >> 8 if self.descriptor >= 0 else -1
+
+
+def decode_custom(d, mesh_tree, section, primitive_index, index0) -> DecodedCustom:
+    """Decode one custom primitive's record and (for any type) its vertex run.
+    Never raises: unreadable parts come back as -1 / None so a checker can count them."""
+    out = DecodedCustom(section.index, primitive_index, index0, -1, -1, -1, None)
+    if index0 < section.num_packed_vertices:
+        return out
+    j = (section.shared_vertices_raw >> 8) + index0 - section.num_packed_vertices
+    svi = mesh_tree.shared_vertices_index
+    if not (0 <= j and j + 1 < svi.size):
+        return out
+    out.descriptor = u16(d, svi.data + j * 2)
+    out.start = u16(d, svi.data + (j + 1) * 2)
+    out.run_start = SHARED_VERTEX_PAGE_SIZE * section.page + out.start
+    n = out.num_vertices
+    if n > 0 and out.run_start + n <= mesh_tree.shared_vertices.size:
+        out.vertices = [
+            decode_shared_vertex(u64(d, mesh_tree.shared_vertices.data + (out.run_start + k) * 8),
+                                 mesh_tree.domain)
+            for k in range(n)]
+    return out
 
 
 def unpack_section_field(raw: int) -> Tuple[int, int]:
@@ -310,7 +373,10 @@ class DecodedMesh:
     primitive_sections: List[int]
     domain: Tuple[float, ...]
     convex_radius: float
-    custom_primitives: List[Tuple[int, int]] = field(default_factory=list)
+    custom_primitives: List[Tuple[int, int]] = field(default_factory=list)  # (section, type)
+    # Every custom primitive fully decoded, convex vertex run included. Kept apart from
+    # `vertices` / `triangles` so triangle and quad decoding is unchanged.
+    customs: List[DecodedCustom] = field(default_factory=list)
 
     def bounds(self):
         xs = [v[0] for v in self.vertices]
@@ -332,6 +398,7 @@ def decode_mesh(d, mesh_tree: MeshTree, convex_radius: float, fixups) -> Decoded
     quads: List[Tuple[int, int, int, int]] = []
     prim_section: List[int] = []
     custom: List[Tuple[int, int]] = []       # (section, custom-primitive shape type)
+    customs: List[DecodedCustom] = []
 
     pv_base = mesh_tree.packed_vertices.data
     prim_base = mesh_tree.primitives.data
@@ -388,16 +455,21 @@ def decode_mesh(d, mesh_tree: MeshTree, convex_radius: float, fixups) -> Decoded
             # primitive*, not a triangle. Its indices[0] does not name a vertex: it
             # indexes sharedVerticesIndex, and the word found there is a descriptor
             # whose low nibble selects hknpCompressedMeshShapeInternals::
-            # s_customPrimitiveToShapeType = { GSK, SET_SHAPE_KEY_A, NOP }.
+            # s_customPrimitiveToShapeType.
             #
             # Decoding these as triangles is what produced the long-standing "~7% of
             # vertices resolve outside their section domain" error: 7,753 of 105,752
             # primitives in mp_afghan and 18,250 of 140,247 in mp_paris are custom, and
-            # every one of them in stock data is type 2 (NOP) -- they contribute no
-            # geometry. Skipping them takes vertex resolution to 100.00% on all three
-            # stock world blobs. See docs/iw7-havok-backlog.md P2a.
+            # every one of them in stock data is type 2. Type 2 is NOT a NOP, as this
+            # comment used to say: it is a convex -- in stock, a brush -- whose vertices
+            # are the contiguous run
+            #     sharedVertices[page*65536 + svi[r+1] .. + (svi[r] >> 8)]
+            # (see decode_custom). They are geometry, and the only world geometry IW7's
+            # player movement cast collides with. They are decoded into `customs` rather
+            # than into `vertices` / `triangles`, so triangle and quad decoding is unchanged.
             if b == c == e:
                 custom.append((si, custom_shape_type(d, mesh_tree, s, a)))
+                customs.append(decode_custom(d, mesh_tree, s, pi, a))
                 continue
 
             ia, ib, ic = fetch(a), fetch(b), fetch(c)
@@ -411,7 +483,7 @@ def decode_mesh(d, mesh_tree: MeshTree, convex_radius: float, fixups) -> Decoded
                 tris.append((ia, ic, ie))
 
     return DecodedMesh(verts, tris, quads, prim_section,
-                       mesh_tree.domain, convex_radius, custom)
+                       mesh_tree.domain, convex_radius, custom, customs)
 
 
 def load_compressed_meshes(path):

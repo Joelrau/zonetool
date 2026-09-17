@@ -1,14 +1,19 @@
 #include "stdafx.hpp"
+#include "Utils/Math.hpp"
 #include "../Include.hpp"
 
 #include "ClipMap.hpp"
 #include "ClipMapCollision.hpp"
+#include "ParticleSystem.hpp"
 
 #include "Common/havok_builder.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
+#include <regex>
 #include <string>
+#include <numbers>
 
 namespace ZoneTool::IW5
 {
@@ -165,9 +170,301 @@ namespace ZoneTool::IW5
 						"end of the %u-model trigger array", out_of_range, model_count);
 				}
 			}
+
+			bool same_bounds(const Bounds& left, const Bounds& right)
+			{
+				constexpr auto epsilon = 0.01f;
+				for (auto axis = 0; axis < 3; axis++)
+				{
+					if (std::fabs(left.midPoint[axis] - right.midPoint[axis]) > epsilon ||
+						std::fabs(left.halfSize[axis] - right.halfSize[axis]) > epsilon)
+					{
+						return false;
+					}
+				}
+				return true;
+			}
+
+			// IW5 map sources use "*N" for both brush models and trigger volumes. IW7
+			// keeps brush models at "*N", but script triggers must use "?N" to index
+			// MapTriggers. Only make that substitution when the source cmodel is an exact
+			// geometric match for exactly one TriggerModel; this prevents an incidental
+			// matching index from turning an ordinary brush model into a trigger.
+			int trigger_for_cmodel(const clipMap_t* clipmap, const unsigned int cmodel)
+			{
+				if (!clipmap || cmodel >= clipmap->numSubModels)
+				{
+					return -1;
+				}
+
+				const auto& bounds = clipmap->cmodels[cmodel].bounds;
+				auto match = -1;
+				for (unsigned int model = 0; model < clipmap->mapEnts->trigger.count; model++)
+				{
+					const auto& trigger = clipmap->mapEnts->trigger.models[model];
+					for (unsigned int hull = trigger.firstHull;
+						hull < trigger.firstHull + trigger.hullCount; hull++)
+					{
+						if (hull >= clipmap->mapEnts->trigger.hullCount ||
+							!same_bounds(bounds, clipmap->mapEnts->trigger.hulls[hull].bounds))
+						{
+							continue;
+						}
+
+						if (match != -1 && match != static_cast<int>(model))
+						{
+							return -1;
+						}
+						match = static_cast<int>(model);
+					}
+				}
+				return match;
+			}
+
+			std::string fix_entity_model_references(const clipMap_t* clipmap,
+				const std::string& source)
+			{
+				static const std::regex classname_expr(
+					R"entity("classname"\s+"([^"]*)")entity");
+				static const std::regex model_expr(
+					R"entity("model"\s+"([*?])(\d+)")entity");
+
+				std::string result;
+				result.reserve(source.size() + 128);
+				size_t cursor = 0;
+				auto rewritten_triggers = 0;
+				auto wired_brushmodels = 0;
+
+				while (cursor < source.size())
+				{
+					const auto open = source.find('{', cursor);
+					if (open == std::string::npos)
+					{
+						result.append(source, cursor, std::string::npos);
+						break;
+					}
+					const auto close = source.find('}', open + 1);
+					if (close == std::string::npos)
+					{
+						// Do not attempt to repair malformed entity text here.
+						result.append(source, cursor, std::string::npos);
+						break;
+					}
+
+					result.append(source, cursor, open - cursor);
+					auto entity = source.substr(open, close - open + 1);
+					std::smatch classname;
+					std::smatch model;
+					if (std::regex_search(entity, classname, classname_expr) &&
+						std::regex_search(entity, model, model_expr))
+					{
+						const auto entity_class = classname[1].str();
+						const auto model_kind = model[1].str()[0];
+						const auto model_index = static_cast<unsigned int>(
+							std::strtoul(model[2].str().c_str(), nullptr, 10));
+
+						if (entity_class.starts_with("trigger_") && model_kind == '*')
+						{
+							const auto trigger = trigger_for_cmodel(clipmap, model_index);
+							if (trigger >= 0)
+							{
+								const auto value_pos = static_cast<size_t>(model.position(2));
+								const auto value_len = static_cast<size_t>(model.length(2));
+								entity.replace(value_pos, value_len, std::to_string(trigger));
+								entity[static_cast<size_t>(model.position(1))] = '?';
+								rewritten_triggers++;
+							}
+						}
+						else if (entity_class == "script_brushmodel" && model_kind == '*' &&
+							entity.find("\"physicsasset\"") == std::string::npos)
+						{
+							// This is the spelling used by the target entity parser. It selects the
+							// dummy's motion/body configuration; cmodel::physicsAsset supplies the
+							// actual asset and the shape override supplies its geometry.
+							entity.insert(entity.size() - 1,
+								"\"physicsasset\" \"scriptbrushmodeldummydefault\"\n");
+							wired_brushmodels++;
+						}
+					}
+
+					result.append(entity);
+					cursor = close + 1;
+				}
+
+				if (rewritten_triggers || wired_brushmodels)
+				{
+					ZONETOOL_INFO("mapents: rewrote %d trigger model reference(s), wired %d "
+						"script brush model physics asset(s)", rewritten_triggers, wired_brushmodels);
+				}
+				return result;
+			}
 		}
 
-		IW7::MapEnts* generate_mapents(clipMap_t* clipmap, allocator& allocator)
+		IW7::ScriptableDef* generate_scriptable_def_from_dynent(const DynEntityDef* dynent, allocator& allocator)
+		{
+			auto generate_name = [](const DynEntityDef* dynent) -> std::string
+			{
+				std::string name;
+				name.reserve(96);
+				name.append(dynent->xModel ? dynent->xModel->name : "dynent");
+				name.append("_destruct_");
+				name.append(std::to_string(dynent->health));
+				return name;
+			};
+
+			auto* new_def = allocator.allocate<IW7::ScriptableDef>();
+			new_def->name = allocator.duplicate_string(generate_name(dynent));
+			// Health-state scriptables carry HAS_HEALTH in the root flags.  The
+			// stock mp_fallen watermelon is 0x81 (0x80 | 0x1), not just 0x80.
+			new_def->flags = IW7::SCRIPTABLE_DEFFLAG_HAS_HEALTH | 0x80;
+			new_def->type = 0;
+			new_def->nextScriptableDef = nullptr;
+			new_def->numParts = 1;
+			new_def->parts = allocator.allocate<IW7::ScriptablePartDef>(1);
+			new_def->maxNumDynEntsRequired = 0;
+			new_def->partCount = 1;
+			// This is a client-instanced map prop; stock watermelon uses zero
+			// server-instanced parts even though its first state is Health.
+			new_def->serverInstancedPartCount = 0;
+			new_def->serverControlledPartCount = 0;
+			new_def->maxNumDynEntPartsBase = 1;
+			new_def->maxNumDynEntPartsForSpawning = 0;
+			new_def->eventStreamSizeRequiredServer = 0;
+			new_def->eventStreamSizeRequiredClient = 0;
+			new_def->eventStreamSize = 4;
+			new_def->ffMemCost = 0;
+			new_def->animationTreeName = 0;
+			new_def->animationTreeDef[0] = nullptr;
+			new_def->animationTreeDef[1] = nullptr;
+			new_def->numXModels = dynent->xModel ? 1 : 0;
+			new_def->models = new_def->numXModels
+				? allocator.allocate<IW7::XModel PTR64>(new_def->numXModels)
+				: nullptr;
+
+			if (new_def->models)
+			{
+				new_def->models[0] = reinterpret_cast<IW7::XModel*>(dynent->xModel);
+			}
+
+			auto* part = new_def->parts;
+			part->name = "";
+			// Stock map scriptable parts use 0x180 for an active part.  The
+			// 0x100 bit is present even on the simple one-part definitions that
+			// back ordinary map props; omitting it leaves the part inactive.
+			part->flags = 0x180;
+			part->flatId = 0;
+			part->serverInstanceFlatId = 0;
+			part->serverControlledFlatId = 0;
+			part->eventStreamBufferOffsetServer = 0;
+			part->eventStreamBufferOffsetClient = 0;
+			// The root reserves the four-byte health stream, but this one-part
+			// definition does not assign a per-part stream range.  Stock watermelon
+			// has a zero part eventStreamSize; using four here shifts the runtime
+			// event buffer layout.
+			part->eventStreamSize = 0;
+			part->numStates = 2;
+			part->states = allocator.allocate<IW7::ScriptableStateDef>(2);
+
+			auto* healthy_state = &part->states[0];
+
+			healthy_state->base.name = allocator.duplicate_string("healthy");
+			healthy_state->base.flags = 0x80;
+			healthy_state->base.numEvents = 1;
+			healthy_state->base.events = allocator.allocate<IW7::ScriptableEventDef>(1);
+			healthy_state->type = IW7::Scriptable_StateType_Health;
+
+			// Stock compiled health states point the specialized base at the state
+			// base itself.  Keep that identity instead of allocating a duplicate.
+			healthy_state->data.health.base = &healthy_state->base;
+
+			healthy_state->data.health.health = std::max(dynent->health, 1);
+			healthy_state->data.health.minimumDamage = 0;
+			healthy_state->data.health.damagePropagationFromParent = 1.0f;
+			healthy_state->data.health.damagePropagationFromChild = 1.0f;
+			// The stock map definition leaves the optional script identifier null;
+			// a zero scrScript_id means no health callback is registered.
+			healthy_state->data.health.script_id = nullptr;
+			healthy_state->data.health.scrScript_id = 0;
+
+			auto* model_event = &healthy_state->base.events[0];
+			model_event->base.name = "";
+			model_event->type = IW7::Scriptable_EventType_Model;
+			model_event->data.model.base = &model_event->base;
+			model_event->data.model.model = reinterpret_cast<IW7::XModel*>(dynent->xModel);
+			model_event->data.model.dynamicSimulation = false;
+			model_event->data.model.activatePhysics = false;
+			model_event->data.model.hudOutlineColor = 0;
+			model_event->data.model.hudOutlineActive = true;
+			model_event->data.model.hudOutlineFill = false;
+			model_event->data.model.neverMoves = false;
+
+			auto* dead_state = &part->states[1];
+
+			dead_state->base.name = allocator.duplicate_string("dead");
+			dead_state->base.flags = 0;
+			// stock p7_food_fruit_watermelon's dead state starts with a Model event
+			// whose model is null; that is what removes the healthy model.  Without
+			// it the prop stays visible after the destroy fx plays.
+			dead_state->base.numEvents = dynent->destroyFx ? 2 : 1;
+			dead_state->base.events = allocator.allocate<IW7::ScriptableEventDef>(dead_state->base.numEvents);
+			dead_state->type = IW7::Scriptable_StateType_Simple;
+
+			dead_state->data.simple.base = allocator.allocate<IW7::ScriptableStateBaseDef>();
+			dead_state->data.simple.base->name = dead_state->base.name;
+			dead_state->data.simple.base->flags = dead_state->base.flags;
+			dead_state->data.simple.base->numEvents = dead_state->base.numEvents;
+			dead_state->data.simple.base->events = dead_state->base.events;
+
+			auto* hide_event = &dead_state->base.events[0];
+			hide_event->base.name = "";
+			hide_event->type = IW7::Scriptable_EventType_Model;
+			hide_event->data.model.base = &hide_event->base;
+			hide_event->data.model.model = nullptr;
+			// byte pattern copied from the stock dead-state event (01 00 00 00 00 00)
+			hide_event->data.model.hudOutlineColor = 1;
+			hide_event->data.model.hudOutlineActive = false;
+			hide_event->data.model.hudOutlineFill = false;
+			hide_event->data.model.neverMoves = false;
+			hide_event->data.model.dynamicSimulation = false;
+			hide_event->data.model.activatePhysics = false;
+
+			if (dynent->destroyFx)
+			{
+				auto* destroy_event = &dead_state->base.events[1];
+				destroy_event->base.name = "";
+				destroy_event->type = IW7::Scriptable_EventType_PFX;
+				destroy_event->data.particleFX.base = &destroy_event->base;
+				destroy_event->data.particleFX.stateful = false;
+				// IW7 scriptable PFX events are serialized as ParticleSystemDef/VFX
+				// references.  The IW5 source field is an FxEffectDef, but the IW7
+				// dumper/converter emits that asset as a ParticleSystemDef.  Marking
+				// this as FX_COMBINED_FX makes the game interpret the VFX pointer as
+				// an FxEffectDef and crash while walking its elemDefs (0x140A1BDF4).
+				// FxEffectDef and ParticleSystemDef are different IW7 asset
+				// layouts.  Reinterpreting the IW5 pointer makes the particle
+				// renderer read FxElemDef data as ParticleEmitterDef data, which
+				// is the crash seen in the emitter draw path.  The effect itself is
+				// converted when its own asset is dumped; the scriptable only
+				// serializes the name.  Don't convert it here: on the IW3 path
+				// destroyFx is the IW3 FxEffectDef cast straight to the IW5 type
+				// (IW3/IW4 ClipMap), so everything past the counts is garbage.
+				auto* vfx = allocator.manual_allocate<IW7::ParticleSystemDef>(sizeof(const char*));
+				vfx->name = allocator.duplicate_string(dynent->destroyFx->name);
+				destroy_event->data.particleFX.effectDef.u.vfx = vfx;
+				destroy_event->data.particleFX.effectDef.type = IW7::FX_COMBINED_VFX;
+				destroy_event->data.particleFX.eventStreamBufferOffsetClient = 0;
+			}
+
+			return new_def;
+		}
+
+		// `world_tags` is the shapeTagData table the map's world blob emitted, and it is
+		// handed straight to the ents shape list as its required prefix. IW7 keeps ONE
+		// shape-tag decoder for the whole map, so the ents list's table is the table the
+		// world mesh's own tags are decoded against -- see the note on
+		// havok::builder::shape_tag. Empty means no world blob was built.
+		IW7::MapEnts* generate_mapents(clipMap_t* clipmap, allocator& allocator,
+			const std::vector<ZoneTool::IW7::havok::builder::shape_tag>& world_tags)
 		{
 			const auto* asset = clipmap->mapEnts;
 			if (!asset)
@@ -180,18 +477,21 @@ namespace ZoneTool::IW5
 			auto* new_asset = allocator.allocate<IW7::MapEnts>();
 			REINTERPRET_CAST_SAFE(name);
 
+			std::string entity_string;
 			if (ZoneTool::currentlinkermode == ZoneTool::linker_mode::iw5)
 			{
-				const auto str = ::mapents::converter::iw5::convert_mapents_ids(
+				entity_string = ::mapents::converter::iw5::convert_mapents_ids(
 					std::string{ asset->entityString, static_cast<size_t>(asset->numEntityChars) });
-				new_asset->entityString = const_cast<char*>(allocator.duplicate_string(str));
-				new_asset->numEntityChars = static_cast<int>(str.size());
 			}
 			else
 			{
-				new_asset->entityString = asset->entityString;
-				new_asset->numEntityChars = asset->numEntityChars;
+				entity_string.assign(asset->entityString, static_cast<size_t>(asset->numEntityChars));
 			}
+			// An IW3 source reaches this IW5->IW7 converter with linker_mode::iw3, so this
+			// target-specific rewrite must not be gated on the IW5 numeric-token conversion.
+			entity_string = fix_entity_model_references(clipmap, entity_string);
+			new_asset->entityString = const_cast<char*>(allocator.duplicate_string(entity_string));
+			new_asset->numEntityChars = static_cast<int>(entity_string.size());
 
 			// Script triggers (trigger_multiple, trigger_use, trigger_hurt, ...) and the
 			// client-side ones (vision sets, reverb zones) both live here.
@@ -281,6 +581,20 @@ namespace ZoneTool::IW5
 			std::vector<unsigned short> cmodel_shape_index(clipmap->numSubModels, 0xFFFF);
 			{
 				ZoneTool::IW7::havok::builder::ents_input ents{};
+				ents.world_tags = world_tags;
+				if (world_tags.empty())
+				{
+					// The world blob is built first precisely so this cannot happen. Without
+					// it the ents table is ordered by whatever the brush models need, and
+					// since the runtime decodes EVERY shape against this one table, the world
+					// mesh's tags resolve against the wrong records -- floors and walls pick
+					// up someone else's collision filter and userData, or run off the end of
+					// the table entirely, and the player walks through them while rays and
+					// bullets still hit.
+					ZONETOOL_WARNING("mapents: no world shape tag table for \"%s\" -- the "
+						"world mesh's tags will resolve against the ents table instead of "
+						"its own, giving world surfaces the wrong filters", asset->name);
+				}
 
 				// Collected only when ZT_HAVOK_OBJ_DIR is set; see the note on the dump
 				// helpers in ClipMapCollision.hpp.
@@ -310,6 +624,9 @@ namespace ZoneTool::IW5
 					// reason: they have to agree.
 					auto contents = model.contents;
 					const auto* solid_as_clip = std::getenv("ZT_HAVOK_SOLID_AS_CLIP");
+					// Keep the entity shape's contents aligned with the world mesh.  A bare
+					// CONTENTS_SOLID is normal in stock palettes, so the experimental clip
+					// substitution is opt-in only.
 					if ((contents & 0x1) && solid_as_clip && solid_as_clip[0] == '1')
 					{
 						auto mask = 0x00031640u;
@@ -414,9 +731,20 @@ namespace ZoneTool::IW5
 						ents.scale);
 				}
 
+				ZoneTool::IW7::havok::builder::ents_tag_merge tag_merge{};
 				const auto blob = ents_shapes_enabled()
-					? ZoneTool::IW7::havok::builder::build_ents_shape_list(ents)
+					? ZoneTool::IW7::havok::builder::build_ents_shape_list(ents, &tag_merge)
 					: std::vector<std::uint8_t>{};
+
+				if (!blob.empty())
+				{
+					// The one number that matters is `prefix`: it has to equal the world
+					// table's size, or the world mesh is decoding against the wrong records.
+					ZONETOOL_INFO("mapents: havok tag table -- world %zu entries, ents %zu "
+						"(%zu reused from the world table, %zu appended)",
+						tag_merge.prefix, tag_merge.total, tag_merge.reused,
+						tag_merge.appended);
+				}
 
 				if (dump_obj)
 				{
@@ -605,23 +933,21 @@ namespace ZoneTool::IW5
 			new_asset->dynEntGlobalIdList[0] = allocator.allocate<IW7::DynEntityGlobalId>(new_asset->dynEntCountTotal);
 			new_asset->dynEntGlobalIdList[1] = allocator.allocate<IW7::DynEntityGlobalId>(new_asset->dynEntCountTotal);
 
-			for (auto i = 0; i < reserved_dynents; i++)
+			struct generated_scriptable
 			{
-				auto* dyn = &new_asset->dynEntDefList[0][i];
-				dyn->type = IW7::DYNENT_TYPE_SCRIPTABLEINST;
-				dyn->scriptableMapIndex = 500;
-				dyn->unk2 = true;
-			}
+				IW7::ScriptableDef* def;
+				GfxPlacement pose;
+			};
+			std::vector<generated_scriptable> scriptable_defs;
+			std::array<int, IW7::DYNENT_TYPE_COUNT> dynent_type_count{};
 
 			const auto copy_dynents = [&](const auto index)
 			{
-				for (auto i = reserved_dynents; i < new_asset->dynEntCount[index]; i++)
+				for (auto i = 0; i < new_asset->dynEntCount[index] - (index == 0 ? reserved_dynents : 0); i++)
 				{
-					const auto idx = i - reserved_dynents;
-
 					{
 						auto* new_dynent_def = &new_asset->dynEntDefList[index][i];
-						auto* dynent_def = &clipmap->dynEntDefList[index][idx];
+						auto* dynent_def = &clipmap->dynEntDefList[index][i];
 
 						const auto convert_type = [](DynEntityType type) -> IW7::DynEntityType
 						{
@@ -634,7 +960,7 @@ namespace ZoneTool::IW5
 								return IW7::DYNENT_TYPE_CLUTTER;
 								break;
 							case DYNENT_TYPE_DESTRUCT:
-								return IW7::DYNENT_TYPE_INVALID;
+								return IW7::DYNENT_TYPE_CLUTTER;
 								break;
 							case DYNENT_TYPE_HINGE:
 								return IW7::DYNENT_TYPE_HINGE;
@@ -643,13 +969,60 @@ namespace ZoneTool::IW5
 							return IW7::DYNENT_TYPE_INVALID;
 						};
 
-						new_dynent_def->type = convert_type(dynent_def->type);
-						memcpy(&new_dynent_def->pose, &dynent_def->pose, sizeof(GfxPlacement));
-						new_dynent_def->baseModel = reinterpret_cast<IW7::XModel*>(dynent_def->xModel);
-						new_dynent_def->brushModel = dynent_def->brushModel;
-						new_dynent_def->linkTo = nullptr;
-						new_dynent_def->scriptableMapIndex = 0;
-						new_dynent_def->unk2 = true;
+						// scriptable dynent does not want to spawn in???
+						if (dynent_def->type == DYNENT_TYPE_DESTRUCT)
+						{
+							ZONETOOL_INFO("converting dynent destruct into scriptable");
+							auto* scriptable_def = generate_scriptable_def_from_dynent(dynent_def, allocator);
+							scriptable_defs.push_back({ scriptable_def, dynent_def->pose });
+
+							new_dynent_def->instanceIndex = static_cast<unsigned int>(500 + scriptable_defs.size() - 1);
+							new_dynent_def->type = IW7::DYNENT_TYPE_HINGE;
+							// The type-3 dynent is the bridge between the map and the
+							// scriptable instance.  It still needs its base model: the
+							// client dynent registration seeds activeModel from
+							// DynEntityDef::baseModel before the scriptable state events
+							// are evaluated.  Leaving this null makes the association
+							// exist, but leaves the prop invisible because the initial
+							// client registration has no model to activate.
+							//new_dynent_def->baseModel =
+							//	reinterpret_cast<IW7::XModel*>(dynent_def->xModel);
+							//new_dynent_def->baseModel =
+							//	reinterpret_cast<IW7::XModel*>(dynent_def->xModel);
+							// Stock type-3 scriptable associations retain the source dynent
+							// pose.  The scriptable instance also stores this placement, but
+							// the dynent association uses its own pose during registration.
+							// Leaving it zeroed associates the scriptable at the origin.
+							memcpy(&new_dynent_def->pose, &dynent_def->pose, sizeof(GfxPlacement));
+							new_dynent_def->linkTo = nullptr;
+							// Type 3 is IW7's map-scriptable association.  Stock entries //retain the
+							// source dynent contents in this 16-bit field; leaving it zero //changes
+							// the association's physics/contents classification.
+							// Every stock type-3 association has a nonzero class here; 1 is //the
+							// ordinary static scriptable association used by the majority of //them.
+							new_dynent_def->unk5 = 1;
+							new_dynent_def->unk6 = static_cast<short>(dynent_def->contents);
+							// DynEntCl_InitEntities tests this flag before calling
+							// DynEntCL_AddEntity.  Without it the type-3 association is
+							// left inactive and the scriptable can never spawn.
+							new_dynent_def->spawnEnabled = true;
+						}
+						else
+						{
+							new_dynent_def->type = convert_type(dynent_def->type);
+							if (new_dynent_def->type == IW7::DYNENT_TYPE_CLUTTER)
+							{
+								memcpy(&new_dynent_def->initialPose, &dynent_def->pose, sizeof(GfxPlacement));
+							}
+							memcpy(&new_dynent_def->pose, &dynent_def->pose, sizeof(GfxPlacement));
+							new_dynent_def->baseModel = reinterpret_cast<IW7::XModel*>(dynent_def->xModel);
+							new_dynent_def->brushModel = dynent_def->brushModel;
+							new_dynent_def->linkTo = nullptr;
+							new_dynent_def->instanceIndex = 0;
+							new_dynent_def->spawnEnabled = true;
+						}
+
+						dynent_type_count[new_dynent_def->type]++;
 					}
 
 					{
@@ -657,7 +1030,7 @@ namespace ZoneTool::IW5
 							&new_asset->dynEntPoseList[IW7::DynEntityBasis::DYNENT_BASIS_MODEL][index][i];
 						auto* dynent_pose_brush =
 							&new_asset->dynEntPoseList[IW7::DynEntityBasis::DYNENT_BASIS_BRUSH][index][i];
-						auto* dynent_pose = &clipmap->dynEntPoseList[index][idx];
+						auto* dynent_pose = &clipmap->dynEntPoseList[index][i];
 
 						// model
 						memcpy(&dynent_pose_model->pose, &dynent_pose->pose, sizeof(IW7::GfxPlacement));
@@ -665,6 +1038,7 @@ namespace ZoneTool::IW5
 						dynent_pose_model->poses = allocator.allocate<IW7::GfxPlacement>(1);
 						memcpy(&dynent_pose_model->poses[0], &dynent_pose_model->pose, sizeof(IW7::GfxPlacement));
 						dynent_pose_model->radius = dynent_pose->radius;
+						dynent_pose_model->detailBodyToBoneMap = allocator.allocate<char>(dynent_pose_model->numPoses);
 
 						// brush
 						memcpy(&dynent_pose_brush->pose, &dynent_pose->pose, sizeof(IW7::GfxPlacement));
@@ -672,50 +1046,162 @@ namespace ZoneTool::IW5
 						dynent_pose_brush->poses = allocator.allocate<IW7::GfxPlacement>(1);
 						memcpy(&dynent_pose_brush->poses[0], &dynent_pose_brush->pose, sizeof(IW7::GfxPlacement));
 						dynent_pose_brush->radius = dynent_pose->radius;
+						dynent_pose_brush->detailBodyToBoneMap = nullptr;
 					}
 				}
 			};
 			copy_dynents(0);
 			copy_dynents(1);
 
+			for (auto i = 0; i < reserved_dynents; i++)
+			{
+				auto base_index = new_asset->dynEntCount[0] - reserved_dynents;
+				auto* dyn = &new_asset->dynEntDefList[0][i + base_index];
+				dyn->type = IW7::DYNENT_TYPE_SCRIPTABLEINST;
+				dyn->instanceIndex = static_cast<unsigned int>(500 + scriptable_defs.size());
+				dyn->unk4 = i; // reserved index
+				dyn->spawnActive = true;
+				dyn->unk5 = 4;
+				dyn->unk6 = 0x666;
+				dyn->spawnEnabled = true;
+			}
+
 			for (auto i = 0; i < new_asset->dynEntCountTotal; i++)
 			{
 				new_asset->dynEntGlobalIdList[0][i].basis = 0;
 				new_asset->dynEntGlobalIdList[0][i].id = i;
 
-				new_asset->dynEntGlobalIdList[1][i].basis = 0;
+				new_asset->dynEntGlobalIdList[1][i].basis = 1;
 				new_asset->dynEntGlobalIdList[1][i].id = i;
 			}
 
-			for (auto i = 0; i < 8; i++)
-			{
-				new_asset->unkIndexes[i] = -1;
-			}
+			std::fill_n(&new_asset->dynEntPhysicsSetupHead[0][0], 4,
+				static_cast<unsigned short>(0xFFFF));
+			std::fill_n(&new_asset->dynEntPhysicsSetupTail[0][0], 4,
+				static_cast<unsigned short>(0xFFFF));
 
-			new_asset->unk2Count = 0;
-			new_asset->unk2 = nullptr;
-			new_asset->unk2_1[0] = nullptr;
-			new_asset->unk2_1[1] = nullptr;
-			new_asset->unk2_2[0] = nullptr;
-			new_asset->unk2_2[1] = nullptr;
+			// IW5 has no transient dynent-zone metadata.  Converted dynents are all
+			// base-world entities (isTransient == false), so do not fabricate a
+			// transient group containing them.  The transient loader walks this list
+			// and a synthetic base group causes it to repeatedly process the same
+			// physics/scriptable entities.  Stock base-world maps leave these fields
+			// empty when there are no transient dynents.
+			new_asset->dynEntTransientGroupCount = 0;
+			new_asset->dynEntTransientGroups = nullptr;
+			new_asset->dynEntTransientGroupRuntime[0] = nullptr;
+			new_asset->dynEntTransientGroupRuntime[1] = nullptr;
+			new_asset->dynEntTransientGroupState[0] = nullptr;
+			new_asset->dynEntTransientGroupState[1] = nullptr;
+
 			new_asset->unk3Count = 0;
 			new_asset->unk3 = nullptr;
 
 			new_asset->clientEntAnchorCount = 0;
 			new_asset->clientEntAnchors = nullptr;
 
-			new_asset->scriptableMapEnts.totalInstanceCount = 500;
+			new_asset->scriptableMapEnts.totalInstanceCount = static_cast<unsigned int>(500 + scriptable_defs.size());
 			new_asset->scriptableMapEnts.runtimeInstanceCount = 500;
 			new_asset->scriptableMapEnts.reservedInstanceCount = 500;
 
 			new_asset->scriptableMapEnts.instances = allocator.allocate<IW7::ScriptableInstance>(new_asset->scriptableMapEnts.totalInstanceCount);
+			std::memset(new_asset->scriptableMapEnts.instances, 0,
+				sizeof(IW7::ScriptableInstance) *
+				new_asset->scriptableMapEnts.totalInstanceCount);
 
-			// these are runtime data
+			// IW7 does not rebuild these part-runtime pools until after the map has
+			// been loaded.  They nevertheless must be present in the serialized
+			// ScriptableMapEnts: the client initialization path passes the pool
+			// count to Scriptable_GetPartRuntime and dereferences its result.  A
+			// zero count/null pointer therefore crashes while loading the map
+			// (sub_140BEC6A0 at 0x140BEC6C1).  Stock dumps contain zeroed stateId
+			// entries, so allocate zero-initialized entries for the complete
+			// instance range; the runtime builder can compact/rebuild them later.
+			const auto part_runtime_capacity = new_asset->scriptableMapEnts.totalInstanceCount;
+			new_asset->scriptableMapEnts.runtimeData.partRuntimeCount =
+				static_cast<int>(part_runtime_capacity);
+			new_asset->scriptableMapEnts.runtimeData.partRuntime =
+				allocator.allocate<IW7::ScriptablePartRuntime>(part_runtime_capacity);
+			new_asset->scriptableMapEnts.runtimeData.partRuntimeLocalClientCount =
+				static_cast<int>(part_runtime_capacity);
+			new_asset->scriptableMapEnts.runtimeData.partRuntimeLocalClient[0] =
+				allocator.allocate<IW7::ScriptablePartRuntime>(part_runtime_capacity);
+			new_asset->scriptableMapEnts.runtimeData.partRuntimeLocalClient[1] =
+				allocator.allocate<IW7::ScriptablePartRuntime>(part_runtime_capacity);
+			std::memset(new_asset->scriptableMapEnts.runtimeData.partRuntime, 0,
+				sizeof(IW7::ScriptablePartRuntime) * part_runtime_capacity);
+			std::memset(new_asset->scriptableMapEnts.runtimeData.partRuntimeLocalClient[0], 0,
+				sizeof(IW7::ScriptablePartRuntime) * part_runtime_capacity);
+			std::memset(new_asset->scriptableMapEnts.runtimeData.partRuntimeLocalClient[1], 0,
+				sizeof(IW7::ScriptablePartRuntime) * part_runtime_capacity);
+
+			for (unsigned int i = 0; i < part_runtime_capacity; ++i)
+			{
+				new_asset->scriptableMapEnts.runtimeData.partRuntime[i].stateId = 0;
+				new_asset->scriptableMapEnts.runtimeData.partRuntimeLocalClient[0][i].stateId = 0;
+				new_asset->scriptableMapEnts.runtimeData.partRuntimeLocalClient[1][i].stateId = 0;
+			}
+
+			const auto write_scriptable_placement = [](IW7::ScriptableInstanceContext& context,
+				const GfxPlacement& pose)
+			{
+				// engine convention ([pitch, yaw, roll] degrees, positive pitch down) - see Utils/Math.hpp
+				context.origin[0] = pose.origin[0];
+				context.origin[1] = pose.origin[1];
+				context.origin[2] = pose.origin[2];
+				math::UnitQuatToAngles(pose.quat, context.angles);
+
+				std::memcpy(context.initialOrigin, pose.origin, sizeof(pose.origin));
+				std::memcpy(context.initialAngles, context.angles, sizeof(context.angles));
+			};
+
+			for (unsigned int i = 0; i < scriptable_defs.size(); i++)
+			{
+				auto& instance = new_asset->scriptableMapEnts.instances[500 + i];
+				instance.contextHeader.context.def = scriptable_defs[i].def;
+				instance.contextHeaderLocalClient[0].context.def = scriptable_defs[i].def; // localclient 0
+				instance.contextHeaderLocalClient[1].context.def = scriptable_defs[i].def; // localclient 1
+				write_scriptable_placement(instance.contextHeader.context, scriptable_defs[i].pose);
+				write_scriptable_placement(instance.contextHeaderLocalClient[0].context, scriptable_defs[i].pose);
+				write_scriptable_placement(instance.contextHeaderLocalClient[1].context, scriptable_defs[i].pose);
+
+				// These are serialized runtime event-stream buffers, not optional
+				// pointers.  IW7 adds an 8-byte server header and a 16-byte
+				// local-client header to the definition stream.  Thus the generated
+				// four-byte stream becomes the stock 12/20-byte buffers, while a
+				// definition with a larger stream scales automatically.
+				const auto definition_event_stream_size =
+					static_cast<unsigned int>(scriptable_defs[i].def->eventStreamSize);
+				const auto server_event_stream_size = definition_event_stream_size + 8u;
+				const auto local_client_event_stream_size = definition_event_stream_size + 16u;
+				instance.contextHeader.context.eventStreamBufferSize = server_event_stream_size;
+				instance.contextHeader.context.eventStreamBuffer =
+					allocator.allocate<char>(server_event_stream_size);
+				instance.contextHeaderLocalClient[0].context.eventStreamBufferSize =
+					local_client_event_stream_size;
+				instance.contextHeaderLocalClient[0].context.eventStreamBuffer =
+					allocator.allocate<char>(local_client_event_stream_size);
+				instance.contextHeaderLocalClient[1].context.eventStreamBufferSize =
+					local_client_event_stream_size;
+				instance.contextHeaderLocalClient[1].context.eventStreamBuffer =
+					allocator.allocate<char>(local_client_event_stream_size);
+				std::fill_n(instance.contextHeader.context.eventStreamBuffer,
+					server_event_stream_size, static_cast<char>(0));
+				std::fill_n(instance.contextHeaderLocalClient[0].context.eventStreamBuffer,
+					local_client_event_stream_size, static_cast<char>(0));
+				std::fill_n(instance.contextHeaderLocalClient[1].context.eventStreamBuffer,
+					local_client_event_stream_size, static_cast<char>(0));
+
+				// stock map does this
+				std::fill_n(reinterpret_cast<int*>(instance.contextHeader.unk02), 2, -1);
+				std::fill_n(reinterpret_cast<int*>(instance.contextHeaderLocalClient[0].unk02), 3, -1);
+				std::fill_n(reinterpret_cast<int*>(instance.contextHeaderLocalClient[1].unk02), 3, -1);
+			}
+
+			// Reserved dynent pools are initialized by IW7 after the zone is loaded.
 			new_asset->scriptableMapEnts.reservedDynents[0].numReservedDynents = reserved_dynents;
 			new_asset->scriptableMapEnts.reservedDynents[0].reservedDynents =
 				allocator.allocate<IW7::ScriptableReservedDynent>(new_asset->scriptableMapEnts.reservedDynents[0].numReservedDynents);
 
-			// these are runtime data
 			new_asset->scriptableMapEnts.reservedDynents[1].numReservedDynents = reserved_dynents;
 			new_asset->scriptableMapEnts.reservedDynents[1].reservedDynents =
 				allocator.allocate<IW7::ScriptableReservedDynent>(new_asset->scriptableMapEnts.reservedDynents[1].numReservedDynents);
@@ -777,11 +1263,107 @@ namespace ZoneTool::IW5
 			IW7_asset->numStaticModelCollisionModelLists = 0;
 			IW7_asset->staticModelCollisionModelLists = nullptr;
 
+			// World collision. IW7 has no brush/BSP collision at all -- clipMap_t::info is
+			// just planes -- so the entire collidable world has to be generated as a single
+			// hknpCompressedMeshShape. See docs/iw7-havok-collision.md.
+			//
+			// This runs BEFORE the mapents are generated, which is a hard ordering and not a
+			// preference: the ents shape list has to be built on top of this blob's tag
+			// table, because IW7 decodes every shape in the map -- world mesh included --
+			// against the single table registered from the main shape list.
+			IW7_asset->havokWorldShapeDataSize = 0;
+			IW7_asset->havokWorldShapeData = nullptr;
+			std::vector<ZoneTool::IW7::havok::builder::shape_tag> world_shape_tags;
+			{
+				const auto world = collision::extract_world(asset);
+				const auto& triangles = world.triangles;
+				if (!triangles.empty() || !world.convexes.empty())
+				{
+					ZoneTool::IW7::havok::builder::mesh_input input{};
+					// Brushes arrive as convexes (ZT_HAVOK_BRUSH_CONVEX, default on) and become
+					// convex custom primitives; the builder counts what it emits for the shape
+					// list's convexCounts itself.
+					input.convexes.reserve(world.convexes.size());
+					for (const auto& cvx : world.convexes)
+					{
+						ZoneTool::IW7::havok::builder::convex out{};
+						out.verts = cvx.verts;
+						out.surface_tag = cvx.surface_tag;
+						out.contents = cvx.contents;
+						out.material_crc = cvx.material_crc;
+						out.user_data = cvx.user_data;
+						input.convexes.emplace_back(std::move(out));
+					}
+
+					// Triangles only: a convex custom primitive is a point set with no winding.
+					const auto* flip_winding = std::getenv("ZT_HAVOK_FLIP_WINDING");
+					const auto reverse_winding = flip_winding && flip_winding[0] == '1';
+					if (reverse_winding)
+					{
+						ZONETOOL_WARNING("clipmap: reversing world collision winding "
+							"(ZT_HAVOK_FLIP_WINDING diagnostic, triangles only)");
+					}
+					input.triangles.reserve(triangles.size());
+					for (const auto& tri : triangles)
+					{
+						ZoneTool::IW7::havok::builder::triangle out{};
+						std::memcpy(out.verts, tri.verts, sizeof(out.verts));
+						out.surface_tag = tri.surface_tag;
+						out.contents = tri.contents;
+						out.material_crc = tri.material_crc;
+						out.user_data = tri.user_data;
+						out.is_quad = tri.is_quad;
+						std::memcpy(out.vert3, tri.vert3, sizeof(out.vert3));
+						if (reverse_winding)
+						{
+							if (out.is_quad)
+							{
+								// Preserve the quad's ring while reversing its normal:
+								// (v0,v1,v2,v3) becomes (v0,v3,v2,v1).
+								std::swap(out.verts[1], out.vert3);
+							}
+							else
+							{
+								std::swap(out.verts[1], out.verts[2]);
+							}
+						}
+						input.triangles.emplace_back(out);
+					}
+
+					const auto blob = ZoneTool::IW7::havok::builder::build_world_shape(
+						input, &world_shape_tags);
+
+					if (collision::obj_dump_enabled())
+					{
+						collision::write_blob(
+							collision::obj_dump_path(asset->name, ".world.hkx"),
+							blob.data(), blob.size());
+					}
+
+					if (!blob.empty())
+					{
+						auto* memory = allocator.allocate<char>(blob.size());
+						std::memcpy(memory, blob.data(), blob.size());
+
+						IW7_asset->havokWorldShapeData = memory;
+						IW7_asset->havokWorldShapeDataSize = static_cast<unsigned int>(blob.size());
+					}
+					else
+					{
+						// build_world_shape logs why. A null blob means no world collision,
+						// which is survivable for loading but the map will have nothing to
+						// stand on.
+						ZONETOOL_WARNING("clipmap: no havok world shape generated for \"%s\"",
+							asset->name);
+					}
+				}
+			}
+
 			// The mapents carry every trigger volume in the map, so this is not just a name
 			// reference -- it is where the converted triggers live. The clipmap is dumped
 			// with only the name (IClipMap::dump calls dump_asset on it), but the object has
 			// to be real so the dumper can write it out as the MapEnts asset it points at.
-			IW7_asset->mapEnts = generate_mapents(asset, allocator);
+			IW7_asset->mapEnts = generate_mapents(asset, allocator, world_shape_tags);
 
 			IW7_asset->stageCount = asset->stageCount;
 			IW7_asset->stages = allocator.allocate<IW7::Stage>(IW7_asset->stageCount);
@@ -831,58 +1413,6 @@ namespace ZoneTool::IW5
 			IW7_asset->broadphaseMax[2] = 131072.f;
 			
 			IW7_asset->physicsCapacities; // these might get set during runtime
-
-			// World collision. IW7 has no brush/BSP collision at all -- clipMap_t::info is
-			// just planes -- so the entire collidable world has to be generated as a single
-			// hknpCompressedMeshShape. See docs/iw7-havok-collision.md.
-			IW7_asset->havokWorldShapeDataSize = 0;
-			IW7_asset->havokWorldShapeData = nullptr;
-			{
-				const auto triangles = collision::extract(asset);
-				if (!triangles.empty())
-				{
-					ZoneTool::IW7::havok::builder::mesh_input input{};
-					input.triangles.reserve(triangles.size());
-					for (const auto& tri : triangles)
-					{
-						ZoneTool::IW7::havok::builder::triangle out{};
-						std::memcpy(out.verts, tri.verts, sizeof(out.verts));
-						out.surface_tag = tri.surface_tag;
-						out.contents = tri.contents;
-						out.material_crc = tri.material_crc;
-						out.user_data = tri.user_data;
-						out.is_quad = tri.is_quad;
-						std::memcpy(out.vert3, tri.vert3, sizeof(out.vert3));
-						input.triangles.emplace_back(out);
-					}
-
-					const auto blob = ZoneTool::IW7::havok::builder::build_world_shape(input);
-
-					if (collision::obj_dump_enabled())
-					{
-						collision::write_blob(
-							collision::obj_dump_path(asset->name, ".world.hkx"),
-							blob.data(), blob.size());
-					}
-
-					if (!blob.empty())
-					{
-						auto* memory = allocator.allocate<char>(blob.size());
-						std::memcpy(memory, blob.data(), blob.size());
-
-						IW7_asset->havokWorldShapeData = memory;
-						IW7_asset->havokWorldShapeDataSize = static_cast<unsigned int>(blob.size());
-					}
-					else
-					{
-						// build_world_shape logs why. A null blob means no world collision,
-						// which is survivable for loading but the map will have nothing to
-						// stand on.
-						ZONETOOL_WARNING("clipmap: no havok world shape generated for \"%s\"",
-							asset->name);
-					}
-				}
-			}
 
 			IW7_asset->numCollisionHeatmapEntries = 0;
 			IW7_asset->collisionHeatmap = nullptr; // todo...

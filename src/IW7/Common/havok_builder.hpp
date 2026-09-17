@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -10,7 +11,7 @@ namespace ZoneTool::IW7
 	namespace havok
 	{
 		// Builds an IW7 world-collision blob (clipMap_t::havokWorldShapeData) from raw
-		// triangles. See docs/iw7-havok-collision.md for where every constant below came
+		// triangles and convex volumes. See docs/iw7-havok-collision.md for where every constant below came
 		// from; everything here is derived from IW7's own reflection tables and verified
 		// against the shipped mp_paris / mp_afghan / mp_breakneck blobs.
 		//
@@ -19,6 +20,34 @@ namespace ZoneTool::IW7
 		// seen from the front face or surface normals invert.
 		namespace builder
 		{
+			// One ShapeTagData record, exactly as it is written into a shape list's
+			// shapeTagData array (24 bytes: collisionFilterInfo, materialCRC, materialId,
+			// pad, userData). materialId is not stored here because it is 0xFFFF in every
+			// entry the builder emits -- the loader resolves the material from the CRC.
+			//
+			// This is a shared type because IW7 has exactly ONE shape-tag decoder for the
+			// whole map. HavokPhysics_SetMainShapeList points it at the main list's
+			// m_shapeTagData, and every composite shape in the map -- whichever list it came
+			// from -- decodes its primitives' raw tags against that single table, because
+			// m_shapeTagCodecInfo is -1 in every blob, stock and ours. So the world blob's
+			// table and the ents blob's table are not independent: shipped maps emit the
+			// world table as the exact leading run of the ents table (mp_fallen 216 of 219,
+			// mp_afghan 132 of 136, mp_frontend 7 of 7, byte-identical and in order), and
+			// anything else hands the world mesh somebody else's filters and userData.
+			struct shape_tag
+			{
+				std::uint32_t collision_filter = 0; // already masked, ready to write
+				std::uint32_t material_crc = 0;
+				std::uint64_t user_data = 0;
+
+				bool operator==(const shape_tag& other) const
+				{
+					return collision_filter == other.collision_filter
+						&& material_crc == other.material_crc
+						&& user_data == other.user_data;
+				}
+			};
+
 			struct triangle
 			{
 				float verts[3][3];
@@ -38,16 +67,60 @@ namespace ZoneTool::IW7
 				std::uint64_t user_data = 0;
 			};
 
+			// One convex volume -- in practice one brush -- stored inside the compressed mesh
+			// as a CONVEX CUSTOM PRIMITIVE. This is not optional decoration: IW7's player
+			// movement sweep (a capsule shape cast) only ever dispatches convex custom
+			// primitives from the world mesh, never plain triangles or quads. Stock world
+			// blobs keep every brush in this form beside their triangle/quad terrain, and a
+			// mesh made only of triangles is hit by rays and bullets but walked through.
+			//
+			// Encoding (hk_2014.2.5-r1, decoded from stock mp_frontend / mp_afghan, 7,798 of
+			// 7,798 customs):
+			//   primitive indices    [r, r, r, r], r = section-local slot of the record
+			//   sharedVerticesIndex  [r]   = (numVertices << 8) | 0x2   (type 2, layer 0)
+			//                        [r+1] = page-relative start of the vertex run
+			//   sharedVertices       [(page << 16) + start .. + numVertices) -- one contiguous
+			//                        run inside the section's page, not listed in the index
+			// The record's two words occupy local shared-index slots like listed vertices do.
+			struct convex
+			{
+				std::vector<std::array<float, 3>> verts; // Havok space, already scaled, distinct points
+				unsigned short surface_tag;
+				int contents = 1;
+				std::uint32_t material_crc = 0x1AB7BC33u;
+				std::uint64_t user_data = 0;
+			};
+
+			// Why build_mesh_blob would refuse a convex: nullptr if it is acceptable, otherwise
+			// a short reason. Fewer than 4 vertices, more than 255 (numVertices is the high byte
+			// of a uint16), exactly repeated points, or every vertex within 1e-4 Havok units of
+			// one plane. Exposed so a caller can choose its fallback BEFORE handing the convex
+			// over -- the builder itself drops a rejected convex (and logs the count), it has
+			// no geometry to fall back to.
+			const char* convex_rejection(const std::vector<std::array<float, 3>>& verts);
+
 			struct mesh_input
 			{
 				std::vector<triangle> triangles;
+				// Emitted as convex custom primitives after the triangles, in the same
+				// sections. HavokPhysicsShapeList::convexCounts is the number actually
+				// emitted, counted by the builder. Empty for per-model physics assets and
+				// XModel LOD blobs, which then serialise exactly as before.
+				std::vector<convex> convexes;
 				float convex_radius = 0.0f; // shipped stock world blobs use 0.0
 			};
 
 			// Produces a complete Havok 2014.2.5-r1 binary packfile. The returned buffer is
 			// what havokWorldShapeData points at, and its size is havokWorldShapeDataSize.
 			// Returns an empty vector (and logs) if the input is unusable.
-			std::vector<std::uint8_t> build_world_shape(const mesh_input& input);
+			//
+			// `out_tags`, when given, receives the blob's shapeTagData table in emitted
+			// order -- the very records the write loop consumed, not a re-derivation. Hand
+			// it to build_ents_shape_list as ents_input::world_tags; see the note on
+			// shape_tag for why the two lists cannot pick their own orderings.
+			// Left untouched when the build fails.
+			std::vector<std::uint8_t> build_world_shape(const mesh_input& input,
+				std::vector<shape_tag>* out_tags = nullptr);
 
 			// MapEnts::havokEntsShapeData -- the second shape list, holding one hknpShape per
 			// brush model and per trigger, indexed by cmodel_t::physicsShapeOverrideIdx and
@@ -102,13 +175,33 @@ namespace ZoneTool::IW7
 			{
 				std::vector<ents_shape> shapes;
 
+				// The world blob's shapeTagData, straight out of build_world_shape. It is a
+				// REQUIRED PREFIX, not a hint: the emitted table begins with these records
+				// byte for byte and in this order, and only tags the world table does not
+				// already carry are appended after them. Leaving it empty builds the table
+				// from the ents shapes alone -- which is what per-model callers want, and
+				// what a map wants only if it has no world blob at all.
+				std::vector<shape_tag> world_tags;
+
 				// Shapes are stored at CoD units / 32 -- the opposite of the world blob,
 				// which is 1:1. Verified at exactly 32.0000 over 204 stock samples; see
 				// docs/iw7-ents-shapes.md. Geometry goes in as CoD units and is scaled here.
 				float scale = 1.0f / 32.0f;
 			};
 
-			std::vector<std::uint8_t> build_ents_shape_list(const ents_input& input);
+			// How the ents table came out, for the caller to log. `reused` counts the
+			// distinct prefix records the ents shapes landed on, so reused + appended is the
+			// number of distinct tags the shapes actually need.
+			struct ents_tag_merge
+			{
+				std::size_t prefix = 0;   // records carried in from the world table
+				std::size_t total = 0;    // records in the emitted table
+				std::size_t reused = 0;   // prefix records an ents shape points at
+				std::size_t appended = 0; // records appended after the prefix
+			};
+
+			std::vector<std::uint8_t> build_ents_shape_list(const ents_input& input,
+				ents_tag_merge* out_merge = nullptr);
 
 			// The .hkx beside a `physicsasset` dump. Only the dummy form is generated: a
 			// static body wrapping a placeholder box, which is what IW7 attaches to script
@@ -134,6 +227,12 @@ namespace ZoneTool::IW7
 			// all -- 391 of mp_paris's 671 xmodels ship one. Geometry is CoD units / 32.
 			std::vector<std::uint8_t> build_model_physics_asset(const mesh_input& input,
 				const physics_asset_input& physics_asset);
+
+			// XModel::physicsLODData. This is a HavokPhysicsXModelLOD packfile containing
+			// collision geometry for the model's streamed LODs. `lod_name` is both the
+			// packfile entry name and the XModel script-string table entry.
+			std::vector<std::uint8_t> build_model_physics_lod(const mesh_input& input,
+				const std::string& lod_name);
 		}
 	}
 }

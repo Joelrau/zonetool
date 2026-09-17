@@ -184,6 +184,13 @@ namespace ZoneTool::IW5
 			memcpy(&iw7_asset->bounds, &asset->bounds, sizeof(asset->bounds));
 			iw7_asset->memUsage = asset->memUsage;
 
+			// IW5 has no pre-compiled equivalent of IW7's HavokPhysicsXModelLOD blob.
+			// Initialize it empty; when collision geometry is available below, it is
+			// compiled into an IW7 LOD0 packfile and its matching name table entry.
+			iw7_asset->physicsLODData = nullptr;
+			iw7_asset->physicsLODDataSize = 0;
+			iw7_asset->physicsLODDataNameCount = 0;
+			iw7_asset->physicsLODDataNames = nullptr;
 			// Static model collision.
 			//
 			// IW7 takes it from XModel::physicsAsset, a per-model HavokPhysicsAsset wrapping a
@@ -425,6 +432,22 @@ namespace ZoneTool::IW5
 							mem.allocate<IW7::PhysicsVFXEventAsset PTR64>(1);
 
 						iw7_asset->physicsAsset = physics;
+
+						// THIS IS INCORRECT
+						// The generated packfile is a single LOD0 payload, so it needs
+						// exactly one matching script-string entry.
+						//const auto lod_name = std::string(asset->name) + "_lod0";
+						//auto lod_blob = /ZoneTool::IW7::havok::builder::build_model_physics_lod//(mesh,lod_name);
+						//if (!lod_blob.empty())
+						//{
+						//	iw7_asset->physicsLODDataSize = static_cast<unsigned int>//(lod_blob.size());
+						//	iw7_asset->physicsLODData = mem.allocate<char>(iw7_asset-//>physicsLODDataSize);
+						//	std::memcpy(iw7_asset->physicsLODData, lod_blob.data//(),lod_blob.size());
+						//	iw7_asset->physicsLODDataNameCount = 1;
+						//	iw7_asset->physicsLODDataNames = mem.allocate<IW7::scr_string_t>//(1);
+						//	iw7_asset->physicsLODDataNames[0] =
+						//		static_cast<IW7::scr_string_t>(Shared::SL_AllocString//(lod_name));
+						//}
 					}
 				}
 			}

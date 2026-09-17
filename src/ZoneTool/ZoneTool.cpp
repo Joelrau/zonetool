@@ -419,20 +419,26 @@ namespace ZoneTool
 	{
 		const char* SL_ConvertToString(std::uint16_t index)
 		{
+			const char* result = nullptr;
 			switch (zonetool::dumping_source)
 			{
 				case zonetool::dump_source::iw3:
-					return IW3::SL_ConvertToString(index);
+					result = IW3::SL_ConvertToString(index);
+					break;
 				case zonetool::dump_source::iw4:
-					return IW4::SL_ConvertToString(index);
+					result = IW4::SL_ConvertToString(index);
+					break;
 				case zonetool::dump_source::iw5:
-					return IW5::SL_ConvertToString(index);
+					result = IW5::SL_ConvertToString(index);
+					break;
 				case zonetool::dump_source::t6:
-					return T6::SL_ConvertToString(index);
+					result = T6::SL_ConvertToString(index);
+					break;
 			}
-			return nullptr;
+
+			return result;
 		}
-		short SL_AllocString(const std::string& string)
+		std::uint16_t SL_AllocString(const std::string& string)
 		{
 			switch(zonetool::dumping_source)
 			{

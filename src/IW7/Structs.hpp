@@ -4460,27 +4460,30 @@ namespace ZoneTool::IW7
 	struct DynEntityDef
 	{
 		DynEntityType type;
-		char __pad0[31];
+		char unused1[3];
+		GfxPlacement initialPose;
 		GfxPlacement pose;
-		char __pad1[4];
+		char unused2[4];
 		XModel PTR64 baseModel;
 		unsigned short brushModel;
 		bool spawnActive;
-		char __pad2[1];
-		unsigned short scriptableMapIndex;
-		unsigned short scriptableSubIndex;
-		char __pad3[8];
+		char unused3[1];
+		short instanceIndex;
+		short unk4; // reserved index 0-64
+		short unk5; // priority? 1-4
+		short unk6; // contents maybe
+		char unused4[4];
 		DynEntityLinkToDef PTR64 linkTo;
 		bool noPhysics;
 		bool unk1;
-		bool unk2;
+		bool spawnEnabled;
 		bool distantShadows;
 		bool noSpotShadows;
 		bool isTransient;
 		bool transientZoneLoaded;
 		char unk3;
-		char priority;
-		char __pad6[7];
+		unsigned char transientIndexStored;
+		char unused6[7];
 	}; assert_sizeof(DynEntityDef, 112);
 	assert_offsetof(DynEntityDef, baseModel, 64);
 	assert_offsetof(DynEntityDef, linkTo, 88);
@@ -4499,12 +4502,12 @@ namespace ZoneTool::IW7
 		GpuLightGridRequestRecord lastGpuLightGridRequest;
 		unsigned int numPoses;
 		GfxPlacement PTR64 poses;
-		char PTR64 unk;
-		char __pad1[1];
+		char PTR64 detailBodyToBoneMap;
+		bool detailBodyToBoneMapCached;
 		bool cachedActive;
 		char __pad2[6];
 	}; assert_sizeof(DynEntityPose, 72);
-	assert_offsetof(DynEntityPose, unk, 56);
+	assert_offsetof(DynEntityPose, detailBodyToBoneMap, 56);
 
 	struct DynEntityClient
 	{
@@ -4516,7 +4519,8 @@ namespace ZoneTool::IW7
 		char numPhysicsBodies;
 		int singlePhysicsBody;
 		int detailBoundBody;
-		int unkId;
+		unsigned short physicsSetupNext;
+		unsigned short physicsSetupPrev;
 		int dynEntDefId;
 		int locked;
 		char __pad3[8];
@@ -4528,29 +4532,31 @@ namespace ZoneTool::IW7
 		unsigned int id;
 	}; assert_sizeof(DynEntityGlobalId, 8);
 
-	struct unk_1453E4280
+	struct DynEntityTransientEntry
 	{
-		char __pad0[8];
-	}; assert_sizeof(unk_1453E4280, 8);
+		unsigned int basis;
+		unsigned int id;
+	}; assert_sizeof(DynEntityTransientEntry, 8);
 
-	struct unk_1453E4298
+	struct DynEntityTransientGroup
 	{
-		char __pad0[28];
-		int unkIndex;
-		unsigned int unk01Count;
-		unk_1453E4280 PTR64 unk01;
-	}; assert_sizeof(unk_1453E4298, 48);
+		Bounds bounds;
+		int transientZoneIndex;
+		int transientEntityIndex;
+		unsigned int dynEntCount;
+		DynEntityTransientEntry PTR64 dynEnts;
+	}; assert_sizeof(DynEntityTransientGroup, 48);
 
-	struct unk_1453E42A8
+	struct DynEntityTransientGroupRuntime
 	{
-		int unkIndex;
-		int unk;
-	}; assert_sizeof(unk_1453E42A8, 8);
+		int transientIndex;
+		int state;
+	}; assert_sizeof(DynEntityTransientGroupRuntime, 8);
 
-	struct unk_1453E1130
+	struct DynEntityTransientGroupState
 	{
-		char unk;
-	}; assert_sizeof(unk_1453E1130, 1);
+		unsigned char state;
+	}; assert_sizeof(DynEntityTransientGroupState, 1);
 
 	struct ClientEntAnchor
 	{
@@ -4558,53 +4564,62 @@ namespace ZoneTool::IW7
 		int entNum;
 	}; assert_sizeof(ClientEntAnchor, 8);
 
-	struct unk_1453E24B0
+	struct ScriptableModelData
 	{
 		XModel PTR64 model;
 		bool neverMoves;
 		bool dynamicSimulation;
-		char __pad0[6];
-	}; assert_sizeof(unk_1453E24B0, 16);
+		char padding[6];
+	}; assert_sizeof(ScriptableModelData, 16);
 
-	struct unk_1453E2510
+	struct ScriptableInstanceContext
 	{
 		ScriptableDef PTR64 def;
-		char __pad0[28];
-		short r00; // runtime data
-		char __pad4[22];
-		short r01; // runtime data
-		char __pad1[6];
-		char r02; // runtime data
-		char r03; // runtime data
-		char r04; // runtime data
-		char __pad3[1];
-		unk_1453E24B0 unk01;
+		vec3_t initialOrigin;
+		vec3_t initialAngles;
+		vec3_t origin;
+		vec3_t angles;
+		unsigned int partStateIndex;
+		short entityId; // runtime
+		short padding1;
+		int unk04;
+		bool needsInitialization; // runtime
+		bool needsShutdown; // runtime
+		bool isInitialized; // runtime
+		char padding2;
+		ScriptableModelData modelData;
 		unsigned int eventStreamBufferSize;
 		char PTR64 eventStreamBuffer;
-		char __pad2[4];
-	}; assert_sizeof(unk_1453E2510, 112);
+		unsigned int reservedStateListHeader;
+	}; assert_sizeof(ScriptableInstanceContext, 112);
 
-	struct unk_1453E2520
+	struct ScriptableInstanceContextHeader
 	{
-		unk_1453E2510 unk01;
-		char __pad0[16];
-	}; assert_sizeof(unk_1453E2520, 128);
+		ScriptableInstanceContext context;
+		int unk02[4]; // indexes?
+	}; assert_sizeof(ScriptableInstanceContextHeader, 128);
 
-	struct unk_1453E2530
+	struct ScriptableInstanceContextHeaderLocalClient
 	{
-		unk_1453E2510 unk01;
-		char __pad0[40];
-	}; assert_sizeof(unk_1453E2530, 152);
+		ScriptableInstanceContext context;
+		int unk02[10]; // indexes?
+	}; assert_sizeof(ScriptableInstanceContextHeaderLocalClient, 152);
+
+	enum ScriptableInstanceFlags
+	{
+		SCRIPTABLE_INSTANCE_HAS_COLLISION_SUPPORT = 0x1,
+		SCRIPTABLE_INSTANCE_HAS_SHADOW = 0x2,
+	};
 
 	struct ScriptableInstance
 	{
-		unk_1453E2520 unk01;
-		unk_1453E2530 unk02[2];
-		scr_string_t unk03;
+		ScriptableInstanceContextHeader contextHeader;
+		ScriptableInstanceContextHeaderLocalClient contextHeaderLocalClient[2];
+		scr_string_t targetname;
 		int flags;
 		char __pad0[8];
-		const char PTR64 unk04;
-		scr_string_t targetname;
+		const char PTR64 debugName;
+		scr_string_t debugNameScr;
 	}; assert_sizeof(ScriptableInstance, 464);
 
 	struct ScriptableReservedDynent
@@ -4620,18 +4635,18 @@ namespace ZoneTool::IW7
 		ScriptableReservedDynent PTR64 reservedDynents;
 	};
 
-	struct unk_1453E2558
+	struct ScriptablePartRuntime
 	{
-		int id;
+		unsigned short stateId;
+		unsigned short nextfree;
 	};
 
-	struct unk_1453E2560
+	struct ScriptablePartRuntimeData
 	{
-		int unk01Count;
-		unk_1453E2558 PTR64 unk01;
-		int unk02Count;
-		unk_1453E2558 PTR64 unk02_1;
-		unk_1453E2558 PTR64 unk02_2;
+		int partRuntimeCount;
+		ScriptablePartRuntime PTR64 partRuntime;
+		int partRuntimeLocalClientCount;
+		ScriptablePartRuntime PTR64 partRuntimeLocalClient[2];
 	};
 
 	struct Scriptable_EventSun_Data
@@ -4652,12 +4667,12 @@ namespace ZoneTool::IW7
 		unsigned int reservedInstanceCount;
 		unsigned int pad;
 		ScriptableInstance PTR64 instances;
-		unk_1453E2560 unk;
+		ScriptablePartRuntimeData runtimeData;
 		Scriptable_EventSun_Data sunClientDatas[2];
 		ScriptableReservedDynents reservedDynents[2];
 		unsigned int ffMemCost;
 	}; assert_sizeof(ScriptableMapEnts, 0xD0);
-	assert_offsetof(ScriptableMapEnts, unk, 24);
+	assert_offsetof(ScriptableMapEnts, runtimeData, 24);
 	assert_offsetof(ScriptableMapEnts, reservedDynents, 168);
 
 	struct MayhemInstance
@@ -4736,13 +4751,14 @@ namespace ZoneTool::IW7
 		DynEntityDef PTR64 dynEntDefList[2];
 		DynEntityPose PTR64 dynEntPoseList[2][2];
 		DynEntityClient PTR64 dynEntClientList[2][2]; // runtime data
-		short unkIndexes[8];
+		unsigned short dynEntPhysicsSetupHead[2][2];
+		unsigned short dynEntPhysicsSetupTail[2][2];
 		DynEntityGlobalId PTR64 dynEntGlobalIdList[2];
 		char __pad1[8];
-		unsigned int unk2Count;
-		unk_1453E4298 PTR64 unk2;
-		unk_1453E42A8 PTR64 unk2_1[2];
-		unk_1453E1130 PTR64 unk2_2[2];
+		unsigned int dynEntTransientGroupCount;
+		DynEntityTransientGroup PTR64 dynEntTransientGroups;
+		DynEntityTransientGroupRuntime PTR64 dynEntTransientGroupRuntime[2];
+		DynEntityTransientGroupState PTR64 dynEntTransientGroupState[2];
 		unsigned int unk3Count;
 		unsigned int PTR64 unk3;
 		unsigned int clientEntAnchorCount;
@@ -4758,7 +4774,7 @@ namespace ZoneTool::IW7
 	assert_offsetof(MapEnts, cmodels, 360);
 	assert_offsetof(MapEnts, dynEntDefList, 376);
 	assert_offsetof(MapEnts, dynEntGlobalIdList, 472);
-	assert_offsetof(MapEnts, unk2, 504);
+	assert_offsetof(MapEnts, dynEntTransientGroups, 504);
 	assert_offsetof(MapEnts, scriptableMapEnts, 576);
 	assert_offsetof(MapEnts, audioPASpeakers, 824);
 
@@ -8626,53 +8642,42 @@ namespace ZoneTool::IW7
 		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D_CURVE = 0x20,
 		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D_INIT = 0x40,
 		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D_INIT = 0x80, // c
-		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_LOCAL1 = 0x100,
-		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_WORLD1 = 0x200,
-		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_LOCAL2 = 0x400,
-		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_WORLD2 = 0x800,
-		PARTICLE_STATE_DEF_FLAG_USE_PHYSICS = 0x1000, // c
+		// values below were checked against 1988 stock vfx (each bit tracks one module) and the IW7 runtime
+		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_LOCAL = 0x100, // VELOCITY_GRAPH
+		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_WORLD = 0x200, // VELOCITY_GRAPH with USE_WORLD_SPACE
+		PARTICLE_STATE_DEF_FLAG_0x400 = 0x400, // only ever set alongside INIT_MATERIAL, meaning unknown
+		PARTICLE_STATE_DEF_FLAG_0x800 = 0x800, // subset of 0x400, meaning unknown
+		PARTICLE_STATE_DEF_FLAG_USE_PHYSICS = 0x1000, // PHYSICS_LIGHT, runtime kills physics particles through it
 		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY = 0x2000, // c
 		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY_RANDOM = 0x4000, // c
 		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_VERTICALLY = 0x8000, // c
 		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_VERTICALLY_RANDOM = 0x10000, // c
 		PARTICLE_STATE_DEF_FLAG_SORT_PARTICLES = 0x20000,
-		PARTICLE_STATE_DEF_FLAG_HANDLE_ON_IMPACT = 0x40000,
+		PARTICLE_STATE_DEF_FLAG_HANDLE_ON_IMPACT = 0x40000, // TEST_IMPACT
 		PARTICLE_STATE_DEF_FLAG_PLAYER_FACING = 0x80000, // c
 		PARTICLE_STATE_DEF_FLAG_PLAYER_FACING_LOCK_UP_VECTOR = 0x100000, // c
-		PARTICLE_STATE_DEF_FLAG_USE_OCCLUSION_QUERY = 0x200000, // c
+		PARTICLE_STATE_DEF_FLAG_USE_OCCLUSION_QUERY = 0x200000, // INIT_OCCLUSION_QUERY
 
-		PARTICLE_STATE_DEF_FLAG_HAS_COLOR = 0x400000,
-		PARTICLE_STATE_DEF_FLAG_HAS_RAY_CAST_PHYSICS = 0x800000,
-		PARTICLE_STATE_DEF_FLAG_0x1000000 = 0x1000000,
+		PARTICLE_STATE_DEF_FLAG_HAS_COLOR = 0x400000, // COLOR_GRAPH / COLOR_LERP
+		PARTICLE_STATE_DEF_FLAG_HAS_RAY_CAST_PHYSICS = 0x800000, // PHYSICS_RAY_CAST
 
-		PARTICLE_STATE_DEF_FLAG_HAS_EMISSIVE_CURVE = 0x2000000, // c
-		PARTICLE_STATE_DEF_FLAG_HAS_INTENSITY_CURVE = 0x4000000,
+		PARTICLE_STATE_DEF_FLAG_HAS_EMISSIVE_CURVE = 0x1000000, // EMISSIVE_GRAPH
+		PARTICLE_STATE_DEF_FLAG_HAS_INTENSITY_CURVE = 0x2000000, // INTENSITY_GRAPH
 		PARTICLE_STATE_DEF_FLAG_USE_VECTOR_FIELDS = 0x8000000,
 		PARTICLE_STATE_DEF_FLAG_INHERIT_PARENT_VELOCITY = 0x10000000,
-		PARTICLE_STATE_DEF_FLAG_DRAW_WITH_VIEW_MODEL = 0x20000000,
-		PARTICLE_STATE_DEF_FLAG_PLAY_SOUNDS = 0x40000000,
+		PARTICLE_STATE_DEF_FLAG_PLAY_SOUNDS = 0x20000000, // INIT_SOUND, runtime kills sound particles through it
 		PARTICLE_STATE_DEF_FLAG_HAS_CAMERA_OFFSET_POSITION_ONLY = 0x40000000, // c
 		PARTICLE_STATE_DEF_FLAG_ON_IMPACT_USE_SURFACE_TYPE = 0x80000000,
 		PARTICLE_STATE_DEF_FLAG_IS_SPRITE = 0x100000000, // c
 		PARTICLE_STATE_DEF_FLAG_HAS_TRANS_SHADOWS = 0x200000000, // c
-		PARTICLE_STATE_DEF_FLAG_HAS_CHILD_EFFECTS = 0x400000000,
-		PARTICLE_STATE_DEF_FLAG_BLOCKS_SIGHT = 0x800000000,
-		PARTICLE_STATE_DEF_FLAG_HANDLE_TIME_IN_STATE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_SCALE_BY_DISTANCE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_VECTOR_FIELD_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_USE_LOCAL_VECTOR_FIELDS_ONLY = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_SHADER_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_SIZE_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_SIZE_LERP = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_TEMPERATURE_CURVE = 0x0,
-		PARTICLE_STATE_DEF_FLAG_HAS_LIGHTING_FRACTION_CURVE = 0x0,
+		PARTICLE_STATE_DEF_FLAG_HAS_CHILD_EFFECTS = 0x400000000, // INIT_RUNNER, or test modules that spawn effects
+		PARTICLE_STATE_DEF_FLAG_BLOCKS_SIGHT = 0x800000000, // FX_AddVisBlocker
 		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_CURVE = 0x30,
 		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_1D = 0x50,
 		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION_3D = 0xA0,
 		PARTICLE_STATE_DEF_FLAG_HAS_ROTATION = 0xF0,
 		PARTICLE_STATE_DEF_FLAG_HAS_MIRROR_TEXTURE = 0x1E000, // c
 		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE = 0x300,
-		PARTICLE_STATE_DEF_FLAG_REQUIRES_WORLD_COLLISION = 0x801000,
 	};
 
 	enum PARTICLE_EMITTER_DEF_FLAG : std::uint32_t
@@ -11530,7 +11535,7 @@ namespace ZoneTool::IW7
 	union ScriptableStateDefUnion
 	{
 		ScriptableStateSimpleDef simple;
-		ScriptableStateHealthDef health; //
+		ScriptableStateHealthDef health;
 		ScriptableStateScriptedDef scripted;
 	};
 
@@ -11569,6 +11574,13 @@ namespace ZoneTool::IW7
 		unsigned short eventStreamBufferOffsetClient;
 		unsigned short eventStreamSize;
 	}; assert_sizeof(ScriptablePartDef, 104);
+
+	enum ScriptableDefFlags
+	{
+		SCRIPTABLE_DEFFLAG_HAS_HEALTH = 0x1,
+		SCRIPTABLE_DEFFLAG_SERVER_INSTANCE = 0x2,
+		SCRIPTABLE_DEFFLAG_NO_ENTITY = 0x2000,
+	};
 
 	struct ScriptableDef // unchecked
 	{

@@ -37,7 +37,8 @@ from hkpackfile import Packfile
 from hkcompressedmesh import (read_shape, read_mesh_tree, read_section, read_hkarray,
                               unpack_section_field, decode_mesh, decode_packed_vertex,
                               decode_shared_vertex, SHARED_VERTEX_PAGE_SIZE,
-                              decode_section_tree,
+                              decode_section_tree, decode_custom,
+                              CUSTOM_PRIMITIVE_CONVEX,
                               u8, u16, u32, i32, u64)
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -349,6 +350,9 @@ def cmd_check(args):
                 first = s.shared_vertices_raw >> 8
                 n_idx = s.num_shared_indices
                 npv = s.num_packed_vertices
+                want((s.shared_vertices_raw & 0xFF) == npv,
+                     "section %d sharedVertices low byte=%d, expected numPackedVertices=%d"
+                     % (si, s.shared_vertices_raw & 0xFF, npv))
                 if n_idx and mt.shared_vertices_index.size:
                     want(first + n_idx <= mt.shared_vertices_index.size,
                          "section %d reads sharedVerticesIndex[%d..%d], array holds %d"
@@ -360,7 +364,9 @@ def cmd_check(args):
                     # svi[0] is 2050, and reading it as a vertex index points far past a
                     # 307-entry pool.
                     po, pc = unpack_section_field(s.primitives_raw)
-                    worst = None
+                    # Not `worst`: that name is the command's exit status, and reusing it
+                    # here made `check` exit with a vertex index (266) on a clean run.
+                    worst_index = None
                     for pi in range(pc):
                         off = mt.primitives.data + (po + pi) * 4
                         prim = d[off:off + 4]
@@ -372,13 +378,13 @@ def cmd_check(args):
                                 if slot >= mt.shared_vertices_index.size:
                                     continue
                                 val = u16(d, mt.shared_vertices_index.data + 2 * slot)
-                                if worst is None or val > worst:
-                                    worst = val
-                    if worst is not None:
-                        want(s.page * 0x10000 + worst < mt.shared_vertices.size,
+                                if worst_index is None or val > worst_index:
+                                    worst_index = val
+                    if worst_index is not None:
+                        want(s.page * 0x10000 + worst_index < mt.shared_vertices.size,
                              "section %d page %d index %d resolves to sharedVertices[%d], "
                              "pool holds %d -- vertex indices have wrapped"
-                             % (si, s.page, worst, s.page * 0x10000 + worst,
+                             % (si, s.page, worst_index, s.page * 0x10000 + worst_index,
                                 mt.shared_vertices.size))
             want(tot_p == mt.primitives.size,
                  "section primitive counts sum to %d, array holds %d"
@@ -492,7 +498,7 @@ def cmd_check(args):
             # A primitive with indices[1] == indices[2] == indices[3] is a custom
             # primitive, and the runtime indexes a THREE-entry shape-type table with the
             # low nibble of sharedVerticesIndex[indices[0]]. Stock only ever uses type 2
-            # (NOP). Anything else means a degenerate triangle was emitted as [a,b,c,c]
+            # (convex; see the custom-primitive checks below). Anything else means a degenerate triangle was emitted as [a,b,c,c]
             # with b == c and is now being read as a custom primitive with an
             # out-of-bounds type.
             badcustom = collections.Counter()
@@ -535,6 +541,99 @@ def cmd_check(args):
                         leaks += 1
             want(leaks == 0,
                  "%d per-section BVH leaf boxes do not contain their primitive" % leaks)
+
+            # Convex custom primitives. Type 2 -- the only type stock uses -- is a convex whose
+            # vertices are the run sharedVertices[page*65536 + svi[r+1] .. + (svi[r] >> 8)],
+            # and it is how stock stores every brush. IW7's player movement cast collides
+            # with these and never with the mesh's triangles, so they are held to everything
+            # stock does: type 2, layer 0, at least 4 vertices, a run inside the pool AND
+            # inside the section's page, distinct points, and a per-section leaf box that
+            # contains the run -- at the same 1% / 0.05-unit tolerance as the primitive
+            # containment check above. That last rule is NOT loosened for stock: mp_afghan
+            # has 1 custom of 7,790 whose leaf box misses its run by more than that, and this
+            # check reports it as a failure rather than hide it.
+            cust = collections.Counter()
+            custom_count = mesh_triangles = 0
+            leaf_misses = []
+            for si in range(S):
+                s = read_section(d, mt.sections.data, si, fix)
+                poff, pc = unpack_section_field(s.primitives_raw)
+                ext = [s.domain[4 + k] - s.domain[k] for k in range(3)]
+                eps = [max(1e-2 * e, 0.05) for e in ext]
+                boxes = None
+                for pi in range(pc):
+                    o = mt.primitives.data + (poff + pi) * 4
+                    q = d[o:o + 4]
+                    if q == DEAD:
+                        continue
+                    if not (q[1] == q[2] == q[3]):
+                        mesh_triangles += 1 if q[2] == q[3] else 2
+                        continue
+                    custom_count += 1
+                    c = decode_custom(d, mt, s, pi, q[0])
+                    if c.descriptor < 0:
+                        cust["record unreadable"] += 1
+                        continue
+                    if c.shape_type != CUSTOM_PRIMITIVE_CONVEX:
+                        cust["type nibble %d" % c.shape_type] += 1
+                    if c.layer != 0:
+                        cust["layer %d" % c.layer] += 1
+                    n = c.num_vertices
+                    if n < 4:
+                        cust["numVertices %d < 4" % n] += 1
+                    if c.start + n > SHARED_VERTEX_PAGE_SIZE:
+                        cust["run crosses its page"] += 1
+                    if c.vertices is None:
+                        cust["run outside the pool"] += 1
+                        continue
+                    if len(set(c.vertices)) != len(c.vertices):
+                        cust["run has repeated points"] += 1
+                    if boxes is None:
+                        boxes = {p: (mn, mx) for p, mn, mx in decode_section_tree(d, s)}
+                    if pi not in boxes:
+                        cust["no section BVH leaf"] += 1
+                        continue
+                    lmn, lmx = boxes[pi]
+                    rmn = [min(v[k] for v in c.vertices) for k in range(3)]
+                    rmx = [max(v[k] for v in c.vertices) for k in range(3)]
+                    if not all(lmn[k] <= rmn[k] + eps[k] and lmx[k] >= rmx[k] - eps[k]
+                               for k in range(3)):
+                        over = max(max(lmn[k] - rmn[k], rmx[k] - lmx[k]) for k in range(3))
+                        leaf_misses.append((si, pi, over, max(eps)))
+            for what, count in sorted(cust.items()):
+                want(False, "%d of %d custom primitives: %s" % (count, custom_count, what))
+            if leaf_misses:
+                si, pi, over, e = max(leaf_misses, key=lambda m: m[2])
+                want(False,
+                     "%d of %d custom primitives have a section BVH leaf box that does not "
+                     "contain their vertex run (worst: section %d primitive %d, %.4f units "
+                     "outside against a %.4f tolerance)"
+                     % (len(leaf_misses), custom_count, si, pi, over, e))
+
+            # Key bookkeeping: a triangle owns one key, a quad two, a custom exactly one.
+            want(mt.num_primitive_keys == mesh_triangles + custom_count,
+                 "numPrimitiveKeys is %d, expected %d mesh triangles + %d customs = %d"
+                 % (mt.num_primitive_keys, mesh_triangles, custom_count,
+                    mesh_triangles + custom_count))
+
+            # The shape list's per-shape statistics for THIS mesh: triCounts is the mesh
+            # triangle count (customs excluded) and convexCounts the custom count. Stock
+            # mp_afghan: 188,886 triangles beside 7,790 customs. vertCounts is unresolved
+            # (pool size on mp_frontend, not on mp_afghan) and deliberately not checked.
+            if sl is not None:
+                for i in range(sl["shapes"].size):
+                    if fix.get(sl["shapes"].data + 8 * i) != so:
+                        continue
+                    if i < sl["triCounts"].size:
+                        tc = i32(d, sl["triCounts"].data + 4 * i)
+                        want(tc == mesh_triangles,
+                             "shape %d triCounts is %d, the mesh has %d triangles "
+                             "(quads as two, customs excluded)" % (i, tc, mesh_triangles))
+                    if i < sl["convexCounts"].size:
+                        cc = i32(d, sl["convexCounts"].data + 4 * i)
+                        want(cc == custom_count,
+                             "shape %d convexCounts is %d, the mesh has %d custom primitives"
+                             % (i, cc, custom_count))
 
             simd = read_hkarray(d, do + 176 + 8, fix)
             want(simd.size > 0,
@@ -650,6 +749,10 @@ def cmd_geom(args):
         bmin, bmax = dm.bounds()
         print("mesh: %d vertices, %d triangles (%d quads)"
               % (len(dm.vertices), len(dm.triangles), len(dm.quads)))
+        types = collections.Counter(c.shape_type for c in dm.customs)
+        run_verts = sum(len(c.vertices) for c in dm.customs if c.vertices)
+        print("  custom primitives: %d (by type %s), %d convex run vertices"
+              % (len(dm.customs), dict(sorted(types.items())), run_verts))
         print("  bounds (Havok units; x32 for CoD units) (%.1f %.1f %.1f) .. (%.1f %.1f %.1f)"
               % (*bmin, *bmax))
         up = down = 0

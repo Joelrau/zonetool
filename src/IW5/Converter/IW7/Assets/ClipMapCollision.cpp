@@ -4,6 +4,10 @@
 #include "ClipMapCollision.hpp"
 #include "XModel.hpp"
 
+// Only for builder::convex_rejection, so the brush -> convex fallback decision here uses
+// exactly the limits the builder enforces rather than a copy that could drift.
+#include "Common/havok_builder.hpp"
+
 #include <array>
 #include <algorithm>
 #include <cmath>
@@ -12,6 +16,8 @@
 #include <cfloat>
 #include <cstdio>
 #include <fstream>
+#include <map>
+#include <string>
 
 // Pulls IW5 world collision out of clipMap_t and flattens it to triangles for the IW7
 // Havok mesh builder.
@@ -23,7 +29,10 @@
 //                 leaf. Straight passthrough.
 //   * brushes  -- cbrush_t, a set of half-spaces (6 axial planes implied by brushBounds
 //                 plus `numsides` non-axial cbrushside_t). These have to be turned into
-//                 explicit convex hulls and triangulated.
+//                 explicit convex hulls. The world blob (extract_world) keeps each hull
+//                 whole as a convex custom primitive, which is the only thing IW7's player
+//                 movement cast collides with; `extract` and the fallback path
+//                 triangulate the hull's faces instead.
 //
 // IW7 Havok coordinates are CoD units / 32 for world, entity and model collision. Both
 // engines are Z-up right-handed.
@@ -725,7 +734,7 @@ namespace ZoneTool::IW5
 					// shape would shift every later shape index. 253..255 real vertices pad to
 					// 256, so accepting them here turns one oversized brush into no brush-model
 					// collision at all anywhere in the map. Stop at the largest multiple of four.
-					constexpr auto MAX_VERTS = 252u;
+					constexpr auto MAX_VERTS = 127u;
 					constexpr auto MAX_FACE_INDICES = 255u;
 
 					for (auto i = 0u; i < planes.size(); i++)
@@ -823,6 +832,30 @@ namespace ZoneTool::IW5
 					// Fewer than four faces cannot bound a volume.
 					return out.faces.size() >= 4 && out.verts.size() >= 4;
 				}
+
+				// An ents shape carries ONE ShapeTagData for the whole shape, not one per face,
+				// so a brush model built from several brushes has to pick a representative
+				// material. Take the one the most planes carry; ties go to the lowest index so
+				// the choice is deterministic across runs. A world convex has the same
+				// constraint -- one tag per custom primitive -- and uses the same rule.
+				unsigned short dominant_tag(const std::vector<unsigned short>& counts)
+				{
+					auto best = 0u;
+					for (auto i = 1u; i < counts.size(); i++)
+					{
+						if (counts[i] > counts[best])
+						{
+							best = i;
+						}
+					}
+					return static_cast<unsigned short>(best);
+				}
+
+				bool brush_convex_enabled()
+				{
+					const auto* env = std::getenv("ZT_HAVOK_BRUSH_CONVEX");
+					return !(env && env[0] == '0');
+				}
 			}
 
 
@@ -863,7 +896,8 @@ namespace ZoneTool::IW5
 			}
 
 			void write_triangles_obj(const std::string& path,
-				const std::vector<havok_triangle>& triangles, const std::size_t trisoup_count)
+				const std::vector<havok_triangle>& triangles, const std::size_t trisoup_count,
+				const std::vector<havok_convex>& convexes)
 			{
 				std::ofstream file(path, std::ios::out | std::ios::trunc);
 				if (!file)
@@ -880,6 +914,8 @@ namespace ZoneTool::IW5
 				file << "# " << triangles.size() << " triangles -- " << trisoup_count
 					<< " from trisoup, " << (triangles.size() - trisoup_count)
 					<< " from brushes.\n";
+				file << "# " << convexes.size() << " brush convexes (convex custom primitives), "
+					"welded hull vertices with their hull faces.\n";
 
 				float mn[3] = {FLT_MAX, FLT_MAX, FLT_MAX};
 				float mx[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
@@ -914,12 +950,33 @@ namespace ZoneTool::IW5
 					}
 				}
 
+				// Convex vertices go in the same vertex block, after the triangles', so every
+				// face below references a vertex already defined.
+				std::vector<std::size_t> convex_first_vert(convexes.size(), 0);
+				for (auto i = 0u; i < convexes.size(); i++)
+				{
+					convex_first_vert[i] = written + 1;
+					for (const auto& v : convexes[i].verts)
+					{
+						char line[128];
+						std::snprintf(line, sizeof(line), "v %.4f %.4f %.4f\n", v[0], v[1], v[2]);
+						file << line;
+						written++;
+
+						for (auto k = 0; k < 3; k++)
+						{
+							mn[k] = std::min(mn[k], v[k]);
+							mx[k] = std::max(mx[k], v[k]);
+						}
+					}
+				}
+
 				// The extents are the cheapest check there is: they have to match the
 				// map's own size in whatever space the rest of the zone was written in.
 				// A collision shell that is a clean multiple too big or too small is a
 				// scale bug, not a geometry bug, and it shows up here before anything
 				// has to be loaded.
-				if (!triangles.empty())
+				if (!triangles.empty() || !convexes.empty())
 				{
 					ZONETOOL_INFO("clipmap collision: world obj extents (%.1f %.1f %.1f) .. "
 						"(%.1f %.1f %.1f), size %.1f x %.1f x %.1f",
@@ -971,8 +1028,50 @@ namespace ZoneTool::IW5
 					}
 				}
 
-				ZONETOOL_INFO("clipmap collision: wrote \"%s\" (%zu triangles, %zu objects)",
-					path.data(), triangles.size(), groups.size());
+				// One object per contents mask for the convexes too, named apart from the
+				// triangle groups so the two representations can be toggled independently.
+				std::vector<int> convex_groups;
+				for (const auto& cvx : convexes)
+				{
+					if (std::find(convex_groups.begin(), convex_groups.end(), cvx.contents)
+						== convex_groups.end())
+					{
+						convex_groups.emplace_back(cvx.contents);
+					}
+				}
+
+				for (const auto contents : convex_groups)
+				{
+					char name[128];
+					std::snprintf(name, sizeof(name), "o brush_convex_contents_0x%08X\n",
+						static_cast<unsigned int>(contents));
+					file << name;
+
+					for (auto i = 0u; i < convexes.size(); i++)
+					{
+						if (convexes[i].contents != contents)
+						{
+							continue;
+						}
+
+						for (const auto& face : convexes[i].faces)
+						{
+							std::string line = "f";
+							for (const auto index : face.indices)
+							{
+								char corner[32];
+								std::snprintf(corner, sizeof(corner), " %zu",
+									convex_first_vert[i] + static_cast<std::size_t>(index));
+								line += corner;
+							}
+							file << line << "\n";
+						}
+					}
+				}
+
+				ZONETOOL_INFO("clipmap collision: wrote \"%s\" (%zu triangles, %zu convexes, "
+					"%zu objects)", path.data(), triangles.size(), convexes.size(),
+					groups.size() + convex_groups.size());
 			}
 
 			void write_hulls_obj(const std::string& path, const std::vector<hull_group>& groups,
@@ -1234,13 +1333,19 @@ namespace ZoneTool::IW5
 				return env && env[0] == '1';
 			}
 
-			std::vector<havok_triangle> extract(clipMap_t* clipmap, float scale_override)
+			// The one implementation behind `extract` and `extract_world`. With
+			// `brush_convexes` false every brush is triangulated into faces, which is
+			// `extract`'s contract; with it true each brush becomes one convex, falling back
+			// to faces only where the convex cannot be built or would be rejected.
+			static world_collision extract_collision(clipMap_t* clipmap,
+				const float scale_override, const bool brush_convexes)
 			{
-				std::vector<havok_triangle> triangles;
+				world_collision result;
+				auto& triangles = result.triangles;
 
 				if (!clipmap)
 				{
-					return triangles;
+					return result;
 				}
 
 				// Static model collision is a separate asset in IW7 (a HavokPhysicsAsset per
@@ -1486,9 +1591,59 @@ namespace ZoneTool::IW5
 				}
 
 				const auto trisoup_count = triangles.size();
+				result.trisoup_count = trisoup_count;
+
+				// Stock world blobs are CoD units / 32, the same space as ents shapes and
+				// per-model physics assets. Measured directly on mp_frontend's shipped
+				// colmap.hkx: its mesh-tree domain is 212 x 772 x 84 against a map 6720 x 23040
+				// CoD units across, and /32 predicts 210 x 772 - x and y match to within 1%.
+				// At 1:1 that domain would read in the thousands.
+				//
+				// docs/iw7-havok-collision.md used to claim the world blob was 1:1, from an
+				// order-of-magnitude comparison of a static-model origin cloud against the
+				// collision domain that gave ratios ranging 0.9 to 4.1. That is nowhere near
+				// tight enough to tell 1 from 32, and it disagreed with the two exact
+				// measurements either side of it. Confirmed in game too: 1:1 is visibly worse.
+				// Override with ZT_HAVOK_WORLD_SCALE.
+				//
+				// Do not be fooled by a ray test against the pre-scale geometry: it lines up
+				// exactly with CoD-unit world positions, which shows the source geometry is
+				// correct - not that the target space is 1:1.
+
+				// This is the same 1/32 as ents_input::scale and XModel.cpp's model_scale,
+				// and it has to stay the same: the world mesh, the brush-model hulls and a
+				// model's own collision all have to end up in one space or they slide past
+				// each other. If you change one, change all three.
+				//
+				// Decided before the brushes rather than after, because whether a brush can be
+				// a convex depends on its flatness in Havok units, i.e. after this scale.
+				auto world_scale = 0.03125f;
+				if (scale_override > 0.0f)
+				{
+					// A caller that wants the geometry in CoD units - the hull fitter in the
+					// GfxWorld converter does - passes 1 and skips the env override entirely.
+					world_scale = scale_override;
+				}
+				else if (const auto* env = std::getenv("ZT_HAVOK_WORLD_SCALE"))
+				{
+					const auto parsed = static_cast<float>(std::atof(env));
+					if (parsed > 0.0f)
+					{
+						world_scale = parsed;
+					}
+				}
+
+				ZONETOOL_INFO("clipmap collision: brushes emitted as %s",
+					brush_convexes
+						? "convex custom primitives, faces only as a fallback "
+						  "(ZT_HAVOK_BRUSH_CONVEX default on)"
+						: "triangle faces (ZT_HAVOK_BRUSH_CONVEX=0, or a triangle-only caller)");
 
 				// ----------------------------------------------------------- brushes
 				auto brushes_with_sides = 0;
+				auto brushes_as_convex = 0;
+				auto fallback_hull_failed = 0;
+				std::map<std::string, int> fallback_rejected;
 				auto total_nonaxial = 0;
 				auto faces_emitted = 0;
 				auto faces_clipped_away = 0;
@@ -1613,6 +1768,87 @@ namespace ZoneTool::IW5
 					// do not consume the 255 the byte can hold.
 					std::uint64_t glass_piece = 0;
 
+					if (brush_convexes)
+					{
+						// The brush's hull, built by the same half-space clipping as the faces
+						// below. Its vertex set is welded at WELD_EPSILON = 0.05 CoD units, so
+						// the convex's points are distinct to that tolerance.
+						convex_hull hull{};
+						if (!build_convex_hull(planes, hull))
+						{
+							fallback_hull_failed++;
+						}
+						else
+						{
+							havok_convex cvx{};
+							cvx.verts.reserve(hull.verts.size());
+							for (const auto& v : hull.verts)
+							{
+								cvx.verts.push_back({v[0] * world_scale, v[1] * world_scale,
+									v[2] * world_scale});
+							}
+
+							// Same limits the builder enforces, judged on the scaled points.
+							if (const auto* reason =
+								ZoneTool::IW7::havok::builder::convex_rejection(cvx.verts))
+							{
+								fallback_rejected[reason]++;
+							}
+							else
+							{
+								// One tag per custom primitive: the ClipMaterial most of the
+								// brush's planes carry, ties to the lowest index.
+								std::vector<unsigned short> tag_votes(
+									clipmap->info.materials ? clipmap->info.numMaterials : 0u, 0);
+								for (const auto t : tags)
+								{
+									if (t < tag_votes.size() && tag_votes[t] < 0xFFFF)
+									{
+										tag_votes[t]++;
+									}
+								}
+
+								// With no plane naming a real material, keep the first plane's
+								// tag -- what the face path would have given the first face.
+								auto tag = tags.empty() ? static_cast<unsigned short>(0) : tags[0];
+								if (!tag_votes.empty())
+								{
+									const auto dominant = dominant_tag(tag_votes);
+									if (tag_votes[dominant] > 0)
+									{
+										tag = dominant;
+									}
+								}
+
+								const auto flags = surface_flags_for(tag);
+								auto user_data = USERDATA_BRUSH_BASIS | flags;
+								if (is_glass_surface(flags))
+								{
+									if (!glass_piece && glass_pieces < USERDATA_GLASS_PIECE_MAX)
+									{
+										glass_piece = static_cast<std::uint64_t>(++glass_pieces)
+											<< USERDATA_GLASS_PIECE_SHIFT;
+									}
+									user_data |= glass_piece;
+								}
+
+								cvx.surface_tag = tag;
+								cvx.contents = contents;
+								cvx.material_crc = crc_for(tag);
+								cvx.user_data = user_data;
+
+								// Face indices address cvx.verts one-for-one with hull.verts.
+								cvx.faces = std::move(hull.faces);
+
+								result.convexes.emplace_back(std::move(cvx));
+								brushes_as_convex++;
+								continue;
+							}
+						}
+						// Fall through: this brush's faces go in as triangles, exactly as they
+						// would with ZT_HAVOK_BRUSH_CONVEX=0.
+					}
+
 					for (auto i = 0u; i < planes.size(); i++)
 					{
 						auto w = base_winding_for_plane(planes[i]);
@@ -1702,43 +1938,32 @@ namespace ZoneTool::IW5
 				ZONETOOL_INFO("clipmap collision: %zu triangles from trisoup, %zu from %d brushes",
 					trisoup_count, triangles.size() - trisoup_count, clipmap->info.numBrushes);
 
-				// Stock world blobs are CoD units / 32, the same space as ents shapes and
-				// per-model physics assets. Measured directly on mp_frontend's shipped
-				// colmap.hkx: its mesh-tree domain is 212 x 772 x 84 against a map 6720 x 23040
-				// CoD units across, and /32 predicts 210 x 772 - x and y match to within 1%.
-				// At 1:1 that domain would read in the thousands.
-				//
-				// docs/iw7-havok-collision.md used to claim the world blob was 1:1, from an
-				// order-of-magnitude comparison of a static-model origin cloud against the
-				// collision domain that gave ratios ranging 0.9 to 4.1. That is nowhere near
-				// tight enough to tell 1 from 32, and it disagreed with the two exact
-				// measurements either side of it. Confirmed in game too: 1:1 is visibly worse.
-				// Override with ZT_HAVOK_WORLD_SCALE.
-				//
-				// Do not be fooled by a ray test against the pre-scale geometry: it lines up
-				// exactly with CoD-unit world positions, which shows the source geometry is
-				// correct - not that the target space is 1:1.
-
-				// This is the same 1/32 as ents_input::scale and XModel.cpp's model_scale,
-				// and it has to stay the same: the world mesh, the brush-model hulls and a
-				// model's own collision all have to end up in one space or they slide past
-				// each other. If you change one, change all three.
-				auto world_scale = 0.03125f;
-				if (scale_override > 0.0f)
+				if (brush_convexes)
 				{
-					// A caller that wants the geometry in CoD units - the hull fitter in the
-					// GfxWorld converter does - passes 1 and skips the env override entirely.
-					world_scale = scale_override;
-				}
-				else if (const auto* env = std::getenv("ZT_HAVOK_WORLD_SCALE"))
-				{
-					const auto parsed = static_cast<float>(std::atof(env));
-					if (parsed > 0.0f)
+					auto fallback_total = fallback_hull_failed;
+					std::string reasons = std::to_string(fallback_hull_failed)
+						+ " hull could not be built";
+					for (const auto& [reason, count] : fallback_rejected)
 					{
-						world_scale = parsed;
+						fallback_total += count;
+						reasons += ", " + std::to_string(count) + " " + reason;
+					}
+
+					ZONETOOL_INFO("clipmap collision: %d brushes emitted as convex custom "
+						"primitives", brushes_as_convex);
+					if (fallback_total)
+					{
+						ZONETOOL_WARNING("clipmap collision: %d brushes fell back to triangle "
+							"faces (reasons: %s) -- the player movement cast does not collide "
+							"with those", fallback_total, reasons.c_str());
+					}
+					else
+					{
+						ZONETOOL_INFO("clipmap collision: 0 brushes fell back to triangle faces");
 					}
 				}
 
+				// world_scale was chosen before the brush loop; convexes are already scaled.
 				if (world_scale != 1.0f)
 				{
 					for (auto& tri : triangles)
@@ -1771,10 +1996,20 @@ namespace ZoneTool::IW5
 				if (obj_dump_enabled())
 				{
 					write_triangles_obj(obj_dump_path(clipmap->name, ".world.obj"),
-						triangles, trisoup_count);
+						triangles, trisoup_count, result.convexes);
 				}
 
-				return triangles;
+				return result;
+			}
+
+			std::vector<havok_triangle> extract(clipMap_t* clipmap, float scale_override)
+			{
+				return extract_collision(clipmap, scale_override, false).triangles;
+			}
+
+			world_collision extract_world(clipMap_t* clipmap)
+			{
+				return extract_collision(clipmap, 0.0f, brush_convex_enabled());
 			}
 
 			namespace
@@ -1806,22 +2041,6 @@ namespace ZoneTool::IW5
 						convert_surf_flags(clipmap->info.materials[index].surfaceFlags));
 				}
 
-				// An ents shape carries ONE ShapeTagData for the whole shape, not one per face,
-				// so a brush model built from several brushes has to pick a representative
-				// material. Take the one the most planes carry; ties go to the lowest index so
-				// the choice is deterministic across runs.
-				unsigned short dominant_tag(const std::vector<unsigned short>& counts)
-				{
-					auto best = 0u;
-					for (auto i = 1u; i < counts.size(); i++)
-					{
-						if (counts[i] > counts[best])
-						{
-							best = i;
-						}
-					}
-					return static_cast<unsigned short>(best);
-				}
 			}
 
 			std::vector<brush_model> extract_brush_models(clipMap_t* clipmap)

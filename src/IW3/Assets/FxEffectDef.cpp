@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 #include "IW4/Assets/FxEffectDef.hpp"
+#include "Material.hpp"
+#include "FxMaterialDeps.hpp"
 
 namespace ZoneTool
 {
@@ -53,6 +55,11 @@ namespace ZoneTool
 
 		void IFxEffectDef::dump(FxEffectDef* asset)
 		{
+			if (zonetool::dumping_target == zonetool::dump_target::iw7)
+			{
+				dump_fx_materials_first(asset, FX_ELEM_TYPE_CLOUD, FX_ELEM_TYPE_DECAL, &IMaterial::dump);
+			}
+
 			// generate fx
 			allocator allocator;
 			auto* iw4_asset = GenerateIW4FxEffectDef(asset, allocator);

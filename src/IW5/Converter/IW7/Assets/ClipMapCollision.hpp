@@ -41,6 +41,10 @@ namespace ZoneTool::IW5
 			// ZT_HAVOK_WORLD_SCALE env override - pass 1.0f to get the geometry in CoD units,
 			// which is what the GfxWorld light-hull fitter wants. Leave it at 0 for the
 			// normal path, which scales to Havok space.
+			//
+			// Brushes always come out here as triangulated faces, whatever
+			// ZT_HAVOK_BRUSH_CONVEX says -- callers that want the triangles themselves (the
+			// light-hull fitter) keep getting exactly what they got before convexes existed.
 			std::vector<havok_triangle> extract(clipMap_t* clipmap, float scale_override = 0.0f);
 
 			// ------------------------------------------------------- brush models
@@ -65,6 +69,42 @@ namespace ZoneTool::IW5
 				std::vector<std::array<float, 3>> verts;
 				std::vector<convex_face> faces;
 			};
+
+			// ------------------------------------------------------- world collision
+			//
+			// Mirrors ZoneTool::IW7::havok::builder::convex: one world brush as a convex
+			// custom primitive of the compressed mesh. IW7's player movement cast only
+			// collides with those, never with the mesh's triangles, so a brush that reaches
+			// the world blob as faces is shot but walked through.
+			struct havok_convex
+			{
+				// Havok space (already scaled by the world scale), distinct points: the welded
+				// vertex set of the brush's hull.
+				std::vector<std::array<float, 3>> verts;
+				unsigned short surface_tag;
+				int contents;
+				unsigned int material_crc;
+				std::uint64_t user_data;
+				// The hull faces over `verts`, kept only for the OBJ debug dump. The builder
+				// does not use them: the runtime collides the point set.
+				std::vector<convex_face> faces;
+			};
+
+			struct world_collision
+			{
+				// Trisoup first (the first trisoup_count entries), then the faces of every
+				// brush emitted as triangles -- all of them when ZT_HAVOK_BRUSH_CONVEX=0,
+				// otherwise only the brushes that fell back.
+				std::vector<havok_triangle> triangles;
+				std::vector<havok_convex> convexes;
+				std::size_t trisoup_count = 0;
+			};
+
+			// The world blob's input. Same filters, contents, tags and scale as `extract`,
+			// but with ZT_HAVOK_BRUSH_CONVEX on (the default) each surviving brush comes out
+			// as one convex instead of its faces. A brush whose hull cannot be built, or that
+			// the builder would reject, falls back to faces and is counted in the log.
+			world_collision extract_world(clipMap_t* clipmap);
 
 			// One IW5 brush model -- cmodels[index] -- and the hulls it is built from.
 			// Coordinates are CoD units, translated so the hulls sit where the cmodel's own
@@ -119,9 +159,11 @@ namespace ZoneTool::IW5
 
 			// The world mesh. Split into one object per source ("trisoup"/"brushes") and
 			// contents mask, so one bad class of geometry can be isolated on its own.
-			// `trisoup_count` is where the brush triangles start.
+			// `trisoup_count` is where the brush triangles start. Convexes, if any, follow as
+			// "brush_convex_contents_0x........" objects in the same space.
 			void write_triangles_obj(const std::string& path,
-				const std::vector<havok_triangle>& triangles, std::size_t trisoup_count);
+				const std::vector<havok_triangle>& triangles, std::size_t trisoup_count,
+				const std::vector<havok_convex>& convexes = {});
 
 			// A named set of hulls -- one brush model, or one trigger.
 			struct hull_group

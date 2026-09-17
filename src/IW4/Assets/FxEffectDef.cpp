@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 #include "IW5/Assets/FxEffectDef.hpp"
+#include "Material.hpp"
+#include "FxMaterialDeps.hpp"
 
 namespace ZoneTool
 {
@@ -7,6 +9,12 @@ namespace ZoneTool
 	{
 		void IFxEffectDef::dump(FxEffectDef* asset)
 		{
+			// IW3 zones pass through here with IW3 material pointers, they are handled in IW3's dumper
+			if (get_linker_mode() == linker_mode::iw4 && zonetool::dumping_target == zonetool::dump_target::iw7)
+			{
+				dump_fx_materials_first(asset, FX_ELEM_TYPE_SPARKCLOUD, FX_ELEM_TYPE_DECAL, &IMaterial::dump);
+			}
+
 			allocator allocator;
 
 			// alloc comworld

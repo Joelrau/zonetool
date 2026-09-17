@@ -59,7 +59,7 @@ namespace ZoneTool
 	namespace Shared
 	{
 		extern const char* SL_ConvertToString(std::uint16_t index);
-		extern short SL_AllocString(const std::string& string);
+		extern std::uint16_t SL_AllocString(const std::string& string);
 	}
 	using namespace Shared;
 }
