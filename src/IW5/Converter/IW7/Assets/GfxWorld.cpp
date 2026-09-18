@@ -506,6 +506,7 @@ namespace ZoneTool::IW5
 				REINTERPRET_CAST_SAFE(skies[i].skyStartSurfs);
 				COPY_ASSET(skies[i].skyImage);
 				COPY_VALUE(skies[i].skySamplerState);
+
 			}
 
 			COPY_VALUE(lastSunPrimaryLightIndex);
@@ -591,10 +592,100 @@ namespace ZoneTool::IW5
 			{
 				constexpr float kFallbackVolumeHalfExtent = 262144.0f; // "infinite" bounding volume
 				constexpr float kFallbackFeather = 8.0f;
-				constexpr unsigned short kIdentityQuat[4] = {}; // placeholder, see below
+
+				// A reconstructed region is the union of the bounds of everything IW5 assigned to
+				// the probe; push it out a little so a surface sitting exactly on the boundary is
+				// inside the volume rather than halfway through its feather.
+				constexpr float kProbeVolumeMargin = 16.0f;
+				constexpr float kProbeVolumeFeather = 32.0f;
+
+				// A probe nothing references claims the space out to halfway to its nearest
+				// neighbour, clamped so one stray probe cannot blanket the map.
+				constexpr float kOrphanProbeMinHalfSize = 64.0f;
+				constexpr float kOrphanProbeMaxHalfSize = 2048.0f;
 
 				const unsigned int probeCount = realProbeCount;
-				const unsigned int totalInstanceCount = probeCount + 1; // +1 for the null/fallback probe
+				const unsigned int totalInstanceCount = probeCount + 1; // +1 for the world fallback
+
+				// ---- reconstruct each probe's volume from IW5's own assignment ---------------
+				//
+				// IW7 does not read the baked per-object probe index the way IW5 does - stock maps
+				// set GfxStaticModelDrawInst::reflectionProbeIndex to 0 on every model while
+				// shipping dozens of probes (see the note at that assignment below). Selection
+				// happens at runtime out of reflectionProbeInstances[]: each instance carries an
+				// OBB, and the shaded point takes the highest-priority volume containing it,
+				// cross-faded over `feather`.
+				//
+				// That makes the OBB the only thing that selects a probe, and a zeroed instance
+				// has halfSize 0 - a box that contains no point in the universe. Emitting one real
+				// volume and leaving the rest degenerate, which is what this block used to do,
+				// means every pixel in the map falls through to the single infinite fallback. The
+				// probe array image, origins and image indices were all correct; nothing could
+				// reach them.
+				//
+				// IW5 ships no volumes to convert, but it does ship the assignment the IW3/IW5
+				// compiler baked with real visibility: every world surface and every static model
+				// names the probe that served it. The union of the bounds of everything assigned
+				// to probe k is the region that probe covered, walls already accounted for - the
+				// same trick light_boxes uses for primary lights further down.
+				struct probe_region
+				{
+					unsigned int refs = 0;
+					float lo[3] = { FLT_MAX, FLT_MAX, FLT_MAX };
+					float hi[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+				};
+				std::vector<probe_region> regions(asset->draw.reflectionProbeCount);
+
+				const auto add_probe_bounds = [&regions](const unsigned int probe, const Bounds& bounds)
+				{
+					if (probe >= regions.size())
+					{
+						return;
+					}
+					auto& region = regions[probe];
+					region.refs++;
+					for (int k = 0; k < 3; k++)
+					{
+						region.lo[k] = std::min(region.lo[k], bounds.midPoint[k] - bounds.halfSize[k]);
+						region.hi[k] = std::max(region.hi[k], bounds.midPoint[k] + bounds.halfSize[k]);
+					}
+				};
+
+				if (asset->dpvs.surfaces && asset->dpvs.surfacesBounds)
+				{
+					for (unsigned int i = 0; i < asset->surfaceCount; i++)
+					{
+						add_probe_bounds(asset->dpvs.surfaces[i].laf.fields.reflectionProbeIndex,
+							asset->dpvs.surfacesBounds[i].bounds);
+					}
+				}
+				if (asset->dpvs.smodelDrawInsts && asset->dpvs.smodelInsts)
+				{
+					for (unsigned int i = 0; i < asset->dpvs.smodelCount; i++)
+					{
+						add_probe_bounds(asset->dpvs.smodelDrawInsts[i].reflectionProbeIndex,
+							asset->dpvs.smodelInsts[i].bounds);
+					}
+				}
+
+				// Distance to the nearest other kept probe. Half of it is the extent an
+				// unreferenced probe can claim without swallowing its neighbour.
+				const auto nearest_probe_distance = [&](const unsigned int src_index)
+				{
+					float best = FLT_MAX;
+					const auto* a = asset->draw.reflectionProbeOrigins[src_index].origin;
+					for (unsigned int j = firstProbe; j < asset->draw.reflectionProbeCount; j++)
+					{
+						if (j == src_index)
+						{
+							continue;
+						}
+						const auto* b = asset->draw.reflectionProbeOrigins[j].origin;
+						const float d[3] = { b[0] - a[0], b[1] - a[1], b[2] - a[2] };
+						best = std::min(best, std::sqrt((d[0] * d[0]) + (d[1] * d[1]) + (d[2] * d[2])));
+					}
+					return best;
+				};
 
 				// 1. Allocation
 				new_asset->draw.reflectionProbeData.reflectionProbeInstanceCount = totalInstanceCount;
@@ -602,13 +693,19 @@ namespace ZoneTool::IW5
 				auto* instances = allocator.allocate<IW7::GfxReflectionProbeInstance>(totalInstanceCount);
 				new_asset->draw.reflectionProbeData.reflectionProbeInstances = instances;
 
-				// Index buffer size must match instance count
+				// One slot per instance. Probe 0 owns two - its own and the world fallback - so the
+				// fallback instance still belongs to a GfxReflectionProbe; every other probe owns
+				// one. 2 + (probeCount - 1) == totalInstanceCount, so the slices stay contiguous.
 				auto* globalProbeInstanceIndices = allocator.allocate<unsigned int>(totalInstanceCount);
 
-				// 2. Build pass � one instance per source probe
+				unsigned int reconstructed_volumes = 0;
+				unsigned int spacing_volumes = 0;
+
+				// 2. Build pass - one instance per source probe
 				for (unsigned int i = 0; i < probeCount; i++)
 				{
-					auto& srcProbe = asset->draw.reflectionProbeOrigins[firstProbe + i];
+					const auto srcIndex = firstProbe + i;
+					auto& srcProbe = asset->draw.reflectionProbeOrigins[srcIndex];
 					auto& dstProbe = new_asset->draw.reflectionProbeData.reflectionProbes[i];
 					auto& inst = instances[i];
 
@@ -617,41 +714,97 @@ namespace ZoneTool::IW5
 					memcpy(dstProbe.origin, srcProbe.origin, sizeof(vec3_t));
 					memset(dstProbe.angles, 0, sizeof(vec3_t));
 					dstProbe.probeRelightingIndex = static_cast<unsigned int>(-1);
-					dstProbe.probeInstanceCount = 1;
-					dstProbe.probeInstances = &globalProbeInstanceIndices[i];
-					dstProbe.probeInstances[0] = i;
+					if (i == 0)
+					{
+						dstProbe.probeInstanceCount = 2;
+						dstProbe.probeInstances = &globalProbeInstanceIndices[0];
+						dstProbe.probeInstances[0] = 0;
+						dstProbe.probeInstances[1] = probeCount; // the world fallback
+					}
+					else
+					{
+						dstProbe.probeInstanceCount = 1;
+						dstProbe.probeInstances = &globalProbeInstanceIndices[i + 1];
+						dstProbe.probeInstances[0] = i;
+					}
 
 					// --- instance entry ---
 					memset(&inst, 0, sizeof(inst));
 					memcpy(inst.probePosition, srcProbe.origin, sizeof(vec3_t));
 					inst.probeImageIndex = static_cast<unsigned short>(i);
-					inst.priority = -1.0f;
-					inst.probeRotation[0] = 0.0f;
-					inst.probeRotation[1] = 0.0f;
-					inst.probeRotation[2] = 0.0f;
 					inst.probeRotation[3] = 1.0f; // identity quat
+					inst.volumeObb.xAxis[0] = 1.0f;
+					inst.volumeObb.yAxis[1] = 1.0f;
+					inst.volumeObb.zAxis[2] = 1.0f;
 
-					if (i == 0)
+					float half[3];
+					const auto& region = regions[srcIndex];
+					if (region.refs)
 					{
-						// First probe doubles as the world-fallback volume: lowest
-						// priority, huge bounds, axis-aligned.
-						inst.priority = -FLT_MAX;
-						memcpy(inst.volumeObb.center, dstProbe.origin, sizeof(vec3_t));
+						for (int k = 0; k < 3; k++)
+						{
+							inst.volumeObb.center[k] = (region.lo[k] + region.hi[k]) * 0.5f;
+							half[k] = ((region.hi[k] - region.lo[k]) * 0.5f) + kProbeVolumeMargin;
+						}
+						reconstructed_volumes++;
+					}
+					else
+					{
+						auto extent = nearest_probe_distance(srcIndex) * 0.5f;
+						if (!(extent > 0.0f) || extent > kOrphanProbeMaxHalfSize)
+						{
+							extent = kOrphanProbeMaxHalfSize;
+						}
+						extent = std::max(extent, kOrphanProbeMinHalfSize);
+						for (int k = 0; k < 3; k++)
+						{
+							inst.volumeObb.center[k] = srcProbe.origin[k];
+							half[k] = extent;
+						}
+						spacing_volumes++;
+					}
 
-						inst.volumeObb.halfSize[0] = kFallbackVolumeHalfExtent;
-						inst.volumeObb.halfSize[1] = kFallbackVolumeHalfExtent;
-						inst.volumeObb.halfSize[2] = kFallbackVolumeHalfExtent;
+					memcpy(inst.volumeObb.halfSize, half, sizeof(half));
 
-						inst.volumeObb.xAxis[0] = 1.0f; inst.volumeObb.xAxis[1] = 0.0f; inst.volumeObb.xAxis[2] = 0.0f;
-						inst.volumeObb.yAxis[0] = 0.0f; inst.volumeObb.yAxis[1] = 1.0f; inst.volumeObb.yAxis[2] = 0.0f;
-						inst.volumeObb.zAxis[0] = 0.0f; inst.volumeObb.zAxis[1] = 0.0f; inst.volumeObb.zAxis[2] = 1.0f;
+					// Tighter volume wins where two overlap, which is what lets a small interior
+					// probe beat the large exterior one it sits inside. Sum of half extents rather
+					// than volume: monotonic in size, and it cannot overflow on a map-sized box.
+					inst.priority = -(half[0] + half[1] + half[2]);
 
-						inst.feather[0] = inst.feather[1] = inst.feather[2] = kFallbackFeather;
+					// Feather has to stay well inside the half extent or the volume is all
+					// transition and never reaches full strength anywhere.
+					for (int k = 0; k < 3; k++)
+					{
+						inst.feather[k] = std::min(kProbeVolumeFeather, half[k] * 0.25f);
 					}
 				}
 
-				// NOTE: instances[probeCount] (the reserved "+1" slot) is allocated but
-				// never initialized here � currently left as raw allocator memory.
+				// 3. The world fallback, so a point no reconstructed volume covers still resolves
+				// to a probe rather than to nothing. Probe 0 used to do this double duty, which
+				// cost the map its only real volume: probe 0's own region was overwritten with the
+				// infinite box.
+				{
+					auto& inst = instances[probeCount];
+					const auto* origin = new_asset->draw.reflectionProbeData.reflectionProbes[0].origin;
+
+					memset(&inst, 0, sizeof(inst));
+					memcpy(inst.probePosition, origin, sizeof(vec3_t));
+					memcpy(inst.volumeObb.center, origin, sizeof(vec3_t));
+					inst.probeImageIndex = 0;
+					inst.probeRotation[3] = 1.0f;
+					inst.volumeObb.xAxis[0] = 1.0f;
+					inst.volumeObb.yAxis[1] = 1.0f;
+					inst.volumeObb.zAxis[2] = 1.0f;
+					inst.volumeObb.halfSize[0] = kFallbackVolumeHalfExtent;
+					inst.volumeObb.halfSize[1] = kFallbackVolumeHalfExtent;
+					inst.volumeObb.halfSize[2] = kFallbackVolumeHalfExtent;
+					inst.priority = -FLT_MAX;
+					inst.feather[0] = inst.feather[1] = inst.feather[2] = kFallbackFeather;
+				}
+
+				ZONETOOL_INFO("GfxWorld \"%s\": %u reflection probe instances - %u volumes from the "
+					"source assignment, %u from probe spacing, plus the world fallback",
+					asset->name, totalInstanceCount, reconstructed_volumes, spacing_volumes);
 			}
 
 			// todo...
@@ -1211,9 +1364,18 @@ namespace ZoneTool::IW5
 
 						unsigned int fully_lit = 0;
 						unsigned int fully_dark = 0;
+						unsigned int clamped_by_source = 0;
 
 						for (auto& entry : grid_samples)
 						{
+							// What IW5's own bake says about this cell, stashed in [27] when
+							// grid_samples was populated. The march below is a heuristic over grid
+							// occupancy; this is ground truth from a compiler that had the real
+							// geometry, so it bounds the heuristic rather than being replaced by
+							// it. A cell IW5 lit with a local light, or with no primary light at
+							// all, cannot legitimately be traced as seeing the sun.
+							const auto source_sees_sun = entry.second[27];
+
 							const float start[3] = {
 								static_cast<float>((entry.first >> 32) & 0xFFFF),
 								static_cast<float>((entry.first >> 16) & 0xFFFF),
@@ -1291,8 +1453,20 @@ namespace ZoneTool::IW5
 								}
 							}
 
-							const auto visibility = static_cast<float>(open_rays)
+							const auto traced = static_cast<float>(open_rays)
 								/ static_cast<float>(sun_trace_rays);
+
+							// The march can only stop on a cell the legacy grid left unpopulated,
+							// so it escapes through anything thinner than its step and through
+							// every roof the bake happened to fill. Measured on mp_test_h1 that
+							// left 98.9% of cells "fully lit" and 0.2% shadowed, while IW5 itself
+							// marks 1526 cells with primaryLightIndex 0 - no primary light at all.
+							// We were computing the right answer and then discarding it.
+							const auto visibility = traced * source_sees_sun;
+							if (visibility < traced)
+							{
+								clamped_by_source++;
+							}
 							entry.second[27] = visibility;
 
 							if (visibility >= 1.0f)
@@ -1306,10 +1480,12 @@ namespace ZoneTool::IW5
 						}
 
 						ZONETOOL_INFO("GfxWorld \"%s\": sun visibility traced over %zu cells "
-							"(%.1f%% fully lit, %.1f%% fully shadowed), sun dir (%.2f, %.2f, %.2f)",
+							"(%.1f%% fully lit, %.1f%% fully shadowed, %u clamped by the source "
+							"bake), sun dir (%.2f, %.2f, %.2f)",
 							asset->name, grid_samples.size(),
 							(100.0f * fully_lit) / grid_samples.size(),
 							(100.0f * fully_dark) / grid_samples.size(),
+							clamped_by_source,
 							sun_dir[0], sun_dir[1], sun_dir[2]);
 					}
 				}
@@ -2345,35 +2521,62 @@ namespace ZoneTool::IW5
 				new_asset->voxelTree = allocator.allocate<IW7::GfxVoxelTree>(new_asset->voxelTreeCount);
 				for (auto i = 0; i < new_asset->skyCount; i++)
 				{
+					// Union of the sky surfaces, not their average.
+					//
+					// This used to sum every sky surface's midPoint and halfSize and divide by the
+					// count. Averaging bounds is not a meaningful operation - the result is neither
+					// the union nor any real surface - and on a map whose sky is split into several
+					// surfaces it silently shrinks the zone. mp_test_h1 has three:
+					//
+					//   surf 25  mid(  0,    0, 224)  half(896, 896, 288)
+					//   surf 26  mid(  8,    8, 232)  half(888, 888, 280)
+					//   surf 27  mid(-20,   -3, 504)  half(896, 896,   8)   <- the thin top lid
+					//   average  mid( -4, 1.67, 320)  half(893, 893, 192)   -> z 128..512
+					//
+					// The lid's tiny z halfSize drags the average down and the zone starts at
+					// z = 128, cutting off everything below it - the whole lower half of a map whose
+					// real extent is z -64..512. Anything outside the zone falls back to
+					// zone_fallback_coeffs, which is the fully-lit default, so the effect is not
+					// "unlit" but "lit as if nothing occludes it".
+					//
+					// Stock maps ship a single sky surface, so their average happens to equal their
+					// union and this never showed up there.
 					const auto get_sky_bounds = [](const GfxSky& sky, const GfxWorld* world) -> Bounds
 					{
-						Bounds bounds{};
-						bounds.midPoint[0] = 0.0f;
-						bounds.midPoint[1] = 0.0f;
-						bounds.midPoint[2] = 0.0f;
-						bounds.halfSize[0] = 0.0f;
-						bounds.halfSize[1] = 0.0f;
-						bounds.halfSize[2] = 0.0f;
+						float lo[3] = { FLT_MAX, FLT_MAX, FLT_MAX };
+						float hi[3] = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+						unsigned int seen = 0;
+
 						for (int j = 0; j < sky.skySurfCount; j++)
 						{
-							auto index = world->dpvs.sortedSurfIndex[sky.skyStartSurfs[j]];
-							auto surface_bounds = &world->dpvs.surfacesBounds[index];
-							bounds.midPoint[0] += surface_bounds->bounds.midPoint[0];
-							bounds.midPoint[1] += surface_bounds->bounds.midPoint[1];
-							bounds.midPoint[2] += surface_bounds->bounds.midPoint[2];
-							bounds.halfSize[0] += surface_bounds->bounds.halfSize[0];
-							bounds.halfSize[1] += surface_bounds->bounds.halfSize[1];
-							bounds.halfSize[2] += surface_bounds->bounds.halfSize[2];
+							const auto sorted = sky.skyStartSurfs[j];
+							if (sorted < 0 || static_cast<unsigned int>(sorted) >= world->dpvs.staticSurfaceCount)
+							{
+								continue;
+							}
+							const auto index = world->dpvs.sortedSurfIndex[sorted];
+							if (index >= world->surfaceCount)
+							{
+								continue;
+							}
+							const auto& b = world->dpvs.surfacesBounds[index].bounds;
+							for (int k = 0; k < 3; k++)
+							{
+								lo[k] = std::min(lo[k], b.midPoint[k] - b.halfSize[k]);
+								hi[k] = std::max(hi[k], b.midPoint[k] + b.halfSize[k]);
+							}
+							seen++;
 						}
-						if (sky.skySurfCount > 0)
+
+						Bounds bounds{};
+						if (!seen)
 						{
-							float inv_count = 1.0f / static_cast<float>(sky.skySurfCount);
-							bounds.midPoint[0] *= inv_count;
-							bounds.midPoint[1] *= inv_count;
-							bounds.midPoint[2] *= inv_count;
-							bounds.halfSize[0] *= inv_count;
-							bounds.halfSize[1] *= inv_count;
-							bounds.halfSize[2] *= inv_count;
+							return bounds;
+						}
+						for (int k = 0; k < 3; k++)
+						{
+							bounds.midPoint[k] = (lo[k] + hi[k]) * 0.5f;
+							bounds.halfSize[k] = (hi[k] - lo[k]) * 0.5f;
 						}
 						return bounds;
 					};
@@ -2665,16 +2868,6 @@ namespace ZoneTool::IW5
 
 			// dpvs
 			{
-				// IW7 rebuilds dpvs.surfaceCastsSunShadow and dpvs.surfaceCastsSunShadowOpt every
-				// R_SortWorldSurfacesSetSurfaces out of GfxSurface::flags: bit 0 is "casts sun shadow" and
-				// bits 3..7 are a per-sun-light mask picking which surfaceCastsSunShadowOpt row the surface
-				// joins. Only 5 bits are available, which is why shipped maps cap dpvs.sunShadowOptCount at 5
-				// (mp_frontend has 20 sun lights and still stores 5); otherwise it equals
-				// lastSunPrimaryLightIndex exactly. GfxStaticModelDrawInst::sunShadowFlags is the same mask
-				// for static models.
-				const auto sun_light_count = std::min<unsigned int>(new_asset->lastSunPrimaryLightIndex, 5);
-				const auto sun_light_mask = static_cast<unsigned char>((1 << sun_light_count) - 1);
-
 				COPY_VALUE(dpvs.smodelCount);
 				COPY_VALUE(dpvs.staticSurfaceCount);
 				COPY_VALUE(dpvs.litOpaqueSurfsBegin);
@@ -2709,6 +2902,30 @@ namespace ZoneTool::IW5
 				}
 				REINTERPRET_CAST_SAFE(dpvs.smodelInsts);
 
+				// Per-sun-light caster mask for GfxSurface::flags, verified against IW7 itself
+				// (R_SortWorldSurfacesSetSurfaces in iw7_ship_dump.exe.c) rather than inferred:
+				//
+				//     && (*p_flags & 1) != 0
+				//     && (v13 = v7 >> 5,
+				//         g_world->dpvs.surfaceCastsSunShadow[v13] |= v8,
+				//         result = (*p_flags >> 3),
+				//         (_DWORD)result) )
+				//
+				// flags is a byte, so bit 0 is "casts sun shadow" and `>> 3` leaves bits 3..7 as
+				// the set of sun lights this surface casts for. Each set bit enrols the surface in
+				// one surfaceCastsSunShadowOpt row, capped at sunShadowOptCount.
+				//
+				// Note IW8 shifts by 1 here, not 3 - the same function, a different encoding. Do
+				// not port this constant from the IW8 decompilation.
+				//
+				// The plain surfaceCastsSunShadow array is filled by the `|=` inside that comma
+				// expression, so it is correct no matter what the mask holds; only the optimised
+				// rows depend on the shift. That is why passing IW5's flags through unchanged
+				// (bit 0 only) looks fine but leaves every opt row empty: 1 >> 3 == 0.
+				const auto sun_light_count =
+					std::min<unsigned int>(new_asset->lastSunPrimaryLightIndex, 5);
+				const auto sun_light_mask = static_cast<unsigned char>((1 << sun_light_count) - 1);
+
 				new_asset->dpvs.surfaces = allocator.allocate<IW7::GfxSurface>(asset->surfaceCount);
 				for (unsigned int i = 0; i < asset->surfaceCount; i++)
 				{
@@ -2721,10 +2938,9 @@ namespace ZoneTool::IW5
 					new_asset->dpvs.surfaces[i].material = reinterpret_cast<IW7::Material PTR64>(asset->dpvs.surfaces[i].material);
 					new_asset->dpvs.surfaces[i].lightmapIndex = asset->dpvs.surfaces[i].laf.fields.lightmapIndex;
 
-					// bit 0 means the same thing in both engines - r_drawsurf.cpp tests laf.fields.flags & 1
-					// before setting the surfaceCastsSunShadow bit in IW5 and in IW7 alike - and it is the only
-					// bit IW5 ever sets. The remaining IW5 bits would be read as IW7's sun light mask, so mask
-					// them off and enrol every caster in all of the sun light sets.
+					// Bit 0 means the same thing in both engines and is the only bit IW5 ever sets.
+					// The rest of IW5's byte would be read as IW7's sun light mask, so mask it off
+					// and enrol every caster in all of the sun light sets.
 					const auto casts_sun_shadow = (asset->dpvs.surfaces[i].laf.fields.flags & 1) != 0;
 					new_asset->dpvs.surfaces[i].flags = casts_sun_shadow
 						? static_cast<unsigned char>(1 | (sun_light_mask << 3))
@@ -2785,8 +3001,16 @@ namespace ZoneTool::IW5
 					// paint over brown, while matte lightmapped world surfaces are unaffected.
 					new_asset->dpvs.smodelDrawInsts[i].reflectionProbeIndex = 0;
 					new_asset->dpvs.smodelDrawInsts[i].firstMtlSkinIndex = asset->dpvs.smodelDrawInsts[i].firstMtlSkinIndex;
-					// which sun lights this model casts for; a model with no bit set is skipped outright by
-					// R_AddAllStaticModelSurfacesRangeSunShadow once the opt path is live, so enrol every model.
+					// Which sun splits this model casts for. R_AddAllStaticModelSurfacesRangeSunShadow
+					// skips it outright when the bit for the current split is clear:
+					//
+					//     v23 = 1 << (sunShadowOptCount - 1);
+					//     || v23 && ((unsigned __int8)v23 & v32->sunShadowFlags) == 0
+					//
+					// Unlike GfxSurface::flags this is a plain mask from bit 0 - no `>> 3` - so the
+					// two fields do not share an encoding despite describing the same thing. For a
+					// single sun split this is 1, which is what it was hardcoded to; deriving it
+					// keeps a multi-sun map (mp_frontend has 20) enrolled in every split.
 					new_asset->dpvs.smodelDrawInsts[i].sunShadowFlags = sun_light_mask;
 					new_asset->dpvs.smodelDrawInsts[i].transientZone = 0;
 
@@ -2828,54 +3052,35 @@ namespace ZoneTool::IW5
 				memset(new_asset->dpvs.surfaceMaterials, 0, 
 					sizeof(IW7::GfxDrawSurf) * new_asset->surfaceCount); // zero data, runtime
 
-				REINTERPRET_CAST_SAFE(dpvs.surfaceCastsSunShadow);
-
-				// The optimised sun shadow caster set, one bit array per sun light.
+				// Measured over all seven stock maps (cp_rave, cp_zmb, mp_afghan, mp_breakneck,
+				// mp_fallen, mp_frontend, mp_paris), both rules hold exactly:
 				//
-				// Leaving this null (what this did before) does not disable sun shadows - the
-				// dynamic cascade still draws them - but it does cost the cached static path
-				// that R_AddAllStaticModelSurfacesRangeSunShadow feeds, which is what carries
-				// distant shadows. The symptom is exactly that: crisp shadows near the camera
-				// and coarse blobs further out.
+				//   sunShadowOptCount    = min(lastSunPrimaryLightIndex, 5)
+				//   sunSurfVisDataCount  = surfaceVisDataCount rounded up to a multiple of 32
 				//
-				// Layout is sunShadowOptCount rows of sunSurfVisDataCount 32-bit words, one
-				// row per sun light, one bit per surface. Shipped maps cap the row count at 5
-				// because GfxSurface::flags only spares bits 3..7 for the per-sun-light mask,
-				// and otherwise it equals lastSunPrimaryLightIndex. Every surface that casts a
-				// sun shadow joins every row, which is the same all-lights mask already given
-				// to GfxStaticModelDrawInst::sunShadowFlags above.
-				if (sun_light_count && new_asset->dpvs.surfaceCastsSunShadow)
-				{
-					new_asset->dpvs.sunShadowOptCount = sun_light_count;
-					new_asset->dpvs.sunSurfVisDataCount = new_asset->dpvs.surfaceVisDataCount;
-
-					const auto words = static_cast<size_t>(new_asset->dpvs.sunShadowOptCount)
-						* new_asset->dpvs.sunSurfVisDataCount;
-					new_asset->dpvs.surfaceCastsSunShadowOpt =
-						allocator.allocate<unsigned int>(words);
-
-					for (unsigned int row = 0; row < new_asset->dpvs.sunShadowOptCount; row++)
-					{
-						memcpy(&new_asset->dpvs.surfaceCastsSunShadowOpt[
-								static_cast<size_t>(row) * new_asset->dpvs.sunSurfVisDataCount],
-							new_asset->dpvs.surfaceCastsSunShadow,
-							sizeof(unsigned int) * new_asset->dpvs.sunSurfVisDataCount);
-					}
-
-					ZONETOOL_INFO("GfxWorld \"%s\": sun shadow opt - %u rows x %u words over %u "
-						"surfaces", asset->name, new_asset->dpvs.sunShadowOptCount,
-						new_asset->dpvs.sunSurfVisDataCount, new_asset->surfaceCount);
-				}
-				else
-				{
-					new_asset->dpvs.sunShadowOptCount = 0;
-					new_asset->dpvs.sunSurfVisDataCount = 0;
-					new_asset->dpvs.surfaceCastsSunShadowOpt = nullptr;
-					ZONETOOL_WARNING("GfxWorld \"%s\": no sun shadow opt data (sun lights %u, "
-						"casts array %s) - distant sun shadows will stay coarse", asset->name,
-						sun_light_count,
-						new_asset->dpvs.surfaceCastsSunShadow ? "present" : "NULL");
-				}
+				//   map           lastSun -> optCount    surfVisWords -> sunSurfVisDataCount
+				//   cp_rave            1  ->  1               227     ->  256
+				//   cp_zmb             3  ->  3               335     ->  352
+				//   mp_afghan          1  ->  1               202     ->  224
+				//   mp_breakneck       2  ->  2               487     ->  512
+				//   mp_fallen          2  ->  2               420     ->  448
+				//   mp_paris           2  ->  2               366     ->  384
+				//   mp_frontend       20  ->  5 (capped)        1     ->   32
+				//
+				// The cap is 5 because GfxSurface::flags only spares bits 3..7 for the per-sun-light
+				// mask. mp_frontend is the only map that reaches it, which is why hardcoding 5 and 32
+				// looks right on mp_test_h1 (lastSun 1, one vis word) but is wrong twice over: the
+				// count should be 1 here, and 32 only happens to be correct because this map has
+				// under 1024 surfaces. A map the size of mp_paris needs 384.
+				new_asset->dpvs.sunShadowOptCount =
+					std::min<unsigned int>(new_asset->lastSunPrimaryLightIndex, 5);
+				new_asset->dpvs.sunSurfVisDataCount =
+					(new_asset->dpvs.surfaceVisDataCount + 31) & ~31u;//
+				// Left null on purpose: the linker allocates it during parse, sized from the two
+				// counts above - allocate<unsigned int>(sunShadowOptCount * sunSurfVisDataCount) -
+				// so these values are what decide that buffer's size.
+				new_asset->dpvs.surfaceCastsSunShadowOpt = nullptr; // allocated in x64zt
+				new_asset->dpvs.surfaceCastsSunShadow = asset->dpvs.surfaceCastsSunShadow;
 
 				// old smodel index -> index after the map compiler's static model sort, streamed as
 				// 2 * smodelCount bytes. IW7 never reads it (the only code touching dpvs+0x370 is

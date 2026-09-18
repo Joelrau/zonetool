@@ -734,7 +734,7 @@ namespace ZoneTool::IW5
 					// shape would shift every later shape index. 253..255 real vertices pad to
 					// 256, so accepting them here turns one oversized brush into no brush-model
 					// collision at all anywhere in the map. Stop at the largest multiple of four.
-					constexpr auto MAX_VERTS = 127u;
+					constexpr auto MAX_VERTS = 252u;
 					constexpr auto MAX_FACE_INDICES = 255u;
 
 					for (auto i = 0u; i < planes.size(); i++)
