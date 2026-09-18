@@ -151,7 +151,7 @@ namespace ZoneTool::IW7
 			write.dump_asset(asset->heightfields[i].image);
 		}
 
-		write.dump_array(asset->unk01.unk03, asset->unk01.unk03Count);
+		write.dump_array(asset->lightLists.lists, asset->lightLists.listsSize);
 
 		write.dump_array(asset->models, asset->modelCount);
 

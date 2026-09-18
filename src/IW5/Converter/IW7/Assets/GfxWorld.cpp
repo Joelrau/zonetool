@@ -511,6 +511,7 @@ namespace ZoneTool::IW5
 
 			COPY_VALUE(lastSunPrimaryLightIndex);
 			COPY_VALUE(primaryLightCount);
+
 			new_asset->movingScriptablePrimaryLightCount = 0;
 
 			new_asset->sortKeyLitDecal = 7;
@@ -2055,6 +2056,257 @@ namespace ZoneTool::IW5
 						ZONETOOL_WARNING("GfxWorld \"%s\": %zu local lights reach no voxel at all - "
 							"every one will be culled everywhere", asset->name, locals.size());
 					}
+
+					// ---- per-surface / per-static-model light lists --------------------------
+					//
+					// GfxWorldLightLists is the receiver half of the lighting relation: for each
+					// lit surface and each static model, which primary lights reach it. Every
+					// stock map ships it and we wrote it null, which leaves IW7 with no
+					// per-surface light visibility at all.
+					//
+					// A lit surface is simply index [0, staticSurfaceCount) into dpvs.surfaces:
+					// litOpaqueSurfsBegin is 0 and the four sorted ranges run contiguously up to
+					// emissiveSurfsEnd, which equals staticSurfaceCount on all seven stock maps.
+					// Surfaces past it are unlit - sky and such - and get no list.
+					//
+					// This is NOT the transpose of shadowGeomOptimized. That one is casters,
+					// light -> objects, and leaves the sun range empty because IW7 keeps sun
+					// casters in GfxSurface::flags; measured on mp_frontend it holds 5 references
+					// over 3 surfaces, all lights above its lastSun of 20, while its receiver
+					// lists hold 18 lists of 4-6 entries dominated by indices 1..20. Different
+					// sets, so this needs its own pass.
+					{
+						// Stock's longest list is 20 (mp_frontend), so this only ever bites on a
+						// surface sitting in a genuinely crowded light rig.
+						constexpr size_t light_list_max_per_object = 24;
+
+						struct receiver_light
+						{
+							unsigned short index;
+							bool directional;
+							bool is_spot;
+							float origin[3];
+							float axis[3];
+							float radius;
+							float half_fov;
+						};
+
+						std::vector<receiver_light> receivers;
+						{
+							const auto count = std::min<unsigned int>(new_asset->primaryLightCount,
+								converter_com_world->primaryLightCount);
+							for (unsigned int i = 0; i < count && i <= 0xFFFF; i++)
+							{
+								const auto& src = converter_com_world->primaryLights[i];
+								const auto type = static_cast<unsigned char>(src.type);
+
+								receiver_light light{};
+								light.index = static_cast<unsigned short>(i);
+
+								if (type == light_type_dir)
+								{
+									// A directional light has no volume to test against, so every
+									// lit object carries it. Stock agrees: mp_frontend's lists are
+									// dominated by its 20 sun indices. Dropping it would be worse
+									// than carrying one index too many.
+									light.directional = true;
+								}
+								else if (type == light_type_spot || type == light_type_omni)
+								{
+									if (!(src.radius > 0.0f))
+									{
+										continue;
+									}
+
+									light.is_spot = (type == light_type_spot);
+									memcpy(light.origin, src.origin, sizeof(light.origin));
+									light.radius = src.radius;
+
+									// dir points toward the light, so the cone runs the other way
+									float axis[3] = { -src.dir[0], -src.dir[1], -src.dir[2] };
+									const auto len = std::sqrt((axis[0] * axis[0])
+										+ (axis[1] * axis[1]) + (axis[2] * axis[2]));
+									if (len > 0.0f)
+									{
+										for (int k = 0; k < 3; k++)
+										{
+											light.axis[k] = axis[k] / len;
+										}
+									}
+									else
+									{
+										light.axis[2] = -1.0f;
+										light.is_spot = false;
+									}
+
+									light.half_fov = std::acos(std::max(-1.0f,
+										std::min(1.0f, src.cosHalfFovOuter)));
+								}
+								else
+								{
+									continue; // NONE
+								}
+
+								receivers.push_back(light);
+							}
+						}
+
+						std::vector<unsigned short> hits;
+						const auto list_for = [&](const Bounds& bounds)
+						{
+							hits.clear();
+
+							const auto extent = std::sqrt(
+								(bounds.halfSize[0] * bounds.halfSize[0])
+								+ (bounds.halfSize[1] * bounds.halfSize[1])
+								+ (bounds.halfSize[2] * bounds.halfSize[2]));
+
+							for (const auto& light : receivers)
+							{
+								if (light.directional)
+								{
+									hits.push_back(light.index);
+									continue;
+								}
+
+								const float delta[3] = {
+									bounds.midPoint[0] - light.origin[0],
+									bounds.midPoint[1] - light.origin[1],
+									bounds.midPoint[2] - light.origin[2],
+								};
+								const auto dist = std::sqrt((delta[0] * delta[0])
+									+ (delta[1] * delta[1]) + (delta[2] * delta[2]));
+
+								if (dist - extent > light.radius)
+								{
+									continue;
+								}
+
+								if (light.is_spot && dist > 0.001f)
+								{
+									const auto dot = ((delta[0] * light.axis[0])
+										+ (delta[1] * light.axis[1])
+										+ (delta[2] * light.axis[2])) / dist;
+									const auto theta = std::acos(std::max(-1.0f,
+										std::min(1.0f, dot)));
+									const auto slack = std::asin(std::min(1.0f, extent / dist));
+									if (theta > light.half_fov + slack)
+									{
+										continue;
+									}
+								}
+
+								// the same occupancy march the voxel light lists use: a light that
+								// cannot see the object through open grid cells does not reach it,
+								// which is the whole point of the structure
+								if (!reaches(light.origin, bounds.midPoint))
+								{
+									continue;
+								}
+
+								hits.push_back(light.index);
+							}
+						};
+
+						// offset 0 is the empty list, which is what stock puts there - mp_frontend
+						// opens its pool with a zero word and points a surface at it
+						std::vector<unsigned short> lists;
+						lists.push_back(0);
+						std::map<std::vector<unsigned short>, unsigned int> list_offset;
+						size_t clamped = 0;
+
+						const auto intern = [&]() -> unsigned int
+						{
+							if (hits.size() > light_list_max_per_object)
+							{
+								// sorted ascending, so this keeps the lowest indices - the suns
+								hits.resize(light_list_max_per_object);
+								clamped++;
+							}
+							if (hits.empty())
+							{
+								return 0;
+							}
+
+							const auto found = list_offset.find(hits);
+							if (found != list_offset.end())
+							{
+								return found->second;
+							}
+
+							const auto offset = static_cast<unsigned int>(lists.size());
+							lists.push_back(static_cast<unsigned short>(hits.size()));
+							lists.insert(lists.end(), hits.begin(), hits.end());
+							list_offset.emplace(hits, offset);
+							return offset;
+						};
+
+						// Read off the IW5 side: the dpvs block that copies these across runs much
+						// later in this function, so new_asset's copies are still 0 here.
+						const auto surface_count = std::min(asset->dpvs.staticSurfaceCount,
+							asset->surfaceCount);
+						const auto smodel_count = asset->dpvs.smodelCount;
+
+						std::vector<unsigned int> surface_offsets(surface_count, 0);
+						std::vector<unsigned int> smodel_offsets(smodel_count, 0);
+
+						if (asset->dpvs.surfacesBounds)
+						{
+							for (unsigned int i = 0; i < surface_count; i++)
+							{
+								list_for(asset->dpvs.surfacesBounds[i].bounds);
+								surface_offsets[i] = intern();
+							}
+						}
+
+						if (asset->dpvs.smodelInsts)
+						{
+							for (unsigned int i = 0; i < smodel_count; i++)
+							{
+								list_for(asset->dpvs.smodelInsts[i].bounds);
+								smodel_offsets[i] = intern();
+							}
+						}
+
+						new_asset->lightLists.surfaceListOffsetCount = surface_count;
+						new_asset->lightLists.smodelListOffsetCount = smodel_count;
+						new_asset->lightLists.listsSize = static_cast<unsigned int>(lists.size());
+
+						if (surface_count)
+						{
+							new_asset->lightLists.surfaceListOffsets =
+								allocator.allocate<unsigned int>(surface_count);
+							memcpy(new_asset->lightLists.surfaceListOffsets, surface_offsets.data(),
+								sizeof(unsigned int) * surface_count);
+						}
+						if (smodel_count)
+						{
+							new_asset->lightLists.smodelListOffsets =
+								allocator.allocate<unsigned int>(smodel_count);
+							memcpy(new_asset->lightLists.smodelListOffsets, smodel_offsets.data(),
+								sizeof(unsigned int) * smodel_count);
+						}
+						new_asset->lightLists.lists =
+							allocator.allocate<unsigned short>(lists.size());
+						memcpy(new_asset->lightLists.lists, lists.data(),
+							sizeof(unsigned short) * lists.size());
+
+						size_t lit_surfaces = 0;
+						for (const auto offset : surface_offsets) { lit_surfaces += (offset != 0); }
+						size_t lit_smodels = 0;
+						for (const auto offset : smodel_offsets) { lit_smodels += (offset != 0); }
+
+						ZONETOOL_INFO("GfxWorld \"%s\": light lists - %zu/%u surfaces and %zu/%u "
+							"static models lit by %zu lights, %zu distinct lists, %zu entries",
+							asset->name, lit_surfaces, surface_count, lit_smodels, smodel_count,
+							receivers.size(), list_offset.size(), lists.size());
+
+						if (clamped)
+						{
+							ZONETOOL_WARNING("GfxWorld \"%s\": %zu light lists clamped to %zu "
+								"entries", asset->name, clamped, light_list_max_per_object);
+						}
+					}
 				}
 				else if (volume.valid && volume.leaf_count)
 				{
@@ -2349,13 +2601,231 @@ namespace ZoneTool::IW5
 
 			new_asset->frustumLights = allocator.allocate<IW7::GfxFrustumLights>(new_asset->primaryLightCount);
 
-			// lightViewFrustums stays zeroed: both consumers (sub_140E1E2A0 / sub_140E1E510) early
-			// out on planeCount == 0, so an absent frustum is a supported state, and they cull
-			// against these planes - a guessed volume would silently drop shadow casters. The
-			// shipped shapes are not a plain light frustum either (mp_dome_dusk light 7 is an
-			// axis-aligned box that does not match its cone's AABB), so leave it off until the
-			// volume is actually identified.
 			new_asset->lightViewFrustums = allocator.allocate<IW7::GfxLightViewFrustum>(new_asset->primaryLightCount);
+
+			// ---- lightViewFrustums ---------------------------------------------------------
+			//
+			// The shadow pass culls casters against these planes, and sm_spotShadowCulling's own
+			// help calls mode 2 - the default - "respect line light + using optimized view
+			// volume", which is this. We shipped them zeroed on the reasoning that planeCount == 0
+			// early-outs as a pass in sub_140E1E2A0 / sub_140E1E510; that was never confirmed in
+			// game, and if it culls instead then every caster is dropped and a spot with a
+			// perfectly good caster list casts no shadow at all. Which is the symptom.
+			//
+			// Measured from shipped data: 6 planes, 8 corners, 36 indices (12 triangles),
+			// spot-only - mp_breakneck's single omni carries canUseShadowMap=1 and an EMPTY
+			// frustum, and an omni has no cone to build one from anyway. Planes are inward-facing
+			// (n.p + d >= 0 inside) and the indices are wound OUTWARD (positive signed volume),
+			// the opposite of frustumLights, which is inward because it is rasterised as the light
+			// volume. Do not copy the winding from the proxy builder.
+			//
+			// Stock hulls are geometry-fitted - mp_frontend light 21 has five vertices coplanar
+			// against a (0,0,-1) plane - so they cannot be reproduced exactly. A conservative
+			// frustum is the right substitute: too large costs shadow map resolution, too small
+			// silently drops casters.
+			{
+				constexpr auto light_view_frustum_near_frac = 0.01f;
+
+				const auto count = converter_com_world
+					? std::min<unsigned int>(new_asset->primaryLightCount,
+						converter_com_world->primaryLightCount)
+					: 0u;
+
+				unsigned int built = 0;
+				for (unsigned int i = 0; i < count; i++)
+				{
+					const auto& src = converter_com_world->primaryLights[i];
+
+					if (static_cast<unsigned char>(src.type) != light_type_spot
+						|| !src.canUseShadowMap
+						|| !(src.radius > 0.0f)
+						|| !(src.cosHalfFovOuter > 0.0f && src.cosHalfFovOuter < 1.0f))
+					{
+						continue;
+					}
+
+					// the cone opens along -dir, the same convention as the proxy hulls
+					float axis[3] = { -src.dir[0], -src.dir[1], -src.dir[2] };
+					const auto axis_len = std::sqrt((axis[0] * axis[0]) + (axis[1] * axis[1])
+						+ (axis[2] * axis[2]));
+					if (!(axis_len > 1e-4f))
+					{
+						continue;
+					}
+					for (int k = 0; k < 3; k++)
+					{
+						axis[k] /= axis_len;
+					}
+
+					// any basis perpendicular to the axis will do - the frustum is square and
+					// circumscribes a circular cone, so its roll is arbitrary
+					const auto axial = std::abs(axis[2]) > 0.9f;
+					const float helper[3] = { axial ? 1.0f : 0.0f, 0.0f, axial ? 0.0f : 1.0f };
+					const auto helper_dot = (helper[0] * axis[0]) + (helper[1] * axis[1])
+						+ (helper[2] * axis[2]);
+
+					float right[3];
+					for (int k = 0; k < 3; k++)
+					{
+						right[k] = helper[k] - (axis[k] * helper_dot);
+					}
+					const auto right_len = std::sqrt((right[0] * right[0]) + (right[1] * right[1])
+						+ (right[2] * right[2]));
+					if (!(right_len > 1e-4f))
+					{
+						continue;
+					}
+					for (int k = 0; k < 3; k++)
+					{
+						right[k] /= right_len;
+					}
+
+					const float up[3] = {
+						(axis[1] * right[2]) - (axis[2] * right[1]),
+						(axis[2] * right[0]) - (axis[0] * right[2]),
+						(axis[0] * right[1]) - (axis[1] * right[0]),
+					};
+
+					// A square at depth d whose half extent is d * tan(halfFov) circumscribes the
+					// cone's circle there; its corners sit outside the cone, which is the safe
+					// direction for a culling volume.
+					const auto cos_outer = std::max(0.017452f, src.cosHalfFovOuter); // 89 degrees
+					const auto tan_half = std::sqrt(std::max(0.0f,
+						1.0f - (cos_outer * cos_outer))) / cos_outer;
+
+					const auto near_dist = std::max(1.0f, src.radius * light_view_frustum_near_frac);
+					const auto far_dist = std::max(near_dist + 1.0f, src.radius);
+
+					float verts[8][3];
+					for (int slice = 0; slice < 2; slice++)
+					{
+						const auto depth = slice ? far_dist : near_dist;
+						const auto extent = depth * tan_half;
+						for (int corner = 0; corner < 4; corner++)
+						{
+							// (-,-) (+,-) (+,+) (-,+) so a quad walks its rim in order
+							const auto sx = (corner == 0 || corner == 3) ? -extent : extent;
+							const auto sy = (corner < 2) ? -extent : extent;
+							for (int k = 0; k < 3; k++)
+							{
+								verts[(slice * 4) + corner][k] = src.origin[k] + (axis[k] * depth)
+									+ (right[k] * sx) + (up[k] * sy);
+							}
+						}
+					}
+
+					static const unsigned short quads[6][4] = {
+						{ 0, 1, 2, 3 }, // near
+						{ 4, 5, 6, 7 }, // far
+						{ 0, 1, 5, 4 },
+						{ 1, 2, 6, 5 },
+						{ 2, 3, 7, 6 },
+						{ 3, 0, 4, 7 },
+					};
+
+					std::vector<unsigned short> indices;
+					indices.reserve(36);
+					for (const auto& quad : quads)
+					{
+						indices.push_back(quad[0]);
+						indices.push_back(quad[1]);
+						indices.push_back(quad[2]);
+						indices.push_back(quad[0]);
+						indices.push_back(quad[2]);
+						indices.push_back(quad[3]);
+					}
+
+					// Rather than reason about the corner order, measure the signed volume and
+					// flip if it came out inward. Getting this backwards on frustumLights cost a
+					// whole test cycle and looked like a culling bug.
+					auto signed_volume = 0.0f;
+					for (size_t t = 0; t + 2 < indices.size(); t += 3)
+					{
+						const auto* a = verts[indices[t]];
+						const auto* b = verts[indices[t + 1]];
+						const auto* c = verts[indices[t + 2]];
+						signed_volume += (a[0] * ((b[1] * c[2]) - (b[2] * c[1])))
+							- (a[1] * ((b[0] * c[2]) - (b[2] * c[0])))
+							+ (a[2] * ((b[0] * c[1]) - (b[1] * c[0])));
+					}
+					if (signed_volume < 0.0f)
+					{
+						for (size_t t = 0; t + 2 < indices.size(); t += 3)
+						{
+							std::swap(indices[t + 1], indices[t + 2]);
+						}
+					}
+
+					float centre[3] = { 0.0f, 0.0f, 0.0f };
+					for (const auto& vertex : verts)
+					{
+						for (int k = 0; k < 3; k++)
+						{
+							centre[k] += vertex[k] * 0.125f;
+						}
+					}
+
+					auto& dest = new_asset->lightViewFrustums[i];
+					dest.vertexCount = 8;
+					dest.vertices = allocator.allocate<IW7::vec3_t>(8);
+					memcpy(dest.vertices, verts, sizeof(verts));
+
+					dest.indexCount = static_cast<unsigned int>(indices.size());
+					dest.indices = allocator.allocate<unsigned short>(indices.size());
+					memcpy(dest.indices, indices.data(),
+						sizeof(unsigned short) * indices.size());
+
+					dest.planeCount = 6;
+					dest.planes = allocator.allocate<IW7::vec4_t>(6);
+					for (int f = 0; f < 6; f++)
+					{
+						const auto* a = verts[quads[f][0]];
+						const auto* b = verts[quads[f][1]];
+						const auto* c = verts[quads[f][2]];
+
+						const float ab[3] = { b[0] - a[0], b[1] - a[1], b[2] - a[2] };
+						const float ac[3] = { c[0] - a[0], c[1] - a[1], c[2] - a[2] };
+						float normal[3] = {
+							(ab[1] * ac[2]) - (ab[2] * ac[1]),
+							(ab[2] * ac[0]) - (ab[0] * ac[2]),
+							(ab[0] * ac[1]) - (ab[1] * ac[0]),
+						};
+						const auto len = std::sqrt((normal[0] * normal[0])
+							+ (normal[1] * normal[1]) + (normal[2] * normal[2]));
+						if (!(len > 1e-8f))
+						{
+							continue;
+						}
+						for (int k = 0; k < 3; k++)
+						{
+							normal[k] /= len;
+						}
+
+						auto dist = -((normal[0] * a[0]) + (normal[1] * a[1]) + (normal[2] * a[2]));
+
+						// inward-facing: the hull centre has to satisfy n.p + d >= 0
+						if (((normal[0] * centre[0]) + (normal[1] * centre[1])
+							+ (normal[2] * centre[2])) + dist < 0.0f)
+						{
+							for (int k = 0; k < 3; k++)
+							{
+								normal[k] = -normal[k];
+							}
+							dist = -dist;
+						}
+
+						dest.planes[f][0] = normal[0];
+						dest.planes[f][1] = normal[1];
+						dest.planes[f][2] = normal[2];
+						dest.planes[f][3] = dist;
+					}
+
+					built++;
+				}
+
+				ZONETOOL_INFO("GfxWorld \"%s\": %u light view frustums over %u primary lights",
+					asset->name, built, new_asset->primaryLightCount);
+			}
 
 			// the light shapes live in the ComWorld, which is loaded alongside this GfxWorld and
 			// shares its asset name
@@ -2622,13 +3092,18 @@ namespace ZoneTool::IW5
 			new_asset->heightfieldCount = 0;
 			new_asset->heightfields = nullptr;
 
-			// irrelevant
-			new_asset->unk01.unk01Count = 0;
-			new_asset->unk01.unk01 = nullptr;
-			new_asset->unk01.unk02Count = 0;
-			new_asset->unk01.unk02 = nullptr;
-			new_asset->unk01.unk03Count = 0;
-			new_asset->unk01.unk03 = nullptr;
+			// Generated above, alongside the voxel light lists, where the light grid occupancy
+			// needed for the visibility march is in scope. Only cleared here when that pass did
+			// not run, which is the state that leaves IW7 with no per-surface light visibility.
+			if (!new_asset->lightLists.lists)
+			{
+				new_asset->lightLists.surfaceListOffsetCount = 0;
+				new_asset->lightLists.surfaceListOffsets = nullptr;
+				new_asset->lightLists.smodelListOffsetCount = 0;
+				new_asset->lightLists.smodelListOffsets = nullptr;
+				new_asset->lightLists.listsSize = 0;
+				ZONETOOL_WARNING("GfxWorld \"%s\": no per-surface light lists", asset->name);
+			}
 
 			COPY_VALUE(modelCount);
 			new_asset->models = allocator.allocate<IW7::GfxBrushModel>(asset->modelCount);
@@ -2840,23 +3315,38 @@ namespace ZoneTool::IW5
 					ZONETOOL_INFO("GfxWorld \"%s\": light %u shadow casters - %u surfaces, %u "
 						"smodels (was %u / %u from the source)", asset->name, i,
 						dest.surfaceCount, dest.smodelCount,
-						asset->shadowGeom ? asset->shadowGeom[i].surfaceCount : 0,
-						asset->shadowGeom ? asset->shadowGeom[i].smodelCount : 0);
+						asset->shadowGeom && i < asset->primaryLightCount
+							? asset->shadowGeom[i].surfaceCount : 0,
+						asset->shadowGeom && i < asset->primaryLightCount
+							? asset->shadowGeom[i].smodelCount : 0);
 				}
 			}
 
+			// IW5's lightRegion array is only asset->primaryLightCount long. Reading past it took
+			// hullCount from whatever followed the array and then allocated and memcpy'd against
+			// that garbage, so the bound stays even though the two counts match again.
 			new_asset->lightRegion = allocator.allocate<IW7::GfxLightRegion>(new_asset->primaryLightCount);
 			for (unsigned int i = 0; i < new_asset->primaryLightCount; i++)
 			{
-				new_asset->lightRegion[i].hullCount = asset->lightRegion[i].hullCount;
+				const auto region_source = i;
+
+				if (region_source >= asset->primaryLightCount)
+				{
+					new_asset->lightRegion[i].hullCount = 0;
+					new_asset->lightRegion[i].hulls = nullptr;
+					continue;
+				}
+
+				const auto& src_region = asset->lightRegion[region_source];
+				new_asset->lightRegion[i].hullCount = src_region.hullCount;
 				new_asset->lightRegion[i].hulls = allocator.allocate<IW7::GfxLightRegionHull>(new_asset->lightRegion[i].hullCount);
 				for (unsigned int j = 0; j < new_asset->lightRegion[i].hullCount; j++)
 				{
-					memcpy(&new_asset->lightRegion[i].hulls[j].kdopMidPoint, &asset->lightRegion[i].hulls[j].kdopMidPoint, sizeof(float[9]));
-					memcpy(&new_asset->lightRegion[i].hulls[j].kdopHalfSize, &asset->lightRegion[i].hulls[j].kdopHalfSize, sizeof(float[9]));
+					memcpy(&new_asset->lightRegion[i].hulls[j].kdopMidPoint, &src_region.hulls[j].kdopMidPoint, sizeof(float[9]));
+					memcpy(&new_asset->lightRegion[i].hulls[j].kdopHalfSize, &src_region.hulls[j].kdopHalfSize, sizeof(float[9]));
 
-					new_asset->lightRegion[i].hulls[j].axisCount = asset->lightRegion[i].hulls[j].axisCount;
-					REINTERPRET_CAST_SAFE_TO_FROM(new_asset->lightRegion[i].hulls[j].axis, asset->lightRegion[i].hulls[j].axis);
+					new_asset->lightRegion[i].hulls[j].axisCount = src_region.hulls[j].axisCount;
+					REINTERPRET_CAST_SAFE_TO_FROM(new_asset->lightRegion[i].hulls[j].axis, src_region.hulls[j].axis);
 				}
 			}
 
