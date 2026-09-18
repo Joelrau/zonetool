@@ -79,6 +79,7 @@ include "dep/steam_api.lua"
 include "dep/zlib.lua"
 include "dep/zstd.lua"
 include "dep/gsc-tool.lua"
+include "dep/umbra3.lua"
 
 -- All projects here should be in the thirdparty folder
 group "thirdparty"
@@ -88,6 +89,7 @@ libtomcrypt:project()
 zlib:project()
 zstd:project()
 gsc_tool:project()
+umbra3:project()
 
 -- Reset group
 group ""
@@ -97,6 +99,7 @@ group ""
 -- ========================
 
 include "src/X64.lua"
+include "src/UmbraTomeGen.lua"
 
 include "src/ZoneTool.lua"
 include "src/ZoneUtils.lua"
@@ -110,6 +113,7 @@ include "src/H1.lua"
 include "src/S1.lua"
 
 X64:project()
+UmbraTomeGen:project()
 
 ZoneTool:project()
 ZoneUtils:project()

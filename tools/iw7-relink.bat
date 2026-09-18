@@ -74,6 +74,11 @@ if errorlevel 1 echo [!] build failed & exit /b 1
 echo       deploying to zoneiw3.dll
 copy /y "%DLL%" "%COD4%\zoneiw3.dll" >nul
 if errorlevel 1 echo [!] deploy failed -- is CoD4 or the dumper running? & exit /b 1
+
+rem the IW7 converter spawns the x64 Umbra generator from next to the dll
+echo       deploying umbra-tomegen.exe
+copy /y "%REPO%\build\bin\Win32\Debug\umbra-tomegen.exe" "%COD4%\umbra-tomegen.exe" >nul
+if errorlevel 1 echo [!] umbra-tomegen deploy failed & exit /b 1
 goto builddone
 :skipbuild
 echo [1/4] build skipped
@@ -96,6 +101,7 @@ if errorlevel 1 (
 )
 echo       dump ok
 findstr /c:"clipmap collision:" "%DUMPLOG%" | findstr /c:"world shape" /c:"trisoup --" /c:"brush basis"
+findstr /c:"umbra:" "%DUMPLOG%" | findstr /v /c:"INFO:"
 goto dumpdone
 :skipdump
 echo [2/4] dump skipped -- relinking whatever is already in staging
