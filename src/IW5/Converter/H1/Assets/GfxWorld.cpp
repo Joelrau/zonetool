@@ -3,7 +3,6 @@
 
 #include "GfxWorld.hpp"
 
-#include "X64/Utils/Umbra/umbra.hpp"
 #include "X64/Utils/Utils.hpp"
 #include "X64/Utils/LightGrid/LightGridSH.hpp"
 #include "X64/Utils/LightGrid/LightGridTree.hpp"
@@ -911,42 +910,10 @@ namespace ZoneTool::IW5
 
 			h1_asset->fogTypesAllowed = asset->fogTypesAllowed;
 
+			// h1 does not need umbra data.
 			h1_asset->umbraTomeSize = 0;
 			h1_asset->umbraTomeData = nullptr;
 			h1_asset->umbraTomePtr = nullptr;
-			/*
-			{
-				float gfx_mins[3]
-				{
-					asset->bounds.midPoint[0] - asset->bounds.halfSize[0],
-					asset->bounds.midPoint[1] - asset->bounds.halfSize[1],
-					asset->bounds.midPoint[2] - asset->bounds.halfSize[2]
-				};
-				float gfx_maxs[3]
-				{
-					asset->bounds.midPoint[0] + asset->bounds.halfSize[0],
-					asset->bounds.midPoint[1] + asset->bounds.halfSize[1],
-					asset->bounds.midPoint[2] + asset->bounds.halfSize[2]
-				};
-
-				static char buffer[sizeof(Umbra::ImpTome)];
-				memset(buffer, 0, sizeof(buffer));
-				auto* new_tome = reinterpret_cast<Umbra::ImpTome*>(buffer);
-				new_tome->m_versionMagic = 0xD6000012;
-				new_tome->m_crc32 = 0xD15AB1ED;
-				new_tome->m_size = sizeof(buffer);
-				new_tome->m_lodBaseDistance = 512.0f;
-				memcpy(&new_tome->m_treeMin, gfx_mins, sizeof(float[3]));
-				memcpy(&new_tome->m_treeMax, gfx_maxs, sizeof(float[3]));
-
-				new_tome->m_crc32 = Umbra::ImpTome::computeCRC32(new_tome);
-
-				h1_asset->umbraTomeSize = new_tome->m_size;
-				h1_asset->umbraTomeData = mem->ManualAlloc<char>(h1_asset->umbraTomeSize);
-				memcpy(h1_asset->umbraTomeData, buffer, h1_asset->umbraTomeSize);
-				h1_asset->umbraTomePtr = reinterpret_cast<void*>(h1_asset->umbraTomeData);
-			}
-			*/
 
 			h1_asset->mdaoVolumesCount = 0;
 			h1_asset->mdaoVolumes = nullptr;
