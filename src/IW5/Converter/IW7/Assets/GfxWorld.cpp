@@ -442,34 +442,99 @@ namespace ZoneTool::IW5
 			new_asset->sortKeyEmissiveBegin = 35;
 			new_asset->sortKeyEmissiveEnd = 40;
 
-			COPY_VALUE(dpvsPlanes.cellCount);
-			REINTERPRET_CAST_SAFE(dpvsPlanes.planes);
-			REINTERPRET_CAST_SAFE(dpvsPlanes.nodes);
-			REINTERPRET_CAST_SAFE(dpvsPlanes.sceneEntCellBits);
-			new_asset->cells = allocator.allocate<IW7::GfxCell>(asset->dpvsPlanes.cellCount);
-			for (int i = 0; i < new_asset->dpvsPlanes.cellCount; i++)
-			{
-				memcpy(&new_asset->cells[i].bounds, &asset->cells[i].bounds, sizeof(float[2][3]));
-				new_asset->cells[i].portalCount = asset->cells[i].portalCount;
+			// Every shipped IW7 map has cellCount == 1 and leaves visibility to Umbra. With more
+			// cells the sun shadow pass (sm_strictCull) only draws casters from the visible cells
+			// plus cellCasterBits, which the game rebuilds at load by a portal walk along the sun
+			// direction - from a sealed room that finds nothing and the sun leaks through its
+			// walls. Collapse the world into one cell like stock.
+			//
+			// BSP node value v: 0 solid, v <= cellCount leaf for cell v-1, else plane
+			// v-(cellCount+1); front child at node+2, back child at node+node[1] (ushorts).
+			const auto source_cell_count = asset->dpvsPlanes.cellCount;
+			const auto merge_cells = source_cell_count > 1;
 
-				auto add_portal = [](IW7::GfxPortal* iw7_portal, IW5::GfxPortal* iw5_portal)
+			new_asset->dpvsPlanes.cellCount = merge_cells ? 1 : source_cell_count;
+			REINTERPRET_CAST_SAFE(dpvsPlanes.planes);
+			REINTERPRET_CAST_SAFE(dpvsPlanes.sceneEntCellBits);
+			if (merge_cells)
+			{
+				new_asset->dpvsPlanes.nodes = allocator.allocate<unsigned short>(asset->nodeCount);
+				memcpy(new_asset->dpvsPlanes.nodes, asset->dpvsPlanes.nodes, sizeof(unsigned short) * asset->nodeCount);
+
+				auto* nodes = new_asset->dpvsPlanes.nodes;
+				std::vector<int> pending{ 0 };
+				while (!pending.empty())
 				{
-					memcpy(&iw7_portal->plane, &iw5_portal->plane, sizeof(float[4]));
-					iw7_portal->vertices = reinterpret_cast<float(PTR64)[3]>(iw5_portal->vertices);
-					iw7_portal->cellIndex = iw5_portal->cellIndex;
-					iw7_portal->closeDistance = 0;
-					iw7_portal->vertexCount = iw5_portal->vertexCount;
-					memcpy(&iw7_portal->hullAxis, &iw5_portal->hullAxis, sizeof(float[2][3]));
-				};
-				new_asset->cells[i].portals = allocator.allocate<IW7::GfxPortal>(new_asset->cells[i].portalCount);
-				for (int j = 0; j < new_asset->cells[i].portalCount; j++)
+					const auto node = pending.back();
+					pending.pop_back();
+					if (node < 0 || node + 1 >= asset->nodeCount)
+					{
+						continue;
+					}
+					auto& value = nodes[node];
+					if (value == 0)
+					{
+						continue;
+					}
+					if (value <= source_cell_count)
+					{
+						value = 1;
+						continue;
+					}
+					value = static_cast<unsigned short>(value - (source_cell_count + 1) + 2);
+					pending.push_back(node + 2);
+					pending.push_back(node + nodes[node + 1]);
+				}
+
+				new_asset->cells = allocator.allocate<IW7::GfxCell>(1);
+				float mins[3]{ FLT_MAX, FLT_MAX, FLT_MAX };
+				float maxs[3]{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+				for (int i = 0; i < source_cell_count; i++)
 				{
-					add_portal(&new_asset->cells[i].portals[j], &asset->cells[i].portals[j]);
+					for (int k = 0; k < 3; k++)
+					{
+						mins[k] = std::min(mins[k], asset->cells[i].bounds.midPoint[k] - asset->cells[i].bounds.halfSize[k]);
+						maxs[k] = std::max(maxs[k], asset->cells[i].bounds.midPoint[k] + asset->cells[i].bounds.halfSize[k]);
+					}
+				}
+				for (int k = 0; k < 3; k++)
+				{
+					new_asset->cells[0].bounds.midPoint[k] = (mins[k] + maxs[k]) * 0.5f;
+					new_asset->cells[0].bounds.halfSize[k] = (maxs[k] - mins[k]) * 0.5f;
+				}
+				new_asset->cells[0].portalCount = 0;
+				new_asset->cells[0].portals = nullptr;
+
+				ZONETOOL_INFO("GfxWorld \"%s\": merged %d cells into one", asset->name, source_cell_count);
+			}
+			else
+			{
+				REINTERPRET_CAST_SAFE(dpvsPlanes.nodes);
+				new_asset->cells = allocator.allocate<IW7::GfxCell>(asset->dpvsPlanes.cellCount);
+				for (int i = 0; i < new_asset->dpvsPlanes.cellCount; i++)
+				{
+					memcpy(&new_asset->cells[i].bounds, &asset->cells[i].bounds, sizeof(float[2][3]));
+					new_asset->cells[i].portalCount = asset->cells[i].portalCount;
+
+					auto add_portal = [](IW7::GfxPortal* iw7_portal, IW5::GfxPortal* iw5_portal)
+					{
+						memcpy(&iw7_portal->plane, &iw5_portal->plane, sizeof(float[4]));
+						iw7_portal->vertices = reinterpret_cast<float(PTR64)[3]>(iw5_portal->vertices);
+						iw7_portal->cellIndex = iw5_portal->cellIndex;
+						iw7_portal->closeDistance = 0;
+						iw7_portal->vertexCount = iw5_portal->vertexCount;
+						memcpy(&iw7_portal->hullAxis, &iw5_portal->hullAxis, sizeof(float[2][3]));
+					};
+					new_asset->cells[i].portals = allocator.allocate<IW7::GfxPortal>(new_asset->cells[i].portalCount);
+					for (int j = 0; j < new_asset->cells[i].portalCount; j++)
+					{
+						add_portal(&new_asset->cells[i].portals[j], &asset->cells[i].portals[j]);
+					}
 				}
 			}
 
-			new_asset->cellTransientInfos = allocator.allocate<IW7::GfxCellTransientInfo>(asset->dpvsPlanes.cellCount);
-			for (unsigned short i = 0; i < asset->dpvsPlanes.cellCount; i++)
+			new_asset->cellTransientInfos = allocator.allocate<IW7::GfxCellTransientInfo>(new_asset->dpvsPlanes.cellCount);
+			for (unsigned short i = 0; i < new_asset->dpvsPlanes.cellCount; i++)
 			{
 				new_asset->cellTransientInfos[i].aabbTreeIndex = i;
 				new_asset->cellTransientInfos[i].transientZone = 0;
@@ -791,31 +856,112 @@ namespace ZoneTool::IW5
 			new_asset->draw.transientZones[0]->vertexLayerDataSize = asset->draw.vertexLayerDataSize;
 			new_asset->draw.transientZones[0]->vld.data = asset->draw.vld.data;
 
-			new_asset->draw.transientZones[0]->cellCount = asset->dpvsPlanes.cellCount;
-
-			new_asset->draw.transientZones[0]->aabbTreeCounts = allocator.allocate<IW7::GfxCellTreeCount>(asset->dpvsPlanes.cellCount);
-			new_asset->draw.transientZones[0]->aabbTrees = allocator.allocate<IW7::GfxCellTree>(asset->dpvsPlanes.cellCount);
-			for (int i = 0; i < asset->dpvsPlanes.cellCount; i++)
+			// childrenOffset is relative to the node and children are consecutive, so it only
+			// needs rescaling for the IW7 node size while the nodes keep their relative order.
+			auto convert_aabb_node = [](IW7::GfxAabbTree* dst, const GfxAabbTree* src, int children_index_delta)
 			{
-				new_asset->draw.transientZones[0]->aabbTreeCounts[i].aabbTreeCount = asset->aabbTreeCounts[i].aabbTreeCount;
-				new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree = allocator.allocate<IW7::GfxAabbTree>(asset->aabbTreeCounts[i].aabbTreeCount);
-				for (int j = 0; j < asset->aabbTreeCounts[i].aabbTreeCount; j++)
+				memcpy(&dst->bounds, &src->bounds, sizeof(float[2][3]));
+				dst->startSurfIndex = src->startSurfIndex;
+				dst->surfaceCount = src->surfaceCount;
+				dst->smodelIndexCount = src->smodelIndexCount;
+				dst->smodelIndexes = src->smodelIndexes;
+				dst->childCount = src->childCount;
+				dst->childrenOffset = static_cast<int>(
+					(src->childrenOffset / sizeof(GfxAabbTree) + children_index_delta) * sizeof(IW7::GfxAabbTree));
+			};
+
+			new_asset->draw.transientZones[0]->cellCount = new_asset->dpvsPlanes.cellCount;
+			new_asset->draw.transientZones[0]->aabbTreeCounts = allocator.allocate<IW7::GfxCellTreeCount>(new_asset->dpvsPlanes.cellCount);
+			new_asset->draw.transientZones[0]->aabbTrees = allocator.allocate<IW7::GfxCellTree>(new_asset->dpvsPlanes.cellCount);
+			if (merge_cells)
+			{
+				// New root with the old per-cell roots as its children: the roots move to slots
+				// 1..N so they are consecutive, the remaining nodes follow in their original order.
+				// A node fully inside the view is marked wholesale from its own surface range and
+				// smodel list, so the root carries the union of everything below it.
+				std::vector<int> cell_roots;
+				int node_count = 1;
+				for (int i = 0; i < source_cell_count; i++)
 				{
-					memcpy(&new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j].bounds, &asset->aabbTrees[i].aabbTree[j].bounds, sizeof(float[2][3]));
+					if (asset->aabbTreeCounts[i].aabbTreeCount > 0)
+					{
+						cell_roots.push_back(i);
+						node_count += asset->aabbTreeCounts[i].aabbTreeCount;
+					}
+				}
 
-					new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j].startSurfIndex = asset->aabbTrees[i].aabbTree[j].startSurfIndex;
-					new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j].surfaceCount = asset->aabbTrees[i].aabbTree[j].surfaceCount;
+				auto* tree = allocator.allocate<IW7::GfxAabbTree>(node_count);
+				auto& root = tree[0];
+				memset(&root, 0, sizeof(root));
 
-					new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j].smodelIndexCount = asset->aabbTrees[i].aabbTree[j].smodelIndexCount;
-					new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j].smodelIndexes = asset->aabbTrees[i].aabbTree[j].smodelIndexes;
+				float mins[3]{ FLT_MAX, FLT_MAX, FLT_MAX };
+				float maxs[3]{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+				unsigned int surf_begin = UINT_MAX, surf_end = 0;
+				std::vector<unsigned short> root_smodels;
 
-					new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j].childCount = asset->aabbTrees[i].aabbTree[j].childCount;
+				const auto child_slots = static_cast<int>(cell_roots.size());
+				int next_node = 1 + child_slots;
+				for (int slot = 0; slot < child_slots; slot++)
+				{
+					const auto cell = cell_roots[slot];
+					const auto* src_nodes = asset->aabbTrees[cell].aabbTree;
+					const auto src_count = asset->aabbTreeCounts[cell].aabbTreeCount;
 
-					// re-calculate childrenOffset
-					auto offset = asset->aabbTrees[i].aabbTree[j].childrenOffset;
-					int childrenIndex = offset / sizeof(GfxAabbTree);
-					int childrenOffset = childrenIndex * sizeof(IW7::GfxAabbTree);
-					new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j].childrenOffset = childrenOffset;
+					const auto root_slot = 1 + slot;
+					convert_aabb_node(&tree[root_slot], &src_nodes[0], next_node - 1 - root_slot);
+					for (int j = 1; j < src_count; j++)
+					{
+						convert_aabb_node(&tree[next_node + j - 1], &src_nodes[j], 0);
+					}
+					next_node += src_count - 1;
+
+					for (int k = 0; k < 3; k++)
+					{
+						mins[k] = std::min(mins[k], src_nodes[0].bounds.midPoint[k] - src_nodes[0].bounds.halfSize[k]);
+						maxs[k] = std::max(maxs[k], src_nodes[0].bounds.midPoint[k] + src_nodes[0].bounds.halfSize[k]);
+					}
+					if (src_nodes[0].surfaceCount)
+					{
+						surf_begin = std::min<unsigned int>(surf_begin, src_nodes[0].startSurfIndex);
+						surf_end = std::max<unsigned int>(surf_end, src_nodes[0].startSurfIndex + src_nodes[0].surfaceCount);
+					}
+					root_smodels.insert(root_smodels.end(), src_nodes[0].smodelIndexes,
+						src_nodes[0].smodelIndexes + src_nodes[0].smodelIndexCount);
+				}
+
+				for (int k = 0; k < 3; k++)
+				{
+					root.bounds.midPoint[k] = (mins[k] + maxs[k]) * 0.5f;
+					root.bounds.halfSize[k] = (maxs[k] - mins[k]) * 0.5f;
+				}
+				root.childCount = static_cast<unsigned short>(child_slots);
+				root.childrenOffset = static_cast<int>(sizeof(IW7::GfxAabbTree));
+				if (surf_begin < surf_end)
+				{
+					root.startSurfIndex = surf_begin;
+					root.surfaceCount = static_cast<unsigned short>(surf_end - surf_begin);
+				}
+				root.smodelIndexCount = static_cast<unsigned short>(root_smodels.size());
+				root.smodelIndexes = root_smodels.empty() ? nullptr
+					: allocator.allocate<unsigned short>(root_smodels.size());
+				if (root.smodelIndexes)
+				{
+					memcpy(root.smodelIndexes, root_smodels.data(), sizeof(unsigned short) * root_smodels.size());
+				}
+
+				new_asset->draw.transientZones[0]->aabbTreeCounts[0].aabbTreeCount = node_count;
+				new_asset->draw.transientZones[0]->aabbTrees[0].aabbTree = tree;
+			}
+			else
+			{
+				for (int i = 0; i < asset->dpvsPlanes.cellCount; i++)
+				{
+					new_asset->draw.transientZones[0]->aabbTreeCounts[i].aabbTreeCount = asset->aabbTreeCounts[i].aabbTreeCount;
+					new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree = allocator.allocate<IW7::GfxAabbTree>(asset->aabbTreeCounts[i].aabbTreeCount);
+					for (int j = 0; j < asset->aabbTreeCounts[i].aabbTreeCount; j++)
+					{
+						convert_aabb_node(&new_asset->draw.transientZones[0]->aabbTrees[i].aabbTree[j], &asset->aabbTrees[i].aabbTree[j], 0);
+					}
 				}
 			}
 
