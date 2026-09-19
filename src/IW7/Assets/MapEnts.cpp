@@ -215,14 +215,6 @@ namespace ZoneTool::IW7
 			dumper.dump_array(asset->dynEntPoseList[1][1][i].detailBodyToBoneMap, asset->dynEntPoseList[1][1][i].numPoses);
 		}
 
-		// The loader reads all four client arrays immediately after the pose arrays.
-		// Keep these dumps in the same order or every following pointer in the stream
-		// is interpreted at the wrong offset (including the physics list links).
-		dumper.dump_array(asset->dynEntClientList[0][0], asset->dynEntCount[0]);
-		dumper.dump_array(asset->dynEntClientList[1][0], asset->dynEntCount[0]);
-		dumper.dump_array(asset->dynEntClientList[0][1], asset->dynEntCount[1]);
-		dumper.dump_array(asset->dynEntClientList[1][1], asset->dynEntCount[1]);
-
 		dumper.dump_array(asset->dynEntGlobalIdList[0], asset->dynEntCountTotal);
 		dumper.dump_array(asset->dynEntGlobalIdList[1], asset->dynEntCountTotal);
 
