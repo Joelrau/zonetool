@@ -52,7 +52,7 @@ namespace ZoneTool::IW5
 			{
 				iw6_asset->skies[i].skySurfCount = asset->skies[i].skySurfCount;
 				iw6_asset->skies[i].skyStartSurfs = reinterpret_cast<int*>(asset->skies[i].skyStartSurfs);
-				if (iw6_asset->skies[i].skyImage)
+				if (asset->skies[i].skyImage)
 				{
 					iw6_asset->skies[i].skyImage = mem.allocate<IW6::GfxImage>();
 					iw6_asset->skies[i].skyImage->name = asset->skies->skyImage->name;

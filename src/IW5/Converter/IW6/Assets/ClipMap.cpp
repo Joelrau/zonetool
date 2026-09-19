@@ -51,7 +51,7 @@ namespace ZoneTool::IW5
 				{
 					iw6_flags |= ((flags & a) == a) ? b : 0;
 				};
-				convert(IW5::CSurfaceFlags::SURF_FLAG_OPAQUEGLASS, IW6::CSurfaceFlags::SURF_FLAG_OPAQUEGLASS);
+				//convert(IW5::CSurfaceFlags::SURF_FLAG_OPAQUEGLASS, IW6::CSurfaceFlags::SURF_FLAG_OPAQUEGLASS);
 				convert(IW5::CSurfaceFlags::SURF_FLAG_CLIPMISSILE, IW6::CSurfaceFlags::SURF_FLAG_CLIPMISSILE);
 				convert(IW5::CSurfaceFlags::SURF_FLAG_AI_NOSIGHT, IW6::CSurfaceFlags::SURF_FLAG_AI_NOSIGHT);
 				convert(IW5::CSurfaceFlags::SURF_FLAG_CLIPSHOT, IW6::CSurfaceFlags::SURF_FLAG_CLIPSHOT);
