@@ -19,6 +19,9 @@
 #include <map>
 #include <string>
 
+#define CLIPMAP_COLLISION_INFO(__FMT__,...) \
+	do { if (verbose_logging_enabled()) { ZONETOOL_INFO(__FMT__, __VA_ARGS__); } } while (false)
+
 // Pulls IW5 world collision out of clipMap_t and flattens it to triangles for the IW7
 // Havok mesh builder.
 //
@@ -48,6 +51,12 @@ namespace ZoneTool::IW5
 		{
 			namespace
 			{
+				bool verbose_logging_enabled()
+				{
+					const auto* env = std::getenv("ZT_HAVOK_VERBOSE");
+					return env && *env && *env != '0';
+				}
+
 				constexpr auto CONTENTS_SOLID = 0x00000001;
 
 				constexpr auto CONTENTS_NONCOLLIDING = 0x00000004;
@@ -522,7 +531,7 @@ namespace ZoneTool::IW5
 									list += " " + std::to_string(b);
 								}
 							}
-							ZONETOOL_INFO("clipmap collision: cmodel %u node %d bounds "
+							CLIPMAP_COLLISION_INFO("clipmap collision: cmodel %u node %d bounds "
 								"%.0f x %.0f x %.0f at (%.0f %.0f %.0f) leafBounds "
 								"%.0f x %.0f x %.0f at (%.0f %.0f %.0f) radius %.0f "
 								"aabb[%u..+%u] brushContents 0x%08X reaches:%s",
@@ -559,7 +568,7 @@ namespace ZoneTool::IW5
 
 					if (log)
 					{
-						ZONETOOL_INFO("clipmap collision: leafbrush walk -- world %d, brush models "
+						CLIPMAP_COLLISION_INFO("clipmap collision: leafbrush walk -- world %d, brush models "
 							"%d, overlap %d of %u brushes across %u cmodels%s",
 							world_count, model_count, overlap, clipmap->info.numBrushes,
 							clipmap->numSubModels,
@@ -978,7 +987,7 @@ namespace ZoneTool::IW5
 				// has to be loaded.
 				if (!triangles.empty() || !convexes.empty())
 				{
-					ZONETOOL_INFO("clipmap collision: world obj extents (%.1f %.1f %.1f) .. "
+					CLIPMAP_COLLISION_INFO("clipmap collision: world obj extents (%.1f %.1f %.1f) .. "
 						"(%.1f %.1f %.1f), size %.1f x %.1f x %.1f",
 						mn[0], mn[1], mn[2], mx[0], mx[1], mx[2],
 						mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]);
@@ -1069,7 +1078,7 @@ namespace ZoneTool::IW5
 					}
 				}
 
-				ZONETOOL_INFO("clipmap collision: wrote \"%s\" (%zu triangles, %zu convexes, "
+				CLIPMAP_COLLISION_INFO("clipmap collision: wrote \"%s\" (%zu triangles, %zu convexes, "
 					"%zu objects)", path.data(), triangles.size(), convexes.size(),
 					groups.size() + convex_groups.size());
 			}
@@ -1124,7 +1133,7 @@ namespace ZoneTool::IW5
 					}
 				}
 
-				ZONETOOL_INFO("clipmap collision: wrote \"%s\" (%u hulls, %zu objects)",
+				CLIPMAP_COLLISION_INFO("clipmap collision: wrote \"%s\" (%u hulls, %zu objects)",
 					path.data(), total_hulls, groups.size());
 			}
 
@@ -1144,7 +1153,7 @@ namespace ZoneTool::IW5
 				}
 
 				file.write(reinterpret_cast<const char*>(data), size);
-				ZONETOOL_INFO("clipmap collision: wrote \"%s\" (%zu bytes)", path.data(), size);
+				CLIPMAP_COLLISION_INFO("clipmap collision: wrote \"%s\" (%zu bytes)", path.data(), size);
 			}
 
 			// -------------------------------------------------- surface materials
@@ -1351,7 +1360,7 @@ namespace ZoneTool::IW5
 				// Static model collision is a separate asset in IW7 (a HavokPhysicsAsset per
 				// XModel), not part of the world blob. If most of this map's surfaces are
 				// models, the world blob legitimately only covers the brush shell.
-				ZONETOOL_INFO("clipmap collision: source has %u verts, %d tris, %d partitions, "
+				CLIPMAP_COLLISION_INFO("clipmap collision: source has %u verts, %d tris, %d partitions, "
 					"%u brushes, %u static models, %u submodels",
 					clipmap->vertCount, clipmap->triCount, clipmap->partitionCount,
 					clipmap->info.numBrushes, clipmap->numStaticModels, clipmap->numSubModels);
@@ -1441,7 +1450,7 @@ namespace ZoneTool::IW5
 					const auto sf = clipmap->info.materials[i].surfaceFlags;
 					const auto old_index = static_cast<unsigned int>(sf) >> 20;
 					const auto new_index = old_index & 0x1Fu;
-					ZONETOOL_INFO("  material %2u \"%s\" surfaceFlags 0x%08X contents 0x%08X "
+					CLIPMAP_COLLISION_INFO("  material %2u \"%s\" surfaceFlags 0x%08X contents 0x%08X "
 						"type %u->%u%s iw7flags 0x%08X crc 0x%08X", i,
 						clipmap->info.materials[i].name ? clipmap->info.materials[i].name : "?",
 						sf, clipmap->info.materials[i].contents, old_index, new_index,
@@ -1478,7 +1487,7 @@ namespace ZoneTool::IW5
 				const std::uint64_t USERDATA_BRUSH_BASIS =
 					brush_basis_enabled ? (1ull << 48) : 0ull;
 
-				ZONETOOL_INFO("clipmap collision: brush basis bit %s (ZT_HAVOK_BRUSH_BASIS)",
+				CLIPMAP_COLLISION_INFO("clipmap collision: brush basis bit %s (ZT_HAVOK_BRUSH_BASIS)",
 					brush_basis_enabled ? "set" : "CLEARED");
 				const auto surface_flags_for = [&](const unsigned short index) -> std::uint64_t
 				{
@@ -1574,7 +1583,7 @@ namespace ZoneTool::IW5
 					}
 				}
 
-				ZONETOOL_INFO("clipmap collision: trisoup -- %d triangles from %d of %d "
+				CLIPMAP_COLLISION_INFO("clipmap collision: trisoup -- %d triangles from %d of %d "
 					"partitions (%d skipped as brush-model geometry, %d out of range)",
 					trisoup_emitted, trisoup_partitions, clipmap->partitionCount,
 					trisoup_skipped_model, trisoup_skipped_oob);
@@ -1633,7 +1642,7 @@ namespace ZoneTool::IW5
 					}
 				}
 
-				ZONETOOL_INFO("clipmap collision: brushes emitted as %s",
+				CLIPMAP_COLLISION_INFO("clipmap collision: brushes emitted as %s",
 					brush_convexes
 						? "convex custom primitives, faces only as a fallback "
 						  "(ZT_HAVOK_BRUSH_CONVEX default on)"
@@ -1667,7 +1676,8 @@ namespace ZoneTool::IW5
 				std::vector<bool> world_brushes;
 				std::vector<bool> model_brushes;
 				const auto filter_models =
-					brush_model_attribution(clipmap, world_brushes, model_brushes, true);
+					brush_model_attribution(clipmap, world_brushes, model_brushes,
+						verbose_logging_enabled());
 
 				for (auto b = 0; b < clipmap->info.numBrushes; b++)
 				{
@@ -1690,6 +1700,7 @@ namespace ZoneTool::IW5
 						contents = (contents & ~CONTENTS_SOLID)
 							| static_cast<int>(solid_as_clip_contents());
 					}
+					if (verbose_logging_enabled())
 					{
 						auto found = false;
 						for (auto& entry : contents_hist)
@@ -1744,7 +1755,7 @@ namespace ZoneTool::IW5
 						skipped_nonsolid++;
 					}
 
-					ZONETOOL_INFO("  brush %3d contents 0x%08X sides %2d  size %.0f x %.0f x %.0f "
+					CLIPMAP_COLLISION_INFO("  brush %3d contents 0x%08X sides %2d  size %.0f x %.0f x %.0f "
 						"at (%.0f %.0f %.0f)%s%s", b, contents, brush->numsides,
 						bb.halfSize[0] * 2.0f, bb.halfSize[1] * 2.0f, bb.halfSize[2] * 2.0f,
 						bb.midPoint[0], bb.midPoint[1], bb.midPoint[2],
@@ -1894,25 +1905,25 @@ namespace ZoneTool::IW5
 				// not a box (ramps, angled walls, wedges).
 				for (const auto& entry : contents_hist)
 				{
-					ZONETOOL_INFO("clipmap collision: contents 0x%08X -> %d brushes",
+					CLIPMAP_COLLISION_INFO("clipmap collision: contents 0x%08X -> %d brushes",
 						entry.first, entry.second);
 				}
 
-				ZONETOOL_INFO("clipmap collision: %d brushes, %d with non-axial sides "
+				CLIPMAP_COLLISION_INFO("clipmap collision: %d brushes, %d with non-axial sides "
 					"(%d planes total); %d hull faces emitted, %d fully clipped away",
 					clipmap->info.numBrushes, brushes_with_sides, total_nonaxial,
 					faces_emitted, faces_clipped_away);
 
 				if (glass_pieces)
 				{
-					ZONETOOL_INFO("clipmap collision: %u glass piece(s) indexed in userData "
+					CLIPMAP_COLLISION_INFO("clipmap collision: %u glass piece(s) indexed in userData "
 						"bits 32..39%s", glass_pieces,
 						glass_pieces >= USERDATA_GLASS_PIECE_MAX
 							? " -- CAPPED at the byte's range; further panes are left "
 							  "unindexed (0), as stock leaves non-glass" : "");
 				}
 
-				ZONETOOL_INFO("clipmap collision: skipped %d brush-model, %d trigger, "
+				CLIPMAP_COLLISION_INFO("clipmap collision: skipped %d brush-model, %d trigger, "
 					"%d non-colliding, %d degenerate brushes", skipped_model, skipped_trigger,
 					skipped_nonsolid, skipped_degenerate);
 
@@ -1921,7 +1932,7 @@ namespace ZoneTool::IW5
 				// was kept is clip, since that is the number that used to be zero.
 				if (kept_clip)
 				{
-					ZONETOOL_INFO("clipmap collision: %d of the kept brushes are clip "
+					CLIPMAP_COLLISION_INFO("clipmap collision: %d of the kept brushes are clip "
 						"volumes (player/monster clip)", kept_clip);
 				}
 
@@ -1929,13 +1940,13 @@ namespace ZoneTool::IW5
 				// Say so, so a large skipped_trigger count does not read as data loss.
 				if (skipped_trigger > 0)
 				{
-					ZONETOOL_INFO("clipmap collision: the %d trigger brushes are carried by "
+					CLIPMAP_COLLISION_INFO("clipmap collision: the %d trigger brushes are carried by "
 						"MapEnts::trigger (%u trigger models), not by the world shape",
 						skipped_trigger,
 						clipmap->mapEnts ? clipmap->mapEnts->trigger.count : 0u);
 				}
 
-				ZONETOOL_INFO("clipmap collision: %zu triangles from trisoup, %zu from %d brushes",
+				CLIPMAP_COLLISION_INFO("clipmap collision: %zu triangles from trisoup, %zu from %d brushes",
 					trisoup_count, triangles.size() - trisoup_count, clipmap->info.numBrushes);
 
 				if (brush_convexes)
@@ -1949,7 +1960,7 @@ namespace ZoneTool::IW5
 						reasons += ", " + std::to_string(count) + " " + reason;
 					}
 
-					ZONETOOL_INFO("clipmap collision: %d brushes emitted as convex custom "
+					CLIPMAP_COLLISION_INFO("clipmap collision: %d brushes emitted as convex custom "
 						"primitives", brushes_as_convex);
 					if (fallback_total)
 					{
@@ -1959,7 +1970,7 @@ namespace ZoneTool::IW5
 					}
 					else
 					{
-						ZONETOOL_INFO("clipmap collision: 0 brushes fell back to triangle faces");
+						CLIPMAP_COLLISION_INFO("clipmap collision: 0 brushes fell back to triangle faces");
 					}
 				}
 
@@ -1990,7 +2001,7 @@ namespace ZoneTool::IW5
 					}
 				}
 
-				ZONETOOL_INFO("clipmap collision: world scale %g (ZT_HAVOK_WORLD_SCALE)",
+				CLIPMAP_COLLISION_INFO("clipmap collision: world scale %g (ZT_HAVOK_WORLD_SCALE)",
 					world_scale);
 
 				if (obj_dump_enabled())
@@ -2218,7 +2229,7 @@ namespace ZoneTool::IW5
 					models.emplace_back(std::move(model));
 				}
 
-				ZONETOOL_INFO("clipmap collision: %zu brush models with geometry (%d hulls, "
+				CLIPMAP_COLLISION_INFO("clipmap collision: %zu brush models with geometry (%d hulls, "
 					"%d brushes skipped) out of %u submodels", models.size(), total_hulls,
 					skipped_brushes, clipmap->numSubModels);
 
@@ -2526,3 +2537,5 @@ namespace ZoneTool::IW5
 		}
 	}
 }
+
+#undef CLIPMAP_COLLISION_INFO

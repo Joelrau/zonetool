@@ -358,23 +358,19 @@ namespace ZoneTool::IW5
 					return false;
 				}
 
-				if (tris.firstVertex + tris.vertexCount > asset->draw.vertexCount
-					|| tris.baseIndex + tris.triCount * 3u > asset->draw.indexCount)
+				if (tris.firstVertex > asset->draw.vertexCount
+					|| tris.vertexCount > asset->draw.vertexCount - tris.firstVertex
+					|| tris.baseIndex > asset->draw.indexCount
+					|| tris.triCount * 3u > asset->draw.indexCount - tris.baseIndex)
 				{
 					return false;
 				}
 
-				model.vertices.reserve(static_cast<std::size_t>(tris.vertexCount) * 3);
-				for (unsigned int v = 0; v < tris.vertexCount; v++)
-				{
-					const auto* xyz = asset->draw.vd.vertices[tris.firstVertex + v].xyz;
-					if (!finite3(xyz))
-					{
-						return false;
-					}
-					model.vertices.insert(model.vertices.end(), xyz, xyz + 3);
-				}
-
+				// vertexCount can span a large shared vertex range even when this surface
+				// references only a few triangles. Keep only the indexed vertices.
+				std::vector<int> remap(tris.vertexCount, -1);
+				model.vertices.reserve(static_cast<std::size_t>(std::min<unsigned int>(
+					tris.vertexCount, tris.triCount * 3u)) * 3);
 				model.indices.reserve(static_cast<std::size_t>(tris.triCount) * 3);
 				for (unsigned int i = 0; i < tris.triCount * 3u; i++)
 				{
@@ -383,7 +379,17 @@ namespace ZoneTool::IW5
 					{
 						return false;
 					}
-					model.indices.push_back(index);
+					if (remap[index] == -1)
+					{
+						const auto* xyz = asset->draw.vd.vertices[tris.firstVertex + index].xyz;
+						if (!finite3(xyz))
+						{
+							return false;
+						}
+						remap[index] = static_cast<int>(model.vertices.size() / 3);
+						model.vertices.insert(model.vertices.end(), xyz, xyz + 3);
+					}
+					model.indices.push_back(static_cast<unsigned int>(remap[index]));
 				}
 
 				return true;
@@ -683,6 +689,8 @@ namespace ZoneTool::IW5
 				fall_back("the generated tome has no objects");
 				return;
 			}
+			decltype(scene.input.models){}.swap(scene.input.models);
+			decltype(scene.input.objects){}.swap(scene.input.objects);
 
 			// The linker aligns the blob to 16 when it lays the zone out; here it just
 			// needs to be a byte buffer of exactly m_size.

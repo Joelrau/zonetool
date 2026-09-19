@@ -6,29 +6,17 @@
 #include <string>
 #include <vector>
 
+#include "IW7/Common/havok_builder.hpp"
+
 namespace ZoneTool::IW5
 {
 	namespace IW7Converter
 	{
 		namespace collision
 		{
-			// Mirrors ZoneTool::IW7::havok::builder::triangle. Kept separate so the IW5
-			// converter does not have to include the IW7 havok headers directly.
-			struct havok_triangle
-			{
-				float verts[3][3];
-				// Set when this primitive is a quad: (v0,v1,v2) plus (v0,v2,vert3).
-				bool is_quad;
-				float vert3[3];
-				unsigned short surface_tag;
-				int contents;
-				// ShapeTagData::materialCRC for this surface -- what the game uses to pick
-				// footstep sounds, impact effects and penetration behaviour.
-				unsigned int material_crc;
-				// ShapeTagData::userData: IW7 surface flags, plus the brush basis (bit 48) on
-				// surfaces that came from a brush.
-				std::uint64_t user_data;
-			};
+			// The same triangle type lets world geometry move into the Havok builder
+			// without keeping a second map-sized vector alive during construction.
+			using havok_triangle = ZoneTool::IW7::havok::builder::triangle;
 
 			// IW5 surface type (the top 12 bits of ClipMaterial::surfaceFlags) -> the IW7
 			// material CRC to tag the surface with. See the note on the table in the

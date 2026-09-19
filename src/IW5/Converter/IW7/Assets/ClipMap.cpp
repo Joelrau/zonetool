@@ -644,8 +644,8 @@ namespace ZoneTool::IW5
 				const auto dump_obj = collision::obj_dump_enabled();
 				std::vector<collision::hull_group> ents_obj;
 
-				const auto brush_models = collision::extract_brush_models(clipmap);
-				for (const auto& model : brush_models)
+				auto brush_models = collision::extract_brush_models(clipmap);
+				for (auto& model : brush_models)
 				{
 					if (dump_obj)
 					{
@@ -697,15 +697,15 @@ namespace ZoneTool::IW5
 					shape.user_data = ENTS_BRUSH_BASIS | model.surface_flags;
 					shape.name = va("%s:brushmodel %u", asset->name, model.index);
 
-					for (const auto& hull : model.hulls)
+					for (auto& hull : model.hulls)
 					{
 						ZoneTool::IW7::havok::builder::polytope convex{};
-						convex.verts = hull.verts;
-						for (const auto& face : hull.faces)
+						convex.verts = std::move(hull.verts);
+						for (auto& face : hull.faces)
 						{
 							ZoneTool::IW7::havok::builder::polytope_face out{};
 							std::memcpy(out.plane, face.plane, sizeof(float[4]));
-							out.indices = face.indices;
+							out.indices = std::move(face.indices);
 							convex.faces.emplace_back(std::move(out));
 						}
 						shape.convexes.emplace_back(std::move(convex));
@@ -718,6 +718,7 @@ namespace ZoneTool::IW5
 					}
 					ents.shapes.emplace_back(std::move(shape));
 				}
+				decltype(brush_models){}.swap(brush_models);
 
 				// Triggers, appended after the brush models so the slot indices carry on.
 				std::vector<unsigned short> trigger_shape_index(asset->trigger.count, 0xFFFF);
@@ -753,15 +754,15 @@ namespace ZoneTool::IW5
 						shape.user_data = ENTS_BRUSH_BASIS | ENTS_TRIGGER_SURF_FLAGS;
 						shape.name = va("%s:trigger %u", asset->name, t);
 
-						for (const auto& hull : hulls)
+						for (auto& hull : hulls)
 						{
 							ZoneTool::IW7::havok::builder::polytope convex{};
-							convex.verts = hull.verts;
-							for (const auto& face : hull.faces)
+							convex.verts = std::move(hull.verts);
+							for (auto& face : hull.faces)
 							{
 								ZoneTool::IW7::havok::builder::polytope_face out{};
 								std::memcpy(out.plane, face.plane, sizeof(float[4]));
-								out.indices = face.indices;
+								out.indices = std::move(face.indices);
 								convex.faces.emplace_back(std::move(out));
 							}
 							shape.convexes.emplace_back(std::move(convex));
@@ -778,11 +779,14 @@ namespace ZoneTool::IW5
 						collision::obj_dump_path(asset->name, ".ents.obj"), ents_obj,
 						ents.scale);
 				}
+				decltype(ents_obj){}.swap(ents_obj);
 
 				ZoneTool::IW7::havok::builder::ents_tag_merge tag_merge{};
-				const auto blob = ents_shapes_enabled()
+				auto blob = ents_shapes_enabled()
 					? ZoneTool::IW7::havok::builder::build_ents_shape_list(ents, &tag_merge)
 					: std::vector<std::uint8_t>{};
+				decltype(ents.shapes){}.swap(ents.shapes);
+				decltype(ents.world_tags){}.swap(ents.world_tags);
 
 				if (!blob.empty())
 				{
@@ -826,6 +830,7 @@ namespace ZoneTool::IW5
 					std::fill(trigger_shape_index.begin(), trigger_shape_index.end(),
 						static_cast<unsigned short>(0xFFFF));
 				}
+				decltype(blob){}.swap(blob);
 
 				// Point the trigger models at their shapes. Both fields are needed or the
 				// runtime builds no body -- see docs/iw7-ents-shapes.md section 3.
@@ -1337,25 +1342,25 @@ namespace ZoneTool::IW5
 			IW7_asset->havokWorldShapeData = nullptr;
 			std::vector<ZoneTool::IW7::havok::builder::shape_tag> world_shape_tags;
 			{
-				const auto world = collision::extract_world(asset);
-				const auto& triangles = world.triangles;
-				if (!triangles.empty() || !world.convexes.empty())
+				auto world = collision::extract_world(asset);
+				if (!world.triangles.empty() || !world.convexes.empty())
 				{
 					ZoneTool::IW7::havok::builder::mesh_input input{};
 					// Brushes arrive as convexes (ZT_HAVOK_BRUSH_CONVEX, default on) and become
 					// convex custom primitives; the builder counts what it emits for the shape
 					// list's convexCounts itself.
 					input.convexes.reserve(world.convexes.size());
-					for (const auto& cvx : world.convexes)
+					for (auto& cvx : world.convexes)
 					{
 						ZoneTool::IW7::havok::builder::convex out{};
-						out.verts = cvx.verts;
+						out.verts = std::move(cvx.verts);
 						out.surface_tag = cvx.surface_tag;
 						out.contents = cvx.contents;
 						out.material_crc = cvx.material_crc;
 						out.user_data = cvx.user_data;
 						input.convexes.emplace_back(std::move(out));
 					}
+					decltype(world.convexes){}.swap(world.convexes);
 
 					// Triangles only: a convex custom primitive is a point set with no winding.
 					const auto* flip_winding = std::getenv("ZT_HAVOK_FLIP_WINDING");
@@ -1365,35 +1370,28 @@ namespace ZoneTool::IW5
 						ZONETOOL_WARNING("clipmap: reversing world collision winding "
 							"(ZT_HAVOK_FLIP_WINDING diagnostic, triangles only)");
 					}
-					input.triangles.reserve(triangles.size());
-					for (const auto& tri : triangles)
+					input.triangles = std::move(world.triangles);
+					if (reverse_winding)
 					{
-						ZoneTool::IW7::havok::builder::triangle out{};
-						std::memcpy(out.verts, tri.verts, sizeof(out.verts));
-						out.surface_tag = tri.surface_tag;
-						out.contents = tri.contents;
-						out.material_crc = tri.material_crc;
-						out.user_data = tri.user_data;
-						out.is_quad = tri.is_quad;
-						std::memcpy(out.vert3, tri.vert3, sizeof(out.vert3));
-						if (reverse_winding)
+						for (auto& tri : input.triangles)
 						{
-							if (out.is_quad)
+							if (tri.is_quad)
 							{
 								// Preserve the quad's ring while reversing its normal:
 								// (v0,v1,v2,v3) becomes (v0,v3,v2,v1).
-								std::swap(out.verts[1], out.vert3);
+								std::swap(tri.verts[1], tri.vert3);
 							}
 							else
 							{
-								std::swap(out.verts[1], out.verts[2]);
+								std::swap(tri.verts[1], tri.verts[2]);
 							}
 						}
-						input.triangles.emplace_back(out);
 					}
 
 					const auto blob = ZoneTool::IW7::havok::builder::build_world_shape(
 						input, &world_shape_tags);
+					decltype(input.triangles){}.swap(input.triangles);
+					decltype(input.convexes){}.swap(input.convexes);
 
 					if (collision::obj_dump_enabled())
 					{
@@ -1426,6 +1424,7 @@ namespace ZoneTool::IW5
 			// with only the name (IClipMap::dump calls dump_asset on it), but the object has
 			// to be real so the dumper can write it out as the MapEnts asset it points at.
 			IW7_asset->mapEnts = generate_mapents(asset, allocator, world_shape_tags);
+			decltype(world_shape_tags){}.swap(world_shape_tags);
 
 			IW7_asset->stageCount = asset->stageCount;
 			IW7_asset->stages = allocator.allocate<IW7::Stage>(IW7_asset->stageCount);

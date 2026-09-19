@@ -347,7 +347,23 @@ namespace ZoneTool
 			//
 			// Names with no [rbt]0 blend letter, so the generator cannot derive them. These must survive
 			// a regeneration.
+			{"mc_effect_falloff_add_nofog",				make_techset_map("eq_effect_falloff_add_lin_nofog_ndw_nocast")},
+			{"mc_effect_zfeather_falloff_add_nofog",	make_techset_map("eq_effect_zfeather_falloff_add_lin_nofog_ndw_nocast")},
+			{"mc_effect_zfeather_falloff_add_nofog_eyeoffset",	make_techset_map("eq_effect_zfeather_falloff_add_lin_nofog_eyeoffset_ndw_nocast")},
+			
 			{"mc_unlit",								make_techset_map("mo_unlit_replace_lin", "mo_unlit_replace_lin_ct")},
+			{"mc_unlit_replace",						make_techset_map("mo_unlit_replace_lin", "mo_unlit_replace_lin_ct")},
+			{"mc_unlit_alphatest",						make_techset_map("mo_unlit_atest_lin_ct", "mo_unlit_atest_lin_ct")},
+			
+			{"wc_unlit_add",							make_techset_map("w_unlit_add_lin_ndw", "w_unlit_add_lin_ct_ndw")},
+			{"wc_unlit_multiply",						make_techset_map("w_unlit_multiply_lin_ndw")},
+			{"wc_unlit_falloff_add",					make_techset_map("w_unlit_falloff_add_lin_ndw")},
+
+			{"mc_shadowcaster",							make_techset_map("m_shadowcaster")},
+			{"mc_shadowcaster_atest",					make_techset_map("m_shadowcaster")},
+			{"wc_shadowcaster",							make_techset_map("w_shadowcaster")},
+
+			{"distortion_scale_zfeather",				make_techset_map("eq_distortion_scale_zfeather")},
 
 			{"wc_sky",									make_techset_map("w_sky")},
 
@@ -907,8 +923,6 @@ namespace ZoneTool
 
 			std::unordered_map<std::string, std::uint8_t> mapped_camera_regions_by_techset =
 			{
-				{"mc_shadowcaster_atest", 11},
-				{"wc_shadowcaster", 11},
 			};
 
 			std::uint8_t get_IW7_camera_region(std::uint8_t camera_region, std::string matname, std::string IW7_techset)
@@ -931,8 +945,6 @@ namespace ZoneTool
 			std::unordered_map<std::string, std::uint8_t> mapped_render_flags_by_techset =
 			{
 				{"2d", 0x1},
-				{"mc_shadowcaster_atest", 0x2},
-				{"wc_shadowcaster", 0x2},
 			};
 
 			std::int32_t get_render_flags_by_techset(std::string IW7_techset)
