@@ -255,11 +255,31 @@ namespace ZoneTool::IW7
 
 			std::vector<std::uint8_t> build_dynamic_physics_asset(const dynamic_physics_asset_input& input);
 
-			// XModel::physicsLODData. This is a HavokPhysicsXModelLOD packfile containing
-			// collision geometry for the model's streamed LODs. `lod_name` is both the
-			// packfile entry name and the XModel script-string table entry.
+			// XModel::physicsLODData: a HavokPhysicsXModelLOD packfile, the per-model
+			// "detail" collision IW7's static-model code instantiates into the detail world
+			// (StaticModels_CreateClipmapShapes, 0x140574CF0: physicsAsset instances go to
+			// the simulation list, and when physicsLODDataSize is non-zero the LOD's shapes
+			// go to the detail list instead of a copy of them). Bullets, sight and the
+			// crosshair query the detail world, so this is the blob whose tags decide the
+			// surface type a shot prop reports.
+			//
+			// Unlike a PhysicsAsset mesh (tags 0xFFFF, decoded to userData 0), a LOD mesh
+			// carries real tags into its own 8-byte table {surfaceFlags, collisionFilterInfo}
+			// -- XModelCollisionTagData, measured over 864 stock LOD blobs. At load
+			// (0x1405731A0) the table is CRC'd into g_havokPhysicsXModelLODShapeTagDatas and
+			// its id is written to every composite shape's shapeTagCodecInfo, so a hit on
+			// the LOD decodes to userData = surfaceFlags, materialId 0. The table here is
+			// the mesh's tag palette: one record per distinct (contents, userData) with
+			// surfaceFlags = user_data's low 32 bits.
+			//
+			// `bone_name` is the hknpShape's bodyNames entry: the bone the shape hangs from
+			// ("tag_origin" on 829 of 864 stock single-shape LODs). The loader lower-cases
+			// it, resolves it through SL_FindString + XModelGetBoneIndex, and reads the
+			// instance transform from baseMat[bone] -- an unknown name yields bone 255 and
+			// a garbage transform, so it must be a real bone of the model. It is NOT the
+			// XModel::physicsLODDataNames entry, which is a separate LOD name.
 			std::vector<std::uint8_t> build_model_physics_lod(const mesh_input& input,
-				const std::string& lod_name);
+				const std::string& bone_name);
 		}
 	}
 }

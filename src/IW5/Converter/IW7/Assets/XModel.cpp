@@ -1,5 +1,7 @@
 #include "stdafx.hpp"
 #include <map>
+#include <algorithm>
+#include <cctype>
 #include <string>
 #include "../Include.hpp"
 
@@ -68,11 +70,18 @@ namespace ZoneTool::IW5
 				const auto surf_type = (static_cast<unsigned int>(flags) >> 20) & 0x1Fu;
 				int IW7_flags = surf_flags_conversion_table[
 					surf_type < ARRAYSIZE(surf_flags_conversion_table) ? surf_type : 0];
+				// Only genuine single-bit flags below. SURF_FLAG_OPAQUEGLASS is NOT one: in
+				// IW5 it is the same enumerator value as SURF_FLAG_GLASS, 0x00900000, i.e. a
+				// surface TYPE (9) in the 5-bit field, and testing it as a mask matched every
+				// type whose index has bits 0 and 3 set -- glass, gravel, METAL, paper,
+				// rubber, fruit, riotshield -- and OR'd 0x01380000 over the converted type.
+				// A metal pail came out 0x01780000, IW7 type 47 (ROBOT_ARMOR), a tire
+				// 0x01F80000, type 63 (CODE_RESERVED). Glass is handled by the table (index
+				// 9 -> GLASS_PANE), and IW5 has no separate opaque-glass type to carry over.
 				auto convert = [&](IW5::CSurfaceFlags a, IW7::SurfaceFlags b)
 				{
-					IW7_flags |= ((flags & a) == a) ? b : 0;
+					IW7_flags |= (a != 0 && (flags & a) == a) ? b : 0;
 				};
-				convert(IW5::CSurfaceFlags::SURF_FLAG_OPAQUEGLASS, IW7::SurfaceFlags::SURFACE_FLAG_OPAQUEGLASS);
 				convert(IW5::CSurfaceFlags::SURF_FLAG_CLIPMISSILE, IW7::SurfaceFlags::SURFACE_FLAG_CLIPMISSILE);
 				convert(IW5::CSurfaceFlags::SURF_FLAG_AI_NOSIGHT, IW7::SurfaceFlags::SURFACE_FLAG_AI_NOSIGHT);
 				convert(IW5::CSurfaceFlags::SURF_FLAG_CLIPSHOT, IW7::SurfaceFlags::SURFACE_FLAG_CLIPSHOT);
@@ -387,7 +396,9 @@ namespace ZoneTool::IW5
 				}
 			}
 
-			if (!iw7_asset->physicsAsset)
+			// The collision mesh is built for every model, not only the ones that still
+			// need a static physics asset: it is also the source of the physics LOD below,
+			// which a dynamic-capable model placed statically in a map needs just as much.
 			{
 				constexpr auto model_scale = 0.03125f;
 				constexpr auto contents_solid = 0x1;
@@ -407,7 +418,8 @@ namespace ZoneTool::IW5
 				// Scales into Havok space, drops slivers, and winds counter-clockwise about
 				// `normal` (the outward face normal) when one is given.
 				const auto add_triangle = [&mesh](const float (&corners)[3][3], const float* normal,
-					const int contents, const unsigned int material_crc, const unsigned short tag)
+					const int contents, const unsigned int material_crc, const unsigned short tag,
+					const std::uint64_t user_data)
 				{
 					ZoneTool::IW7::havok::builder::triangle tri{};
 					for (auto c = 0; c < 3; c++)
@@ -453,6 +465,7 @@ namespace ZoneTool::IW5
 					tri.contents = contents;
 					tri.material_crc = material_crc;
 					tri.surface_tag = tag;
+					tri.user_data = user_data;
 					mesh.triangles.emplace_back(tri);
 				};
 
@@ -473,6 +486,11 @@ namespace ZoneTool::IW5
 
 						source = "collision LOD";
 						const auto material_crc = collision::iw7_material_crc(surf.surfFlags);
+						// What a trace on this surface reports (trace_t::surfaceFlags): the
+						// physics LOD's tag table is built from this, one record per distinct
+						// (contents, flags). The physics asset ignores it (tags 0xFFFF).
+						const auto user_data = static_cast<std::uint64_t>(
+							static_cast<std::uint32_t>(convert_surf_flags(surf.surfFlags)));
 
 						for (auto t = 0; t < surf.numCollTris; t++)
 						{
@@ -522,7 +540,7 @@ namespace ZoneTool::IW5
 							}
 
 							add_triangle(corners, ct.plane, surf.contents, material_crc,
-								static_cast<unsigned short>(i));
+								static_cast<unsigned short>(i), user_data);
 						}
 					}
 				}
@@ -531,6 +549,12 @@ namespace ZoneTool::IW5
 				{
 					const auto hulls = collision::extract_phys_collmap(asset->physCollmap);
 					const auto contents = asset->contents ? asset->contents : contents_solid;
+					// A collmap has no surface of its own; the model's first collision
+					// surface is the best guess at what it is made of.
+					const auto user_data = (asset->collSurfs && asset->numCollSurfs > 0)
+						? static_cast<std::uint64_t>(static_cast<std::uint32_t>(
+							convert_surf_flags(asset->collSurfs[0].surfFlags)))
+						: 0ull;
 
 					for (const auto& hull : hulls)
 					{
@@ -557,7 +581,7 @@ namespace ZoneTool::IW5
 										corners[c][k] = hull.verts[corner[c]][k];
 									}
 								}
-								add_triangle(corners, nullptr, contents, 0x1AB7BC33u, 0);
+								add_triangle(corners, nullptr, contents, 0x1AB7BC33u, 0, user_data);
 							}
 						}
 					}
@@ -567,13 +591,13 @@ namespace ZoneTool::IW5
 
 				if (mesh.triangles.empty())
 				{
-					if (source)
+					if (source && !iw7_asset->physicsAsset)
 					{
 						ZONETOOL_WARNING("XModel \"%s\": %s produced no triangles -- it will collide "
 							"with nothing", asset->name, source);
 					}
 				}
-				else
+				else if (!iw7_asset->physicsAsset)
 				{
 					ZoneTool::IW7::havok::builder::physics_asset_input info{};
 					info.body_name = asset->name;
@@ -604,22 +628,80 @@ namespace ZoneTool::IW5
 							mem.allocate<IW7::PhysicsVFXEventAsset PTR64>(1);
 
 						iw7_asset->physicsAsset = physics;
+					}
+				}
 
-						// THIS IS INCORRECT
-						// The generated packfile is a single LOD0 payload, so it needs
-						// exactly one matching script-string entry.
-						//const auto lod_name = std::string(asset->name) + "_lod0";
-						//auto lod_blob = /ZoneTool::IW7::havok::builder::build_model_physics_lod//(mesh,lod_name);
-						//if (!lod_blob.empty())
-						//{
-						//	iw7_asset->physicsLODDataSize = static_cast<unsigned int>//(lod_blob.size());
-						//	iw7_asset->physicsLODData = mem.allocate<char>(iw7_asset-//>physicsLODDataSize);
-						//	std::memcpy(iw7_asset->physicsLODData, lod_blob.data//(),lod_blob.size());
-						//	iw7_asset->physicsLODDataNameCount = 1;
-						//	iw7_asset->physicsLODDataNames = mem.allocate<IW7::scr_string_t>//(1);
-						//	iw7_asset->physicsLODDataNames[0] =
-						//		static_cast<IW7::scr_string_t>(Shared::SL_AllocString//(lod_name));
-						//}
+				// Physics LOD: the "detail" collision. StaticModels_CreateClipmapShapes
+				// (0x140574CF0) puts a model's physicsAsset shapes in the simulation list
+				// and, when physicsLODDataSize is set, the LOD's shapes in the detail list
+				// -- otherwise the detail list gets a copy of the simulation shapes. Bullets,
+				// sight and the crosshair trace the detail world, and only a LOD mesh carries
+				// per-surface tags: a physics asset mesh is untagged (0xFFFF), which the
+				// codec decodes to userData 0, so every converted prop reported surfFlags 0
+				// -- no surface type, so default impacts and footsteps on everything.
+				//
+				// The LOD's bodyNames entry is the bone the shape hangs from, resolved at
+				// load through SL_FindString + XModelGetBoneIndex and used to read the
+				// instance transform from baseMat; the collision LOD is in model space, so
+				// that is the root bone. physicsLODDataNames is a different thing: the LOD's
+				// own script-string name, one per authored LOD, which stock spells
+				// "<something>_lod0".
+				//
+				// It needs the physics asset beside it: the static-model loop skips a model
+				// whose physicsAsset is null before it ever looks at the LOD.
+				//
+				// It also needs a bone. The loop resolves the body name with
+				// XModelGetBoneIndex (0x140D63940), which returns false on a model with no
+				// bones or no match, the caller turns that into index 255 and reads the
+				// instance transform from baseMat[255] unchecked. Stock ships "" on its
+				// bone-less models and lives with whatever that reads; a converted model
+				// without bones (CoD4's com_pail_metal1) keeps the physics asset copy in the
+				// detail list instead -- it collides, it just reports no surface type.
+				//
+				// ZT_MODEL_PHYSICS_LOD=0 disables the LOD for every model, which puts the
+				// detail list back on the untagged simulation shapes (surfFlags 0).
+				const auto* lod_env = std::getenv("ZT_MODEL_PHYSICS_LOD");
+				const auto lod_enabled = !(lod_env && lod_env[0] == '0');
+				std::string bone_name = (asset->numBones > 0 && asset->boneNames)
+					? Shared::SL_ConvertToString(asset->boneNames[0]) : "";
+				if (lod_enabled && !mesh.triangles.empty() && iw7_asset->physicsAsset
+					&& bone_name.empty())
+				{
+					ZONETOOL_INFO("XModel \"%s\": no bones, no physics LOD -- traces on it will "
+						"report surfFlags 0", asset->name);
+				}
+				if (lod_enabled && !mesh.triangles.empty() && iw7_asset->physicsAsset
+					&& !bone_name.empty())
+				{
+					std::transform(bone_name.begin(), bone_name.end(), bone_name.begin(),
+						[](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+					// The tag's filter replaces the body's for the leaf test, so a LOD tag
+					// carrying only the surface's own contents (0x1 on most) is what a shot
+					// is tested against. Stock LODs do exactly that and are shootable, but on
+					// converted maps a bare 0x1 shape tag has not collided with anything yet
+					// (the world-floor experiment in the tag survey is the same finding), while
+					// the static-prop body mask 0x3180 demonstrably catches bullets. Carry
+					// both: surfaceFlags still come from the table, the filter cannot be worse
+					// than the body filter the detail list used before the LOD existed.
+					auto lod_mesh = mesh;
+					for (auto& tri : lod_mesh.triangles)
+					{
+						tri.contents |= static_cast<int>(body_contents);
+					}
+
+					const auto lod_blob = ZoneTool::IW7::havok::builder::build_model_physics_lod(
+						lod_mesh, bone_name);
+					if (!lod_blob.empty())
+					{
+						const auto lod_name = std::string(asset->name) + "_lod0";
+						iw7_asset->physicsLODDataSize = static_cast<unsigned int>(lod_blob.size());
+						iw7_asset->physicsLODData = mem.allocate<char>(iw7_asset->physicsLODDataSize);
+						std::memcpy(iw7_asset->physicsLODData, lod_blob.data(), lod_blob.size());
+						iw7_asset->physicsLODDataNameCount = 1;
+						iw7_asset->physicsLODDataNames = mem.allocate<IW7::scr_string_t>(1);
+						iw7_asset->physicsLODDataNames[0] =
+							static_cast<IW7::scr_string_t>(Shared::SL_AllocString(lod_name));
 					}
 				}
 			}

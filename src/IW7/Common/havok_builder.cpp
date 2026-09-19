@@ -710,6 +710,16 @@ namespace ZoneTool::IW7
 					return contents & CONTENTS_FILTER_MASK;
 				}
 
+				// XModel LOD tag tables are the one place stock keeps 0x20000000: the union
+				// of every collisionFilterInfo over 864 shipped LOD blobs is 0x200336F3, with
+				// 0x20000001 on 74 records and 0x20000010 / 0x20000002 (glass, foliage) on
+				// most of the rest that are not plain 0x1. Nothing else outside
+				// CONTENTS_FILTER_MASK appears, so only that bit is let through.
+				inline std::uint32_t filter_lod_contents(const std::uint32_t contents)
+				{
+					return contents & (CONTENTS_FILTER_MASK | 0x20000000u);
+				}
+
 				constexpr auto NIBBLE_MAX = 15;
 				constexpr auto NIBBLE_SCALE = 226.0f; // Havok's divisor; see the note above
 
@@ -1068,7 +1078,7 @@ namespace ZoneTool::IW7
 			}
 
 			std::vector<std::uint8_t> build_mesh_blob(const mesh_input& input,
-				const physics_asset_input* physics_asset, const std::string* xmodel_lod_name = nullptr,
+				const physics_asset_input* physics_asset, const std::string* xmodel_lod_bone = nullptr,
 				std::vector<shape_tag>* out_tags = nullptr)
 			{
 				if (input.triangles.empty() && input.convexes.empty())
@@ -1747,7 +1757,7 @@ namespace ZoneTool::IW7
 						world_contents);
 				}
 
-				if (!physics_asset && !xmodel_lod_name)
+				if (!physics_asset && !xmodel_lod_bone)
 				{
 					// --- HavokPhysicsShapeList (152 bytes) ---
 					// Assigns the OUTER shape_list_offset -- the virtual fixup that registers this
@@ -1900,19 +1910,33 @@ namespace ZoneTool::IW7
 					align16();
 					shape_ptr_slots.push_back(shape_ptr_slot);
 				}
-				else if (xmodel_lod_name)
+				else if (xmodel_lod_bone)
 				{
 					// --- HavokPhysicsXModelLOD (48 bytes) ---
+					//   +0   shapes        hkArray<hknpShape*>        one per physics body
+					//   +16  bodyNames     hkArray<const char*>       the bone each hangs from
+					//   +32  shapeTagData  hkArray<XModelCollisionTagData>  8 bytes each
 					// Stock XModels hold one hknpCompressedMeshShape per authored physics
-					// LOD. A converted IW5 model has one collision mesh, so emit its LOD0
-					// entry. The final 16-byte record is invariant across stock models.
+					// body (829 of 864 shipped LODs have exactly one, on "tag_origin"). A
+					// converted IW5 model has one collision mesh, so emit one shape.
+					//
+					// The tag table is what makes the LOD worth shipping at all. IW7's loader
+					// (0x1405731A0) CRCs `8 * size` bytes of it, registers the table in
+					// g_havokPhysicsXModelLODShapeTagDatas, and stamps the resulting id into
+					// each composite shape's shapeTagCodecInfo (+88); the codec then decodes
+					// a primitive's tag as {collisionFilterInfo, userData = surfaceFlags}.
+					// This used to write one fixed 16-byte {METAL_THICK, solid, 0} record --
+					// copied from the first stock file looked at, and wrong in both element
+					// size and content -- which is part of why the LOD path stayed disabled.
+					// Now it is the mesh's own palette: same order the data runs index,
+					// surfaceFlags from the triangle's user_data low 32 bits.
 					virtual_fixups.emplace_back(static_cast<std::size_t>(0), 0);
 					const auto shapes_field = buf.size();
 					write_hk_array_header(buf, 1);
 					const auto names_field = buf.size();
 					write_hk_array_header(buf, 1);
-					const auto lod_info_field = buf.size();
-					write_hk_array_header(buf, 1);
+					const auto tag_data_field = buf.size();
+					write_hk_array_header(buf, static_cast<int>(palette.size()));
 
 					const auto shape_ptr_slot = buf.size();
 					local_fixups.push_back({shapes_field, shape_ptr_slot});
@@ -1924,13 +1948,19 @@ namespace ZoneTool::IW7
 					buf.reserve(8);
 					const auto name_offset = buf.size();
 					local_fixups.push_back({name_ptr_slot, name_offset});
-					buf.write(xmodel_lod_name->c_str(), xmodel_lod_name->size() + 1);
+					buf.write(xmodel_lod_bone->c_str(), xmodel_lod_bone->size() + 1);
 					align16();
 
-					local_fixups.push_back({lod_info_field, buf.size()});
-					buf.write<std::uint32_t>(0x00680000u);
-					buf.write<std::uint32_t>(1u);
-					buf.write<std::uint64_t>(0u);
+					local_fixups.push_back({tag_data_field, buf.size()});
+					for (const auto& entry : palette)
+					{
+						// XModelCollisionTagData: surfaceFlags, then collisionFilterInfo.
+						// From the unfiltered palette rather than tag_records, because LOD
+						// tables keep one contents bit (0x20000000) world tables strip.
+						buf.write<std::uint32_t>(static_cast<std::uint32_t>(std::get<2>(entry)));
+						buf.write<std::uint32_t>(filter_lod_contents(
+							static_cast<std::uint32_t>(std::get<0>(entry))));
+					}
 					align16();
 					shape_ptr_slots.push_back(shape_ptr_slot);
 				}
@@ -2050,7 +2080,7 @@ namespace ZoneTool::IW7
 
 				// --- hknpCompressedMeshShape (160 bytes) ---
 				const auto shape_offset = buf.size();
-				if (!physics_asset && !xmodel_lod_name)
+				if (!physics_asset && !xmodel_lod_bone)
 				{
 					virtual_fixups.emplace_back(shape_list_offset, 0);
 				}
@@ -2386,7 +2416,7 @@ namespace ZoneTool::IW7
 				write_name(SIG_HK_CLASS_ENUM_ITEM, "hkClassEnumItem");
 
 				std::array<std::size_t, 4> name_offsets{};
-				if (xmodel_lod_name)
+				if (xmodel_lod_bone)
 				{
 					name_offsets[0] = write_name(SIG_XMODEL_LOD, "HavokPhysicsXModelLOD");
 					name_offsets[1] = write_name(SIG_COMPRESSED_MESH_SHAPE,
@@ -2572,9 +2602,9 @@ namespace ZoneTool::IW7
 			}
 
 			std::vector<std::uint8_t> build_model_physics_lod(const mesh_input& input,
-				const std::string& lod_name)
+				const std::string& bone_name)
 			{
-				return build_mesh_blob(input, nullptr, &lod_name);
+				return build_mesh_blob(input, nullptr, &bone_name);
 			}
 
 			std::vector<std::uint8_t> build_ents_shape_list(const ents_input& input,
