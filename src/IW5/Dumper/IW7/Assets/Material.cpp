@@ -87,6 +87,8 @@ namespace ZoneTool
 			//
 			// IW7 has far fewer of these, so several IW5 variants collapse onto one target and any
 			// feature IW7 has no technique for is dropped, least-important first (d0, then n0, then s0).
+			// Colour-only and colour/normal model materials, plus opaque/blended world materials, use
+			// the stock i0c0s0n0 target; missing normal/specular slots receive defaults below.
 			// A technique binds its arguments by scanning the texture table for each hash with no bounds
 			// check, so every target here was accepted only because its slot set - read off the stock
 			// materials that ship on it - is one the converter can fill. Anything unlisted falls back to
@@ -95,168 +97,164 @@ namespace ZoneTool
 			// The third and fourth entries are the packed forms: p0 for an opaque technique, pa0 for one
 			// that reads alpha. They are mutually exclusive - see techset_map_type_e above.
 
-			{"mc_ambient_r0c0",             {"mo_l_sm_replace_i0c0"}},
-			{"mc_ambient_t0c0",             {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_b0c0",                   {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_b0c0d0",                 {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_b0c0d0n0",               {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_b0c0",                   {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_b0c0d0",                 {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_b0c0d0n0",               {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_b0c0d0n0s0",             {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_b0c0d0s0",               {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_b0c0n0",                 {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_b0c0n0",                 {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_b0c0n0s0",               {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_b0c0s0",                 {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_flag_t0c0",              {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_flag_t0c0n0",            {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_flag_t0c0",              {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_flag_t0c0n0",            {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_flag_t0c0n0s0",          {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_flag_t0c0s0",            {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_r0c0",                   {"mo_l_sm_replace_i0c0"}},
-			{"mc_l_r0c0d0",                 {"mo_l_sm_replace_i0c0"}},
+			{"mc_l_r0c0",                   {"mo_l_sm_replace_i0c0s0n0"}},
+			{"mc_l_r0c0d0",                 {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_r0c0d0n0",               {"mo_l_sm_replace_i0c0n0d0"}},
 			{"mc_l_r0c0d0n0s0",             {"mo_l_sm_replace_i0c0s0n0d0", "", "mo_l_sm_replace_i0c0s0n0d0p0"}},
 			{"mc_l_r0c0d0s0",               {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_r0c0n0",                 {"mo_l_sm_replace_i0c0n0"}},
+			{"mc_l_r0c0n0",                 {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_r0c0n0s0",               {"mo_l_sm_replace_i0c0s0n0", "", "mo_l_sm_replace_i0c0s0n0p0"}},
 			{"mc_l_r0c0s0",                 {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_scroll_b0c0",            {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_scroll_b0c0d0",          {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_scroll_b0c0d0n0",        {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_scroll_b0c0",            {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_scroll_b0c0d0",          {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_scroll_b0c0d0n0",        {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_scroll_b0c0d0n0s0",      {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_scroll_b0c0d0s0",        {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_scroll_b0c0n0",          {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_scroll_b0c0n0",          {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_scroll_b0c0n0s0",        {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_scroll_b0c0s0",          {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_scroll_r0c0",            {"mo_l_sm_replace_i0c0"}},
-			{"mc_l_scroll_r0c0d0",          {"mo_l_sm_replace_i0c0"}},
+			{"mc_l_scroll_r0c0",            {"mo_l_sm_replace_i0c0s0n0"}},
+			{"mc_l_scroll_r0c0d0",          {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_scroll_r0c0d0n0",        {"mo_l_sm_replace_i0c0n0d0"}},
 			{"mc_l_scroll_r0c0d0n0s0",      {"mo_l_sm_replace_i0c0s0n0d0", "", "mo_l_sm_replace_i0c0s0n0d0p0"}},
 			{"mc_l_scroll_r0c0d0s0",        {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_scroll_r0c0n0",          {"mo_l_sm_replace_i0c0n0"}},
+			{"mc_l_scroll_r0c0n0",          {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_scroll_r0c0n0s0",        {"mo_l_sm_replace_i0c0s0n0", "", "mo_l_sm_replace_i0c0s0n0p0"}},
 			{"mc_l_scroll_r0c0s0",          {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_scroll_t0c0",            {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_scroll_t0c0d0",          {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_scroll_t0c0d0n0",        {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_scroll_t0c0",            {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_scroll_t0c0d0",          {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_scroll_t0c0d0n0",        {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_scroll_t0c0d0n0s0",      {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_scroll_t0c0d0s0",        {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_scroll_t0c0n0",          {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_scroll_t0c0n0",          {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_scroll_t0c0n0s0",        {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_scroll_t0c0s0",          {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_skin_r0c0",              {"mo_l_sm_replace_i0c0"}},
-			{"mc_l_skin_r0c0d0",            {"mo_l_sm_replace_i0c0"}},
+			{"mc_l_skin_r0c0",              {"mo_l_sm_replace_i0c0s0n0"}},
+			{"mc_l_skin_r0c0d0",            {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_skin_r0c0d0n0",          {"mo_l_sm_replace_i0c0n0d0"}},
 			{"mc_l_skin_r0c0d0n0s0",        {"mo_l_sm_replace_i0c0s0n0d0", "", "mo_l_sm_replace_i0c0s0n0d0p0"}},
 			{"mc_l_skin_r0c0d0s0",          {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_skin_r0c0n0",            {"mo_l_sm_replace_i0c0n0"}},
+			{"mc_l_skin_r0c0n0",            {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_skin_r0c0n0s0",          {"mo_l_sm_replace_i0c0s0n0", "", "mo_l_sm_replace_i0c0s0n0p0"}},
 			{"mc_l_skin_r0c0s0",            {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_sm_b0c0",                {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_sm_b0c0d0",              {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_sm_b0c0d0n0",            {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_sm_b0c0",                {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_sm_b0c0d0",              {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_sm_b0c0d0n0",            {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_sm_b0c0d0n0s0",          {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_sm_b0c0d0s0",            {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_sm_b0c0n0",              {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_sm_b0c0n0",              {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_sm_b0c0n0s0",            {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_sm_b0c0n0s0p0",          {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
-			{"mc_l_sm_b0c0p0",              {"mo_l_sm_ndw_blend_i0c0"}},
+			{"mc_l_sm_b0c0p0",              {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_sm_b0c0s0",              {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_sm_flag_t0c0",           {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_sm_flag_t0c0n0",         {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_sm_flag_t0c0",           {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_sm_flag_t0c0n0",         {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_sm_flag_t0c0n0s0",       {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_sm_flag_t0c0s0",         {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_sm_r0c0",                {"mo_l_sm_replace_i0c0"}},
-			{"mc_l_sm_r0c0d0",              {"mo_l_sm_replace_i0c0"}},
+			{"mc_l_sm_r0c0",                {"mo_l_sm_replace_i0c0s0n0"}},
+			{"mc_l_sm_r0c0d0",              {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_sm_r0c0d0n0",            {"mo_l_sm_replace_i0c0n0d0"}},
 			{"mc_l_sm_r0c0d0n0s0",          {"mo_l_sm_replace_i0c0s0n0d0", "", "mo_l_sm_replace_i0c0s0n0d0p0"}},
 			{"mc_l_sm_r0c0d0s0",            {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_sm_r0c0n0",              {"mo_l_sm_replace_i0c0n0"}},
+			{"mc_l_sm_r0c0n0",              {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_sm_r0c0n0s0",            {"mo_l_sm_replace_i0c0s0n0", "", "mo_l_sm_replace_i0c0s0n0p0"}},
 			{"mc_l_sm_r0c0n0s0p0",          {"mo_l_sm_replace_i0c0s0n0", "", "mo_l_sm_replace_i0c0s0n0p0"}},
 			{"mc_l_sm_r0c0s0",              {"mo_l_sm_replace_i0c0s0"}},
 			{"mc_l_sm_r0c0s0p0",            {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_sm_scroll_b0c0",         {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_sm_scroll_b0c0d0",       {"mo_l_sm_ndw_blend_i0c0"}},
-			{"mc_l_sm_scroll_b0c0d0n0",     {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_sm_scroll_b0c0",         {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_sm_scroll_b0c0d0",       {"mo_l_sm_ndw_blend_i0c0s0n0"}},
+			{"mc_l_sm_scroll_b0c0d0n0",     {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_sm_scroll_b0c0d0n0s0",   {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_sm_scroll_b0c0d0s0",     {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_sm_scroll_b0c0n0",       {"mo_l_sm_ndw_blend_i0c0n0"}},
+			{"mc_l_sm_scroll_b0c0n0",       {"mo_l_sm_ndw_blend_i0c0s0n0"}},
 			{"mc_l_sm_scroll_b0c0n0s0",     {"mo_l_sm_ndw_blend_i0c0s0n0", "", "", "mo_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"mc_l_sm_scroll_b0c0s0",       {"mo_l_sm_ndw_blend_i0c0s0"}},
-			{"mc_l_sm_scroll_r0c0",         {"mo_l_sm_replace_i0c0"}},
-			{"mc_l_sm_scroll_r0c0d0",       {"mo_l_sm_replace_i0c0"}},
+			{"mc_l_sm_scroll_r0c0",         {"mo_l_sm_replace_i0c0s0n0"}},
+			{"mc_l_sm_scroll_r0c0d0",       {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_sm_scroll_r0c0d0n0",     {"mo_l_sm_replace_i0c0n0d0"}},
 			{"mc_l_sm_scroll_r0c0d0n0s0",   {"mo_l_sm_replace_i0c0s0n0d0", "", "mo_l_sm_replace_i0c0s0n0d0p0"}},
 			{"mc_l_sm_scroll_r0c0d0s0",     {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_sm_scroll_r0c0n0",       {"mo_l_sm_replace_i0c0n0"}},
+			{"mc_l_sm_scroll_r0c0n0",       {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_sm_scroll_r0c0n0s0",     {"mo_l_sm_replace_i0c0s0n0", "", "mo_l_sm_replace_i0c0s0n0p0"}},
 			{"mc_l_sm_scroll_r0c0s0",       {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_sm_scroll_t0c0",         {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_sm_scroll_t0c0d0",       {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_sm_scroll_t0c0d0n0",     {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_sm_scroll_t0c0",         {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_sm_scroll_t0c0d0",       {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_sm_scroll_t0c0d0n0",     {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_sm_scroll_t0c0d0n0s0",   {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_sm_scroll_t0c0d0s0",     {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_sm_scroll_t0c0n0",       {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_sm_scroll_t0c0n0",       {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_sm_scroll_t0c0n0s0",     {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_sm_scroll_t0c0s0",       {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_sm_skin_r0c0",           {"mo_l_sm_replace_i0c0"}},
-			{"mc_l_sm_skin_r0c0d0",         {"mo_l_sm_replace_i0c0"}},
+			{"mc_l_sm_skin_r0c0",           {"mo_l_sm_replace_i0c0s0n0"}},
+			{"mc_l_sm_skin_r0c0d0",         {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_sm_skin_r0c0d0n0",       {"mo_l_sm_replace_i0c0n0d0"}},
 			{"mc_l_sm_skin_r0c0d0n0s0",     {"mo_l_sm_replace_i0c0s0n0d0", "", "mo_l_sm_replace_i0c0s0n0d0p0"}},
 			{"mc_l_sm_skin_r0c0d0s0",       {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_sm_skin_r0c0n0",         {"mo_l_sm_replace_i0c0n0"}},
+			{"mc_l_sm_skin_r0c0n0",         {"mo_l_sm_replace_i0c0s0n0"}},
 			{"mc_l_sm_skin_r0c0n0s0",       {"mo_l_sm_replace_i0c0s0n0", "", "mo_l_sm_replace_i0c0s0n0p0"}},
 			{"mc_l_sm_skin_r0c0s0",         {"mo_l_sm_replace_i0c0s0"}},
-			{"mc_l_sm_t0c0",                {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_sm_t0c0d0",              {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_sm_t0c0d0n0",            {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_sm_t0c0",                {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_sm_t0c0d0",              {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_sm_t0c0d0n0",            {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_sm_t0c0d0n0s0",          {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_sm_t0c0d0s0",            {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_sm_t0c0n0",              {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_sm_t0c0n0",              {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_sm_t0c0n0s0",            {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_sm_t0c0s0",              {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_t0c0",                   {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_t0c0d0",                 {"mo_l_sm_atest_i0c0"}},
-			{"mc_l_t0c0d0n0",               {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_t0c0",                   {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_t0c0d0",                 {"mo_l_sm_atest_i0c0s0n0"}},
+			{"mc_l_t0c0d0n0",               {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_t0c0d0n0s0",             {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_t0c0d0s0",               {"mo_l_sm_atest_i0c0s0"}},
-			{"mc_l_t0c0n0",                 {"mo_l_sm_atest_i0c0n0"}},
+			{"mc_l_t0c0n0",                 {"mo_l_sm_atest_i0c0s0n0"}},
 			{"mc_l_t0c0n0s0",               {"mo_l_sm_atest_i0c0s0n0", "", "", "mo_l_sm_atest_i0c0s0n0pa0"}},
 			{"mc_l_t0c0s0",                 {"mo_l_sm_atest_i0c0s0"}},
-			{"wc_ambient_r0c0",             {"wc_l_sm_replace_i0c0"}},
-			{"wc_ambient_t0c0",             {"wc_l_sm_atest_i0c0"}},
-			{"wc_l_b0c0",                   {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_b0c0d0",                 {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_b0c0d0n0",               {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_b0c0",                   {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_b0c0d0",                 {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_b0c0d0n0",               {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_b0c0d0n0s0",             {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_b0c0d0s0",               {"wc_l_sm_ndw_blend_i0c0s0"}},
-			{"wc_l_b0c0n0",                 {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_b0c0n0",                 {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_b0c0n0s0",               {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_b0c0s0",                 {"wc_l_sm_ndw_blend_i0c0s0"}},
 			{"wc_l_flag_t0c0",              {"wc_l_sm_atest_i0c0"}},
 			{"wc_l_flag_t0c0n0",            {"wc_l_sm_atest_i0c0"}},
 			{"wc_l_flag_t0c0n0s0",          {"wc_l_sm_atest_i0c0s0"}},
 			{"wc_l_flag_t0c0s0",            {"wc_l_sm_atest_i0c0s0"}},
-			{"wc_l_r0c0",                   {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_r0c0d0",                 {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_r0c0d0n0",               {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_r0c0",                   {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_r0c0d0",                 {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_r0c0d0n0",               {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_r0c0d0n0s0",             {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_r0c0d0s0",               {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_r0c0n0",                 {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_r0c0n0",                 {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_r0c0n0s0",               {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_r0c0s0",                 {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_scroll_b0c0",            {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_scroll_b0c0d0",          {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_scroll_b0c0d0n0",        {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_scroll_b0c0",            {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_scroll_b0c0d0",          {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_scroll_b0c0d0n0",        {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_scroll_b0c0d0n0s0",      {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_scroll_b0c0d0s0",        {"wc_l_sm_ndw_blend_i0c0s0"}},
-			{"wc_l_scroll_b0c0n0",          {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_scroll_b0c0n0",          {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_scroll_b0c0n0s0",        {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_scroll_b0c0s0",          {"wc_l_sm_ndw_blend_i0c0s0"}},
-			{"wc_l_scroll_r0c0",            {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_scroll_r0c0d0",          {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_scroll_r0c0d0n0",        {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_scroll_r0c0",            {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_scroll_r0c0d0",          {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_scroll_r0c0d0n0",        {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_scroll_r0c0d0n0s0",      {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_scroll_r0c0d0s0",        {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_scroll_r0c0n0",          {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_scroll_r0c0n0",          {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_scroll_r0c0n0s0",        {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_scroll_r0c0s0",          {"wc_l_sm_replace_i0c0s0"}},
 			{"wc_l_scroll_t0c0",            {"wc_l_sm_atest_i0c0"}},
@@ -267,48 +265,48 @@ namespace ZoneTool
 			{"wc_l_scroll_t0c0n0",          {"wc_l_sm_atest_i0c0"}},
 			{"wc_l_scroll_t0c0n0s0",        {"wc_l_sm_atest_i0c0s0"}},
 			{"wc_l_scroll_t0c0s0",          {"wc_l_sm_atest_i0c0s0"}},
-			{"wc_l_skin_r0c0",              {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_skin_r0c0d0",            {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_skin_r0c0d0n0",          {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_skin_r0c0",              {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_skin_r0c0d0",            {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_skin_r0c0d0n0",          {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_skin_r0c0d0n0s0",        {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_skin_r0c0d0s0",          {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_skin_r0c0n0",            {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_skin_r0c0n0",            {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_skin_r0c0n0s0",          {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_skin_r0c0s0",            {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_sm_b0c0",                {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_sm_b0c0d0",              {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_sm_b0c0d0n0",            {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_sm_b0c0",                {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_sm_b0c0d0",              {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_sm_b0c0d0n0",            {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_sm_b0c0d0n0s0",          {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_sm_b0c0d0s0",            {"wc_l_sm_ndw_blend_i0c0s0"}},
-			{"wc_l_sm_b0c0n0",              {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_sm_b0c0n0",              {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_sm_b0c0n0s0",            {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_sm_b0c0s0",              {"wc_l_sm_ndw_blend_i0c0s0"}},
 			{"wc_l_sm_flag_t0c0",           {"wc_l_sm_atest_i0c0"}},
 			{"wc_l_sm_flag_t0c0n0",         {"wc_l_sm_atest_i0c0"}},
 			{"wc_l_sm_flag_t0c0n0s0",       {"wc_l_sm_atest_i0c0s0"}},
 			{"wc_l_sm_flag_t0c0s0",         {"wc_l_sm_atest_i0c0s0"}},
-			{"wc_l_sm_r0c0",                {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_sm_r0c0d0",              {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_sm_r0c0d0n0",            {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_sm_r0c0",                {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_sm_r0c0d0",              {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_sm_r0c0d0n0",            {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_sm_r0c0d0n0s0",          {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_sm_r0c0d0s0",            {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_sm_r0c0n0",              {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_sm_r0c0n0",              {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_sm_r0c0n0s0",            {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_sm_r0c0s0",              {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_sm_scroll_b0c0",         {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_sm_scroll_b0c0d0",       {"wc_l_sm_ndw_blend_i0c0"}},
-			{"wc_l_sm_scroll_b0c0d0n0",     {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_sm_scroll_b0c0",         {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_sm_scroll_b0c0d0",       {"wc_l_sm_ndw_blend_i0c0s0n0"}},
+			{"wc_l_sm_scroll_b0c0d0n0",     {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_sm_scroll_b0c0d0n0s0",   {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_sm_scroll_b0c0d0s0",     {"wc_l_sm_ndw_blend_i0c0s0"}},
-			{"wc_l_sm_scroll_b0c0n0",       {"wc_l_sm_ndw_blend_i0c0n0"}},
+			{"wc_l_sm_scroll_b0c0n0",       {"wc_l_sm_ndw_blend_i0c0s0n0"}},
 			{"wc_l_sm_scroll_b0c0n0s0",     {"wc_l_sm_ndw_blend_i0c0s0n0", "", "", "wc_l_sm_ndw_blend_i0c0s0n0pa0"}},
 			{"wc_l_sm_scroll_b0c0s0",       {"wc_l_sm_ndw_blend_i0c0s0"}},
-			{"wc_l_sm_scroll_r0c0",         {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_sm_scroll_r0c0d0",       {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_sm_scroll_r0c0d0n0",     {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_sm_scroll_r0c0",         {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_sm_scroll_r0c0d0",       {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_sm_scroll_r0c0d0n0",     {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_sm_scroll_r0c0d0n0s0",   {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_sm_scroll_r0c0d0s0",     {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_sm_scroll_r0c0n0",       {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_sm_scroll_r0c0n0",       {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_sm_scroll_r0c0n0s0",     {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_sm_scroll_r0c0s0",       {"wc_l_sm_replace_i0c0s0"}},
 			{"wc_l_sm_scroll_t0c0",         {"wc_l_sm_atest_i0c0"}},
@@ -319,12 +317,12 @@ namespace ZoneTool
 			{"wc_l_sm_scroll_t0c0n0",       {"wc_l_sm_atest_i0c0"}},
 			{"wc_l_sm_scroll_t0c0n0s0",     {"wc_l_sm_atest_i0c0s0"}},
 			{"wc_l_sm_scroll_t0c0s0",       {"wc_l_sm_atest_i0c0s0"}},
-			{"wc_l_sm_skin_r0c0",           {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_sm_skin_r0c0d0",         {"wc_l_sm_replace_i0c0"}},
-			{"wc_l_sm_skin_r0c0d0n0",       {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_sm_skin_r0c0",           {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_sm_skin_r0c0d0",         {"wc_l_sm_replace_i0c0s0n0"}},
+			{"wc_l_sm_skin_r0c0d0n0",       {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_sm_skin_r0c0d0n0s0",     {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_sm_skin_r0c0d0s0",       {"wc_l_sm_replace_i0c0s0"}},
-			{"wc_l_sm_skin_r0c0n0",         {"wc_l_sm_replace_i0c0n0"}},
+			{"wc_l_sm_skin_r0c0n0",         {"wc_l_sm_replace_i0c0s0n0"}},
 			{"wc_l_sm_skin_r0c0n0s0",       {"wc_l_sm_replace_i0c0s0n0", "", "wc_l_sm_replace_i0c0s0n0p0"}},
 			{"wc_l_sm_skin_r0c0s0",         {"wc_l_sm_replace_i0c0s0"}},
 			{"wc_l_sm_t0c0",                {"wc_l_sm_atest_i0c0"}},
@@ -343,6 +341,11 @@ namespace ZoneTool
 			{"wc_l_t0c0n0",                 {"wc_l_sm_atest_i0c0"}},
 			{"wc_l_t0c0n0s0",               {"wc_l_sm_atest_i0c0s0"}},
 			{"wc_l_t0c0s0",                 {"wc_l_sm_atest_i0c0s0"}},
+
+			{"mc_ambient_r0c0",             {"mo_l_sm_replace_i0c0"}},
+			{"mc_ambient_t0c0",             {"mo_l_sm_atest_i0c0"}},
+			{"wc_ambient_r0c0",             {"wc_l_sm_replace_i0c0"}},
+			{"wc_ambient_t0c0",             {"wc_l_sm_atest_i0c0"}},
 			// ---- hand-written --------------------------------------------------------------------
 			//
 			// Names with no [rbt]0 blend letter, so the generator cannot derive them. These must survive
@@ -350,14 +353,46 @@ namespace ZoneTool
 			{"mc_effect_falloff_add_nofog",				make_techset_map("eq_effect_falloff_add_lin_nofog_ndw_nocast")},
 			{"mc_effect_zfeather_falloff_add_nofog",	make_techset_map("eq_effect_zfeather_falloff_add_lin_nofog_ndw_nocast")},
 			{"mc_effect_zfeather_falloff_add_nofog_eyeoffset",	make_techset_map("eq_effect_zfeather_falloff_add_lin_nofog_eyeoffset_ndw_nocast")},
+			{"mc_effect_zfeather_falloff_add_lin_nofog_eyeoffset", make_techset_map("eq_effect_zfeather_falloff_add_lin_nofog_eyeoffset_ndw_nocast")},
 			
 			{"mc_unlit",								make_techset_map("mo_unlit_replace_lin", "mo_unlit_replace_lin_ct")},
 			{"mc_unlit_replace",						make_techset_map("mo_unlit_replace_lin", "mo_unlit_replace_lin_ct")},
+			{"mc_unlit_replace_lin",                 make_techset_map("mo_unlit_replace_lin", "mo_unlit_replace_lin_ct")},
+			{"mc_unlit_replace_lin_nocast",          make_techset_map("mo_unlit_replace_lin_nocast")},
+			{"mc_unlit_add",						make_techset_map("mo_unlit_add_lin_ndw", "mo_unlit_add_lin_ct_ndw")},
 			{"mc_unlit_alphatest",						make_techset_map("mo_unlit_atest_lin_ct", "mo_unlit_atest_lin_ct")},
+			{"mc_unlit_blend_lin",                   make_techset_map("mo_unlit_blend_lin_ndw")},
+			// IW7 has no screen blend counterpart in the shipped techset list.
+			{"mc_unlit_screen_lin_ua",              make_techset_map("mo_unlit_blend_lin_ndw_ua")},
+			{"mc_threed_cinematic",                 make_techset_map("mo_threed_cinematic|_evc")},
+			{"mc_ambient_t0c0_nocast",              make_techset_map("mo_l_sm_atest_i0c0s0n0_nocast")},
+			{"m_l_sm_b0c0s0_sat",                   make_techset_map("m_l_sm_ndw_blend_i0c0s0")},
+			{"m_l_sm_b0c0q0n0s0_sat",               make_techset_map("m_l_sm_ndw_blend_i0c0s0n0")},
 			
-			{"wc_unlit_add",							make_techset_map("w_unlit_add_lin_ndw", "w_unlit_add_lin_ct_ndw")},
-			{"wc_unlit_multiply",						make_techset_map("w_unlit_multiply_lin_ndw")},
-			{"wc_unlit_falloff_add",					make_techset_map("w_unlit_falloff_add_lin_ndw")},
+			{"wc_unlit",							make_techset_map("wc_unlit_replace_lin", "wc_unlit_replace_lin_ct")},
+			{"wc_unlit_add",							make_techset_map("wc_unlit_add_lin_ndw", "wc_unlit_add_lin_ct_ndw")},
+			{"wc_unlit_multiply",						make_techset_map("wc_unlit_multiply_lin_ndw")},
+			{"wc_unlit_falloff_add",					make_techset_map("wc_unlit_falloff_add_lin_ndw", "wc_unlit_falloff_add_lin_ct_ndw")},
+			{"wc_unlit_add_lin",                    make_techset_map("wc_unlit_add_lin_ndw")},
+			{"wc_unlit_add_lin_ua",                 make_techset_map("wc_unlit_add_lin_ndw_ua")},
+			{"wc_unlit_blend_lin_ua",               make_techset_map("wc_unlit_blend_lin_ndw_ua")},
+			{"wc_unlit_blend_lin_custom_objective", make_techset_map("wc_unlit_blend_lin_ndw_custom_objective")},
+			// These fall back to stock world blend/replace techsets; IW7 has no matching
+			// distfalloff replace, vertex-colour no-cast/UA replace, or ocean shader.
+			{"wc_unlit_distfalloff_replace",        make_techset_map("wc_unlit_blend_lin_ndw")},
+			{"wc_unlit_multiply_lin",               make_techset_map("wc_unlit_multiply_lin_ndw")},
+			{"wc_unlit_replace_lin",                make_techset_map("wc_unlit_replace_lin", "wc_unlit_replace_lin_ct")},
+			{"wc_unlit_replace_lin_nocast",         make_techset_map("wc_unlit_replace_lin", "wc_unlit_replace_lin_ct_nocast")},
+			{"wc_unlit_replace_lin_ua",             make_techset_map("wc_unlit_replace_lin_ct_ua")},
+			//{"wc_ocean_sm_foam_detail_flatn",       make_techset_map("wc_unlit_blend_lin_ndw")},
+			//{"wc_ocean_sm_displace_foam_detail_flatn", make_techset_map("wc_unlit_blend_lin_ndw")},
+			{"wc_distortion_scale",                 make_techset_map("wc_distortion_scale")},
+			{"wc_distortion_scale_ua",              make_techset_map("wc_distortion_scale_ua")},
+			{"wc_distortion_scale_zfeather",        make_techset_map("wc_distortion_scale")},
+			{"wc_distortion_scale_ua_zfeather",     make_techset_map("wc_distortion_scale_ua")},
+			{"wc_l_sm_t0c0_nocast",                 make_techset_map("wc_l_sm_atest_i0c0_nocast")},
+			{"wc_l_t0c0_nocast",                    make_techset_map("wc_l_sm_atest_i0c0_nocast")},
+			{"tools_b0c0",                          make_techset_map("tools_b0c0")},
 
 			{"mc_shadowcaster",							make_techset_map("m_shadowcaster")},
 			{"mc_shadowcaster_atest",					make_techset_map("m_shadowcaster")},
@@ -464,6 +499,8 @@ namespace ZoneTool
 
 		std::string prefixes[] =
 		{
+			"w",
+			"wc",
 			"mo",
 			"ev",
 			"eq",
@@ -473,6 +510,8 @@ namespace ZoneTool
 
 		std::uint8_t prefixes_types[] =
 		{
+			MTL_TYPE_WORLD,
+			MTL_TYPE_WORLD_VERTCOL,
 			MTL_TYPE_MODEL_SELFVIS,
 			MTL_TYPE_EFFECT_VERTLIT,
 			MTL_TYPE_EFFECT_QUAD,
@@ -484,6 +523,58 @@ namespace ZoneTool
 			return prefix == "particle" ? "el" : prefix;
 		}
 
+		std::string canonical_iw5_techset(std::string techset)
+		{
+			// Prefer exact entries. IW5's saturation, parallax, heat, detail-normal,
+			// dust/melt and growing-ice variants have no equivalent in the stock IW7
+			// techsets used here, so reuse the mapped base technique and its slot set.
+			for (int i = 0; i < 8; i++)
+			{
+				if (mapped_techsets.contains(techset) || mapped_techsets_effect_vertlit.contains(techset))
+				{
+					return techset;
+				}
+				if (techset.ends_with("_sat"))
+				{
+					techset.erase(techset.size() - 4);
+				}
+				else if (techset.ends_with("_nocast"))
+				{
+					techset.erase(techset.size() - 7);
+				}
+				else if (techset.ends_with("_custom_growing_ice_cracks"))
+				{
+					techset.erase(techset.size() - 26);
+				}
+				else if (techset.ends_with("p0") && techset.find("_l_sm_") != std::string::npos)
+				{
+					techset.erase(techset.size() - 2);
+				}
+				else if (const auto heat = techset.find("_l_sm_heat_"); heat != std::string::npos)
+				{
+					techset.replace(heat, 11, "_l_sm_");
+				}
+				else if (const auto detail_normal = techset.find("q0");
+					detail_normal != std::string::npos && techset.find("_l_sm_") != std::string::npos)
+				{
+					techset.erase(detail_normal, 2);
+				}
+				else if (const auto du_dm = techset.find("_l_sm_du_dm_"); du_dm != std::string::npos)
+				{
+					techset.replace(du_dm, 12, "_l_sm_");
+				}
+				else if (techset.starts_with("wc_l_sm_ua_"))
+				{
+					techset.erase(7, 3);
+				}
+				else
+				{
+					break;
+				}
+			}
+			return techset;
+		}
+
 		// The p0 counterpart of a techset, or empty if it has none. Keyed on the IW5 name,
 		// like the table itself, so several IW5 techsets collapsing onto one IW7 target each
 		// carry their own answer. color_tint is deliberately not consulted: no ct material
@@ -491,14 +582,10 @@ namespace ZoneTool
 		// staying unpacked.
 		std::string get_packed_techset(const std::string& techset, const bool effect_vertlit)
 		{
-			// "_sat" variants share their base techset's slots (see get_mapped_techset)
-			if (techset.ends_with("_sat") && !mapped_techsets.contains(techset))
-			{
-				return get_packed_techset(techset.substr(0, techset.size() - 4), effect_vertlit);
-			}
+			const auto mapped_name = canonical_iw5_techset(techset);
 
 			const auto& table = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
-			const auto it = table.find(techset);
+			const auto it = table.find(mapped_name);
 			if (it != table.end() && !it->second.techset[techset_map_type_e::packed].empty())
 			{
 				return it->second.techset[techset_map_type_e::packed];
@@ -507,7 +594,7 @@ namespace ZoneTool
 			// an FX-referenced material falls back to the regular table, same as above
 			if (effect_vertlit)
 			{
-				const auto regular = mapped_techsets.find(techset);
+				const auto regular = mapped_techsets.find(mapped_name);
 				if (regular != mapped_techsets.end())
 				{
 					return regular->second.techset[techset_map_type_e::packed];
@@ -520,13 +607,10 @@ namespace ZoneTool
 		// The pa0 counterpart, on the same terms as get_packed_techset above.
 		std::string get_packed_alpha_techset(const std::string& techset, const bool effect_vertlit)
 		{
-			if (techset.ends_with("_sat") && !mapped_techsets.contains(techset))
-			{
-				return get_packed_alpha_techset(techset.substr(0, techset.size() - 4), effect_vertlit);
-			}
+			const auto mapped_name = canonical_iw5_techset(techset);
 
 			const auto& table = effect_vertlit ? mapped_techsets_effect_vertlit : mapped_techsets;
-			const auto it = table.find(techset);
+			const auto it = table.find(mapped_name);
 			if (it != table.end() && !it->second.techset[techset_map_type_e::packed_alpha].empty())
 			{
 				return it->second.techset[techset_map_type_e::packed_alpha];
@@ -534,7 +618,7 @@ namespace ZoneTool
 
 			if (effect_vertlit)
 			{
-				const auto regular = mapped_techsets.find(techset);
+				const auto regular = mapped_techsets.find(mapped_name);
 				if (regular != mapped_techsets.end())
 				{
 					return regular->second.techset[techset_map_type_e::packed_alpha];
@@ -672,9 +756,10 @@ namespace ZoneTool
 
 		std::string get_mapped_techset(const std::string& techset, const bool effect_vertlit, const bool color_tint)
 		{
+			const auto mapped_name = canonical_iw5_techset(techset);
 			if (!effect_vertlit)
 			{
-				const auto it = mapped_techsets.find(techset);
+				const auto it = mapped_techsets.find(mapped_name);
 				if (it != mapped_techsets.end())
 				{
 					auto tech = it->second.techset[color_tint ? techset_map_type_e::color_tint : techset_map_type_e::regular];
@@ -683,7 +768,7 @@ namespace ZoneTool
 			}
 			else
 			{
-				const auto it = mapped_techsets_effect_vertlit.find(techset);
+				const auto it = mapped_techsets_effect_vertlit.find(mapped_name);
 				if (it != mapped_techsets_effect_vertlit.end())
 				{
 					auto tech = it->second.techset[color_tint ? techset_map_type_e::color_tint : techset_map_type_e::regular];
@@ -695,21 +780,11 @@ namespace ZoneTool
 				// reference -- ParticleSystem re-dumps those with effect_vertlit set, after the
 				// normal dump, so returning "2d" here overwrites a correctly mapped material
 				// with the fallback. Fall through to the regular table instead.
-				const auto regular = mapped_techsets.find(techset);
+				const auto regular = mapped_techsets.find(mapped_name);
 				if (regular != mapped_techsets.end())
 				{
 					auto tech = regular->second.techset[color_tint ? techset_map_type_e::color_tint : techset_map_type_e::regular];
 					return tech.empty() ? regular->second.techset[techset_map_type_e::regular] : tech;
-				}
-			}
-
-			// IW5 "_sat" world/model techsets only add saturation, the base techset has the same slots
-			if (techset.ends_with("_sat"))
-			{
-				const auto base = techset.substr(0, techset.size() - 4);
-				if (mapped_techsets.contains(base))
-				{
-					return get_mapped_techset(base, effect_vertlit, color_tint);
 				}
 			}
 
@@ -881,7 +956,7 @@ namespace ZoneTool
 				{44, 36},	// Before effects bottom
 				{45, 36},	// Before effects middle
 				{46, 36},	// Before effects top
-				//{47, x},	// ?
+				{47, 30},	// cloud_glass, cloud_snowflake01 and sun ship on sort key 30 in IW7
 				{48, 35},	// Effect auto sort
 				{49, 35},	// After effects bottom
 				{50, 35},	// After effects middle
@@ -1579,10 +1654,10 @@ namespace ZoneTool
 				matdata["assetFlags"] = 0; // IW7::MTL_ASSETFLAG_NONE;
 
 				// fixes
-				if (matdata["cameraRegion"].get<uint8_t>() == 4 && matdata["sortKey"].get<uint8_t>() != 41)
-				{
-					matdata["cameraRegion"] = 11;
-				}
+				//if (matdata["cameraRegion"].get<uint8_t>() == 4 && matdata["sortKey"].get<uint8_t>() != 41 && iw7_techset.starts_with("2d"))
+				//{
+				//	matdata["cameraRegion"] = 11;
+				//}
 
 				// an array from the start: CONSTANT_TABLE_ADD_IF_NOT_FOUND inserts into it, which throws on null
 				// (particle_cloud materials carry no constants of their own but need textureAtlas)
@@ -1650,10 +1725,18 @@ namespace ZoneTool
 				{
 					CONSTANT_TABLE_ADD_IF_NOT_FOUND("reflectionRa", 3344177073u, 8096.0f, 0.0f, 0.0f, 0.0f);
 				}
-				if (iw7_techset.find("_lin") != std::string::npos)
+				if (iw7_techset.find("_lin") != std::string::npos && !iw7_techset.starts_with("particle_cloud_"))
 				{
 					CONSTANT_TABLE_ADD_IF_NOT_FOUND("textureAtlas", 1128936273u,
 						static_cast<float>(asset->info.textureAtlasColumnCount), static_cast<float>(asset->info.textureAtlasRowCount), 1.0f, 1.0f);
+				}
+				if (iw7_techset.find("_evc") != std::string::npos)
+				{
+					CONSTANT_TABLE_ADD_IF_NOT_FOUND("colorIntensi", 3670886770, 1.0f, 0.0f, 0.0f, 0.0f);
+				}
+				if (iw7_techset.find("_ct") != std::string::npos || iw7_techset == "2d" || iw7_techset == "wc_unlit_blend_lin_ndw")
+				{
+					CONSTANT_TABLE_ADD_IF_NOT_FOUND("colorTint", 3054254906u, 1.0f, 1.0f, 1.0f, 1.0f);
 				}
 
 				matdata["constantTable"] = constant_table;
@@ -1686,7 +1769,9 @@ namespace ZoneTool
 						}
 					}
 
-					// Point the base layer at the packed pair. The p0 technique declares exactly
+					// Point the base layer at the packed pair. Some IW5 decals carry semantic 0
+					// even for colorMap/normalMap, so identify these slots by their stable hashes.
+					// The p0 technique declares exactly
 					// two slots, c@14 and n@15, so the specular slot goes away with it - its image
 					// has been consumed into both halves.
 					//
@@ -1695,6 +1780,7 @@ namespace ZoneTool
 					// pointing at the unpacked colour, normal and specular, because that technique
 					// binds all three hashes and would walk off the end of a two-entry table.
 					const auto iw5_semantic = asset->textureTable[i].semantic;
+					const auto slot_hash = asset->textureTable[i].nameHash;
 
 					// The detail map rides at semantic 2 in IW5 and is told apart from the colour
 					// map only by its hash, so it has to be caught before the colour branch below
@@ -1705,31 +1791,43 @@ namespace ZoneTool
 					// Setting this is safe whether or not the material lands on a d0 technique: a
 					// technique binds the hashes it declares and ignores the rest, so on a
 					// non-d0 target the entry simply goes unread.
-					if (asset->textureTable[i].nameHash == slot_hash_detail)
+					if (slot_hash == slot_hash_detail)
 					{
 						asset->textureTable[i].semantic = IW7::TextureSemantic::TS_DETAIL_MAP;
 					}
-					else if (packed && iw5_semantic == 2)
+					else if (packed && slot_hash == slot_hash_colour)
 					{
 						image["image"] = packed_cs_name;
 						asset->textureTable[i].semantic = IW7::TextureSemantic::TS_COLOR_SPECULAR_MAP;
 					}
-					else if (packed && iw5_semantic == 5)
+					else if (packed && slot_hash == slot_hash_normal)
 					{
 						image["image"] = packed_ng_name;
 						asset->textureTable[i].semantic = IW7::TextureSemantic::TS_NORMAL_OCCLUSSION_GLOSS_MAP;
 					}
-					else if (packed && iw5_semantic == 8)
+					else if (packed && slot_hash == slot_hash_spec)
 					{
 						continue;   // the p0 technique has no separate specular slot
 					}
-					else if (iw5_semantic == 8 && !unpacked_sg_name.empty())
+					else if (slot_hash == slot_hash_spec && !unpacked_sg_name.empty())
 					{
 						// Unpacked, so the specular slot survives - point it at the _sg rather
 						// than at the raw IW5 name. Same slot, same typeHash, same semantic; only
 						// the image changes, to the one IW7 expects to find here.
 						image["image"] = unpacked_sg_name;
-						asset->textureTable[i].semantic = IW7::convert_semantic(iw5_semantic);
+						asset->textureTable[i].semantic = IW7::TextureSemantic::TS_SPECULAR_MAP;
+					}
+					else if (slot_hash == slot_hash_colour)
+					{
+						asset->textureTable[i].semantic = IW7::TextureSemantic::TS_COLOR_MAP;
+					}
+					else if (slot_hash == slot_hash_normal)
+					{
+						asset->textureTable[i].semantic = IW7::TextureSemantic::TS_NORMAL_MAP;
+					}
+					else if (slot_hash == slot_hash_spec)
+					{
+						asset->textureTable[i].semantic = IW7::TextureSemantic::TS_SPECULAR_MAP;
 					}
 					else
 					{
@@ -1796,8 +1894,8 @@ namespace ZoneTool
 
 				static const required_slot slot_colour  { "$white", 2, 19, 112, 99, 2695565377 };
 				static const required_slot slot_normal  { "$identitynormalmap", 5, 1, 112, 110, 1507003663 };
-				static const required_slot slot_spec    { "$white", 8, 19, 112, 115, 887934131 };
-				static const required_slot slot_occl    { "$white", 9, 19, 112, 115, 2771134132 };
+				static const required_slot slot_spec    { "$zero", 8, 19, 112, 115, 887934131 };
+				static const required_slot slot_occl    { "$zero", 9, 19, 112, 115, 2771134132 };
 				static const required_slot slot_layer1  { "$black", 2, 19, 49, 99, 3054311504 };
 				// Defensive only: a d0 target is chosen because the IW3 name carries d0, which means
 				// the source has a detail map, so this should never fire. Stock has no placeholder
@@ -1815,6 +1913,7 @@ namespace ZoneTool
 					{"mo_l_sm_atest_i0c0n0",                  {slot_colour, slot_normal}},
 					{"mo_l_sm_atest_i0c0s0",                  {slot_colour, slot_normal, slot_spec}},
 					{"mo_l_sm_atest_i0c0s0n0",                {slot_colour, slot_normal, slot_spec}},
+					{"mo_l_sm_atest_i0c0s0n0_nocast",         {slot_colour, slot_normal, slot_spec}},
 					{"mo_l_sm_ndw_blend_i0c0",                {slot_colour, slot_normal}},
 					{"mo_l_sm_ndw_blend_i0c0n0",              {slot_colour, slot_normal}},
 					{"mo_l_sm_ndw_blend_i0c0s0",              {slot_colour, slot_normal, slot_spec}},

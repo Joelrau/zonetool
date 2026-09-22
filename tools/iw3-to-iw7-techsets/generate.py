@@ -16,8 +16,9 @@ set can be read straight off the materials that ship on it.
      with exactly ONE slot signature         : 7319  (98.9%)
      stock materials covered                 : 54708
 
-So a candidate is accepted only when its slot signature, taken from stock, is exactly the set
-our converter would emit for that IW3 techset. That makes the property structural.
+So a candidate is accepted only when every slot in its stock signature can be filled by the
+converter, using a source texture or a default. Colour-only and colour/normal materials can
+then use the stock three-slot lit technique without leaving an argument unbound.
 
 Inputs, all read-only:
   --iw3     CoD4 install, for raw/techsets/*.techset      (the 2549 real IW3 names)
@@ -187,6 +188,19 @@ def choose(prefix, blend, tokens, sigs):
     return None, None, 0
 
 
+def promote_regular(regular, sigs):
+    """Use the stock full lit technique for colour-only and colour/normal materials."""
+    if not regular.endswith(("_i0c0", "_i0c0n0")):
+        return regular, None
+    if regular.startswith("wc_l_sm_atest_"):
+        return regular, None  # no stock material signature for the full world atest form
+    fuller = regular.split("_i0c0", 1)[0] + "_i0c0s0n0"
+    entry = sigs.get(fuller)
+    if entry is None or any(slot not in FILLABLE for slot in entry[0]):
+        return regular, None
+    return fuller, entry[0]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -277,6 +291,12 @@ def main():
                 want.add(SLOT_DETAIL)
             if pa_sig is None or pa_sig[0] != frozenset(want):
                 packed_alpha = ""
+
+        # Keep packed selection tied to the original technique. A source material without
+        # specular must not gain a packed variant just because its regular form uses defaults.
+        regular, promoted_sig = promote_regular(regular, sigs)
+        if promoted_sig is not None:
+            required[regular] = promoted_sig
 
         rows.append((name, regular, packed, packed_alpha))
         stats["mapped"] += 1

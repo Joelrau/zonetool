@@ -1629,6 +1629,14 @@ namespace ZoneTool::IW5
 			{
 				state_flags |= IW7::PARTICLE_STATE_DEF_FLAG_IS_SPRITE;
 				system_flags |= IW7::PARTICLE_SYSTEM_DEF_FLAG_HAS_SPRITES;
+
+				// IW5 lights an element whenever lightingFrac is non-zero. The IW7 effect techsets
+				// always sample the fx lightmap, and a state without this flag gets texel 0 of it -
+				// whichever lit particle (muzzle smoke, explosions) last landed there.
+				if (elem->lightingFrac)
+				{
+					state_flags |= IW7::PARTICLE_STATE_DEF_FLAG_GPU_LIGHTING;
+				}
 			}
 
 			modules.push_back(module);

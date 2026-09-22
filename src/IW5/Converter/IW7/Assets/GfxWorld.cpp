@@ -296,6 +296,106 @@ namespace ZoneTool::IW5
 				}
 				cap_proxy_ring(mesh, south, rings.back(), true);
 			}
+
+			// Per-vertex normal for the proxy, in the dword at byte 28 of each 32-byte vertex.
+			//
+			// Measured over all 31 of mp_dome_dusk's proxies: bytes 12..27 are zero and 28..31 hold
+			// a 10:10:10:2 UNORM normal (x in the low bits, (n + 1) * 511.5), unit length to within
+			// quantisation, pointing INTO the hull like the winding, with the 2-bit w always 3. They
+			// are smooth vertex normals rather than any one face's - no weighting of the final hull
+			// reproduces them exactly (angle-weighted lands ~15 degrees off at the median), so they
+			// were probably taken from the mesh before it was fitted. Leaving the dword zero decodes
+			// as (-1, -1, -1) with w 0 on every vertex.
+			//
+			// Built from the final mesh, after the light grid clip: clamping to the box flattens whole
+			// regions onto its faces and the normals have to follow. Angle weighting keeps a vertex
+			// shared by many thin slivers from being dominated by them, and triangles the clip
+			// collapsed contribute nothing.
+			std::vector<std::uint32_t> pack_proxy_normals(const proxy_mesh& mesh)
+			{
+				const auto vertex_count = mesh.vertices.size() / 3;
+				std::vector<double> sum(vertex_count * 3, 0.0);
+
+				for (size_t t = 0; t + 2 < mesh.indices.size(); t += 3)
+				{
+					const unsigned short tri[3] = { mesh.indices[t], mesh.indices[t + 1], mesh.indices[t + 2] };
+
+					double p[3][3];
+					for (int k = 0; k < 3; k++)
+					{
+						for (int c = 0; c < 3; c++)
+						{
+							p[k][c] = mesh.vertices[(3ull * tri[k]) + c];
+						}
+					}
+
+					const double e1[3] = { p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2] };
+					const double e2[3] = { p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2] };
+					double n[3] = {
+						(e1[1] * e2[2]) - (e1[2] * e2[1]),
+						(e1[2] * e2[0]) - (e1[0] * e2[2]),
+						(e1[0] * e2[1]) - (e1[1] * e2[0]),
+					};
+					const auto len = std::sqrt((n[0] * n[0]) + (n[1] * n[1]) + (n[2] * n[2]));
+					if (!(len > 1e-6))
+					{
+						continue;
+					}
+
+					for (int k = 0; k < 3; k++)
+					{
+						const auto* o = p[k];
+						const auto* a = p[(k + 1) % 3];
+						const auto* b = p[(k + 2) % 3];
+						const double da[3] = { a[0] - o[0], a[1] - o[1], a[2] - o[2] };
+						const double db[3] = { b[0] - o[0], b[1] - o[1], b[2] - o[2] };
+						const auto la = std::sqrt((da[0] * da[0]) + (da[1] * da[1]) + (da[2] * da[2]));
+						const auto lb = std::sqrt((db[0] * db[0]) + (db[1] * db[1]) + (db[2] * db[2]));
+						if (!(la > 1e-9) || !(lb > 1e-9))
+						{
+							continue;
+						}
+						const auto cos_angle = ((da[0] * db[0]) + (da[1] * db[1]) + (da[2] * db[2])) / (la * lb);
+						const auto angle = std::acos(std::max(-1.0, std::min(1.0, cos_angle)));
+
+						for (int c = 0; c < 3; c++)
+						{
+							sum[(3ull * tri[k]) + c] += (n[c] / len) * angle;
+						}
+					}
+				}
+
+				std::vector<std::uint32_t> packed(vertex_count, 0);
+				for (size_t v = 0; v < vertex_count; v++)
+				{
+					double n[3] = { sum[3 * v], sum[(3 * v) + 1], sum[(3 * v) + 2] };
+					const auto len = std::sqrt((n[0] * n[0]) + (n[1] * n[1]) + (n[2] * n[2]));
+					if (len > 1e-9)
+					{
+						for (auto& c : n)
+						{
+							c /= len;
+						}
+					}
+					else
+					{
+						// every incident triangle collapsed; any unit vector beats the (-1,-1,-1) of zero
+						n[0] = 0.0;
+						n[1] = 0.0;
+						n[2] = 1.0;
+					}
+
+					std::uint32_t word = 3u << 30;
+					for (int c = 0; c < 3; c++)
+					{
+						const auto q = static_cast<int>(std::lround((n[c] + 1.0) * 511.5));
+						word |= static_cast<std::uint32_t>(std::max(0, std::min(1023, q))) << (10 * c);
+					}
+					packed[v] = word;
+				}
+
+				return packed;
+			}
 		}
 
 		unsigned int first_reflection_probe(unsigned int reflection_probe_count)
@@ -1713,7 +1813,7 @@ namespace ZoneTool::IW5
 				// all eight of them.
 				if (!grid_samples.empty())
 				{
-					probe_params.cell_occupied = [&grid_samples](const float* lo, const float size)
+					const auto scan_occupied = [&grid_samples](const float* lo, const float size)
 					{
 						const auto lo_x = static_cast<int>(std::floor(lo[0] / 32.0f)) + 4096 - 1;
 						const auto hi_x = static_cast<int>(std::floor((lo[0] + size) / 32.0f)) + 4096 + 1;
@@ -1743,8 +1843,80 @@ namespace ZoneTool::IW5
 						}
 						return false;
 					};
+
+					// The probe builder can test millions of leaf cells while choosing a spacing.
+					// Mark the cells reached by each populated source sample once per spacing,
+					// then answer those tests with a byte lookup. Keep the original search for
+					// unusually large bounds where the dense mask would be too expensive.
+					probe_params.cell_occupied = [&, scan_occupied, cached_size = 0.0f,
+						cached_origin = std::array<float, 3>{}, cached_dim = std::array<int, 3>{},
+						occupied_cells = std::vector<unsigned char>{}](const float* lo, const float size) mutable
+					{
+						if (size != cached_size)
+						{
+							cached_size = size;
+							occupied_cells.clear();
+							const auto root_size = size * 16.0f;
+							std::uint64_t cell_count = 1;
+							for (int axis = 0; axis < 3; axis++)
+							{
+								cached_origin[axis] = std::floor(probe_params.bounds_min[axis] / root_size) * root_size;
+								cached_dim[axis] = static_cast<int>(std::ceil(
+									(probe_params.bounds_max[axis] - cached_origin[axis]) / root_size)) * 16;
+								cell_count *= static_cast<std::uint64_t>(cached_dim[axis]);
+							}
+							if (cell_count <= 12ull * 1024 * 1024)
+							{
+								occupied_cells.resize(static_cast<size_t>(cell_count), 0);
+								for (const auto& sample : grid_samples)
+								{
+									int first[3], end[3];
+									const int grid_coord[3] = {
+										static_cast<int>((sample.first >> 32) & 0xFFFF) - 4096,
+										static_cast<int>((sample.first >> 16) & 0xFFFF) - 4096,
+										static_cast<int>(sample.first & 0xFFFF) - 2048,
+									};
+									for (int axis = 0; axis < 3; axis++)
+									{
+										const auto stride = axis == 2 ? 64.0 : 32.0;
+										const auto lower = ((grid_coord[axis] - 1) * stride - size - cached_origin[axis]) / size;
+										const auto upper = ((grid_coord[axis] + 2) * stride - cached_origin[axis]) / size;
+										first[axis] = static_cast<int>(std::min(std::max(std::ceil(lower), 0.0),
+											static_cast<double>(cached_dim[axis])));
+										end[axis] = static_cast<int>(std::min(std::max(std::ceil(upper), 0.0),
+											static_cast<double>(cached_dim[axis])));
+									}
+									for (int z = first[2]; z < end[2]; z++)
+									{
+										for (int y = first[1]; y < end[1]; y++)
+										{
+											const auto row = (static_cast<size_t>(z) * cached_dim[1] + y) * cached_dim[0];
+											for (int x = first[0]; x < end[0]; x++)
+											{
+												occupied_cells[row + x] = 1;
+											}
+										}
+									}
+								}
+							}
+						}
+						if (occupied_cells.empty()) return scan_occupied(lo, size);
+						int coord[3];
+						for (int axis = 0; axis < 3; axis++)
+						{
+							coord[axis] = static_cast<int>((lo[axis] - cached_origin[axis]) / size);
+							if (coord[axis] < 0 || coord[axis] >= cached_dim[axis]
+								|| cached_origin[axis] + coord[axis] * size != lo[axis])
+							{
+								return scan_occupied(lo, size);
+							}
+						}
+						return occupied_cells[(static_cast<size_t>(coord[2]) * cached_dim[1] + coord[1])
+							* cached_dim[0] + coord[0]] != 0;
+					};
 				}
 
+				ZONETOOL_INFO("GfxWorld \"%s\": building sparse probe volume", asset->name);
 				const auto volume = lightgrid_probes::build(probe_params, sample_sh, sh_ambient_scale);
 
 				{
@@ -3021,12 +3193,14 @@ namespace ZoneTool::IW5
 
 						auto& dest = new_asset->frustumLights[i];
 
-						// 32 bytes per vertex, of which only the leading xyz is ever read
+						// 32 bytes per vertex: xyz, 16 zero bytes, then the packed normal at byte 28
 						dest.vertexCount = static_cast<unsigned int>(mesh.vertices.size() / 3);
 						dest.vertices = allocator.allocate<char>(32 * dest.vertexCount);
+						const auto normals = pack_proxy_normals(mesh);
 						for (unsigned int v = 0; v < dest.vertexCount; v++)
 						{
 							memcpy(&dest.vertices[32 * v], &mesh.vertices[3ull * v], sizeof(float[3]));
+							memcpy(&dest.vertices[(32 * v) + 28], &normals[v], sizeof(std::uint32_t));
 						}
 
 						dest.indexCount = static_cast<unsigned int>(mesh.indices.size());
@@ -3181,7 +3355,8 @@ namespace ZoneTool::IW5
 			new_asset->materialMemory = allocator.allocate<IW7::MaterialMemory>(new_asset->materialMemoryCount);
 			for (int i = 0; i < new_asset->materialMemoryCount; i++)
 			{
-				new_asset->materialMemory[i].material = reinterpret_cast<IW7::Material PTR64>(asset->materialMemory[i].material);
+				new_asset->materialMemory[i].material = allocator.allocate<IW7::Material>(); //reinterpret_cast<IW7::Material PTR64>(asset->materialMemory[i].material);
+				new_asset->materialMemory[i].material->name = allocator.duplicate_string(IW7::resolve_material_name(asset->materialMemory[i].material->name));
 				new_asset->materialMemory[i].memory = asset->materialMemory[i].memory;
 			}
 
@@ -3485,6 +3660,12 @@ namespace ZoneTool::IW5
 					COPY_VALUE(dpvs.surfaces[i].tris.baseIndex);
 					new_asset->dpvs.surfaces[i].material = reinterpret_cast<IW7::Material PTR64>(asset->dpvs.surfaces[i].material);
 					new_asset->dpvs.surfaces[i].lightmapIndex = asset->dpvs.surfaces[i].laf.fields.lightmapIndex;
+
+					// fix
+					if (new_asset->dpvs.surfaces[i].lightmapIndex == 0x1F)
+					{
+						new_asset->dpvs.surfaces[i].lightmapIndex = 0;
+					}
 
 					// Bit 0 means the same thing in both engines and is the only bit IW5 ever sets.
 					// The rest of IW5's byte would be read as IW7's sun light mask, so mask it off

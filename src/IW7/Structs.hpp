@@ -8645,8 +8645,8 @@ namespace ZoneTool::IW7
 		// values below were checked against 1988 stock vfx (each bit tracks one module) and the IW7 runtime
 		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_LOCAL = 0x100, // VELOCITY_GRAPH
 		PARTICLE_STATE_DEF_FLAG_HAS_VELOCITY_CURVE_WORLD = 0x200, // VELOCITY_GRAPH with USE_WORLD_SPACE
-		PARTICLE_STATE_DEF_FLAG_0x400 = 0x400, // only ever set alongside INIT_MATERIAL, meaning unknown
-		PARTICLE_STATE_DEF_FLAG_0x800 = 0x800, // subset of 0x400, meaning unknown
+		PARTICLE_STATE_DEF_FLAG_GPU_LIGHTING = 0x400, // FX_QuadGenQuad calls FX_SetupLighting (fx lightmap texel), else coords are 0
+		PARTICLE_STATE_DEF_FLAG_GPU_LIGHTING_ATLAS_1 = 0x800, // with GPU_LIGHTING: selects the second fx lightmap atlas
 		PARTICLE_STATE_DEF_FLAG_USE_PHYSICS = 0x1000, // PHYSICS_LIGHT, runtime kills physics particles through it
 		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY = 0x2000, // c
 		PARTICLE_STATE_DEF_FLAG_MIRROR_TEXTURE_HORIZONTALLY_RANDOM = 0x4000, // c

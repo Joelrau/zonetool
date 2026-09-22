@@ -1749,7 +1749,28 @@ namespace ZoneTool::IW7
 				// player walks through them, so the body filter is the one field in this path
 				// that has never been varied. ZT_HAVOK_WORLD_CONTENTS=<hex> overrides it;
 				// 0xC7FFBFFF is the engine's "all valid contents" value.
+				//
+				// The stock constant alone is not enough for a converted map. It is copied from
+				// shipped blobs, and no stock IW7 map carries CONTENTS_MANTLE (0x1000000):
+				// IW7's mantle sweep only asks for that mask when the byte at 0x1414B8D36 is
+				// cleared, which stock never does, so the bit is simply absent from
+				// 0x28033ED1. An IW5/IW6 map converted here does emit mantle volumes, and they
+				// reach shapeTagData with collisionFilterInfo 0x1000000 intact -- but with bit
+				// 24 missing from the body filter the query is rejected body-first and those
+				// triangles are unreachable, so legacy mantling finds nothing anywhere on the
+				// map. The body filter has to be a superset of the surface tags inside it;
+				// union them in rather than growing the constant, which keeps this true for
+				// any contents bit a source map happens to use.
+				//
+				// Widening cannot create a hit the surface tags would not also allow: the
+				// per-primitive filter still runs after the body passes, so a mask matching no
+				// tag still returns nothing.
 				auto world_contents = WORLD_SHAPE_CONTENTS;
+				for (const auto& tag : tag_records)
+				{
+					world_contents |= tag.collision_filter;
+				}
+
 				if (const auto* env = std::getenv("ZT_HAVOK_WORLD_CONTENTS"))
 				{
 					world_contents = static_cast<std::uint32_t>(std::strtoul(env, nullptr, 16));
