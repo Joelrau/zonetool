@@ -76,6 +76,10 @@ namespace ZoneTool::IW7
 						{
 							dump.dump_asset(def->visuals.markArray[a].materials[1]);
 						}
+						if (def->visuals.markArray[a].materials[2])
+						{
+							dump.dump_asset(def->visuals.markArray[a].materials[2]);
+						}
 					}
 				}
 			}
