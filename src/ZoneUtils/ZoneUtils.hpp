@@ -52,6 +52,11 @@ namespace zonetool
 
 	extern dump_target dumping_target;
 	extern dump_source dumping_source;
+
+	// IW7 has two effect asset types: FxEffectDef (fx) and ParticleSystemDef (vfx).
+	// Selects which one IW5 effects are converted to, and what effect references
+	// written by the other IW7 converters point at.
+	extern bool iw7_effect_use_vfx;
 }
 
 namespace ZoneTool

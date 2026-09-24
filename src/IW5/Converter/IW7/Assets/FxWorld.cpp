@@ -13,18 +13,33 @@ namespace ZoneTool::IW5
 				new_asset->__name__ = asset->__name__->name; \
 			}
 
+		// Effect references must use the asset type the IW7 FxEffectDef dumper emits
+		// (zonetool::iw7_effect_use_vfx); the game reads the pointer per the type field.
+		static void set_effect(IW7::FxCombinedDef& def, const char* name, allocator& allocator)
+		{
+			if (zonetool::iw7_effect_use_vfx)
+			{
+				def.type = IW7::FX_COMBINED_VFX;
+				def.u.vfx = allocator.allocate<IW7::ParticleSystemDef>();
+				def.u.vfx->name = name;
+			}
+			else
+			{
+				def.type = IW7::FX_COMBINED_FX;
+				def.u.fx = allocator.allocate<IW7::FxEffectDef>();
+				def.u.fx->name = name;
+			}
+		}
+
 #define COPY_EFFECT(__name__) \
-			new_asset->__name__.type = IW7::FX_COMBINED_VFX; \
+			new_asset->__name__.type = zonetool::iw7_effect_use_vfx ? IW7::FX_COMBINED_VFX : IW7::FX_COMBINED_FX; \
 			if (asset->__name__) \
 			{ \
-				new_asset->__name__.u.vfx = allocator.allocate<IW7::ParticleSystemDef>(); \
-				new_asset->__name__.u.vfx->name = asset->__name__->name; \
+				set_effect(new_asset->__name__, asset->__name__->name, allocator); \
 			}
 
 #define CREATE_EFFECT(__name__, __effect_name__) \
-			new_asset->__name__.type = IW7::FX_COMBINED_VFX; \
-			new_asset->__name__.u.vfx = allocator.allocate<IW7::ParticleSystemDef>(); \
-			new_asset->__name__.u.vfx->name = allocator.duplicate_string(__effect_name__);
+			set_effect(new_asset->__name__, allocator.duplicate_string(__effect_name__), allocator);
 
 #define CREATE_SOUND(__name__, __sound_name__) \
 			new_asset->__name__ = allocator.duplicate_string(__sound_name__);
@@ -68,11 +83,12 @@ namespace ZoneTool::IW5
 				COPY_ASSET(glassSys.defs[i].materialShattered);
 				new_asset->glassSys.defs[i].physicsAsset = nullptr; // fixme
 
-				CREATE_EFFECT(glassSys.defs[i].pieceBreakEffect, "code/glass_shatter_piece");
-				CREATE_EFFECT(glassSys.defs[i].shatterEffect, "code/glass_shatter_64x64");
-				CREATE_EFFECT(glassSys.defs[i].shatterSmallEffect, "code/glass_shatter_32x32");
+				CREATE_EFFECT(glassSys.defs[i].pieceBreakEffect, "code/glass_shatter_piece");	// iw7 has: vfx/code/glass/glass_shatter_piece
+				CREATE_EFFECT(glassSys.defs[i].shatterEffect, "code/glass_shatter_64x64");		// iw7 has: vfx/code/glass/glass_shatter_64x64
+				CREATE_EFFECT(glassSys.defs[i].shatterSmallEffect, "code/glass_shatter_32x32");	// iw7 has: vfx/code/glass/glass_shatter_32x32
 
-				new_asset->glassSys.defs[i].crackDecalEffect.u.vfx = nullptr;
+				new_asset->glassSys.defs[i].crackDecalEffect.type = zonetool::iw7_effect_use_vfx ? IW7::FX_COMBINED_VFX : IW7::FX_COMBINED_FX;
+				new_asset->glassSys.defs[i].crackDecalEffect.u.data = nullptr;
 
 				CREATE_SOUND(glassSys.defs[i].damagedSound, "glass_pane_shatter");
 				CREATE_SOUND(glassSys.defs[i].destroyedSound, "glass_pane_blowout");

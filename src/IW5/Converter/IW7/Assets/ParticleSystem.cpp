@@ -2222,7 +2222,7 @@ namespace ZoneTool::IW5
 			state->flags |= state_flags;
 		}
 
-		IW7::ParticleSystemDef* convert(FxEffectDef* asset, allocator& allocator)
+		IW7::ParticleSystemDef* convert_to_vfx(FxEffectDef* asset, allocator& allocator)
 		{
 			auto* iw7_asset = allocator.allocate<IW7::ParticleSystemDef>();
 

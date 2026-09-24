@@ -289,9 +289,22 @@ namespace ZoneTool
 
 		FS_Read_t FS_Read = FS_Read_t(0x55C120);
 
+		void dvar_set_int_by_name(const char* name, int value)
+		{
+			static DWORD func = 0x56CF40;
+
+			__asm
+			{
+				mov eax, value
+				push name
+				call func
+				add esp, 4
+			}
+		}
+
 		std::string filesystem_read_big_file(const char* filename)
 		{
-			Memory::func<void(char*, int)>(0x56CF40)("fs_debug", 1);
+			dvar_set_int_by_name("fs_debug", 1);
 
 			int file_handle = 0;
 			const int file_size = FS_FOpenFileReadForThread(

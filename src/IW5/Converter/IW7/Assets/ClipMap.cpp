@@ -478,23 +478,31 @@ namespace ZoneTool::IW5
 				destroy_event->type = IW7::Scriptable_EventType_PFX;
 				destroy_event->data.particleFX.base = &destroy_event->base;
 				destroy_event->data.particleFX.stateful = false;
-				// IW7 scriptable PFX events are serialized as ParticleSystemDef/VFX
-				// references.  The IW5 source field is an FxEffectDef, but the IW7
-				// dumper/converter emits that asset as a ParticleSystemDef.  Marking
-				// this as FX_COMBINED_FX makes the game interpret the VFX pointer as
-				// an FxEffectDef and crash while walking its elemDefs (0x140A1BDF4).
-				// FxEffectDef and ParticleSystemDef are different IW7 asset
-				// layouts.  Reinterpreting the IW5 pointer makes the particle
-				// renderer read FxElemDef data as ParticleEmitterDef data, which
-				// is the crash seen in the emitter draw path.  The effect itself is
-				// converted when its own asset is dumped; the scriptable only
-				// serializes the name.  Don't convert it here: on the IW3 path
-				// destroyFx is the IW3 FxEffectDef cast straight to the IW5 type
-				// (IW3/IW4 ClipMap), so everything past the counts is garbage.
-				auto* vfx = allocator.manual_allocate<IW7::ParticleSystemDef>(sizeof(const char*));
-				vfx->name = allocator.duplicate_string(dynent->destroyFx->name);
-				destroy_event->data.particleFX.effectDef.u.vfx = vfx;
-				destroy_event->data.particleFX.effectDef.type = IW7::FX_COMBINED_VFX;
+				// The type must match the asset type the IW7 FxEffectDef dumper
+				// emits (zonetool::iw7_effect_use_vfx).  A mismatch makes the game
+				// read one layout as the other: a VFX pointer marked
+				// FX_COMBINED_FX crashes walking elemDefs (0x140A1BDF4), and
+				// FxElemDef data read as ParticleEmitterDef crashes the emitter
+				// draw path.  The effect itself is converted when its own asset is
+				// dumped; the scriptable only serializes the name.  Don't convert
+				// it here: on the IW3 path destroyFx is the IW3 FxEffectDef cast
+				// straight to the IW5 type (IW3/IW4 ClipMap), so everything past
+				// the counts is garbage.
+				const auto* effect_name = allocator.duplicate_string(dynent->destroyFx->name);
+				if (zonetool::iw7_effect_use_vfx)
+				{
+					auto* vfx = allocator.manual_allocate<IW7::ParticleSystemDef>(sizeof(const char*));
+					vfx->name = effect_name;
+					destroy_event->data.particleFX.effectDef.u.vfx = vfx;
+					destroy_event->data.particleFX.effectDef.type = IW7::FX_COMBINED_VFX;
+				}
+				else
+				{
+					auto* fx = allocator.manual_allocate<IW7::FxEffectDef>(sizeof(const char*));
+					fx->name = effect_name;
+					destroy_event->data.particleFX.effectDef.u.fx = fx;
+					destroy_event->data.particleFX.effectDef.type = IW7::FX_COMBINED_FX;
+				}
 				destroy_event->data.particleFX.eventStreamBufferOffsetClient = 0;
 			}
 

@@ -15,6 +15,7 @@ std::string currentzone;
 
 zonetool::dump_target zonetool::dumping_target = zonetool::dump_target::h1;
 zonetool::dump_source zonetool::dumping_source = zonetool::dump_source::source_none;
+bool zonetool::iw7_effect_use_vfx = true;
 
 namespace ZoneTool
 {
@@ -26,6 +27,25 @@ namespace ZoneTool
 	void register_command(const std::string& name, std::function<void(std::vector<std::string>)> cb)
 	{
 		commands[name] = cb;
+	}
+
+	bool set_iw7_effect_type(const std::string& type)
+	{
+		if (type == "fx")
+		{
+			zonetool::iw7_effect_use_vfx = false;
+		}
+		else if (type == "vfx")
+		{
+			zonetool::iw7_effect_use_vfx = true;
+		}
+		else
+		{
+			return false;
+		}
+
+		ZONETOOL_INFO("IW7 effect type: %s", zonetool::iw7_effect_use_vfx ? "vfx" : "fx");
+		return true;
 	}
 
 	void execute_command(std::vector<std::string> args)
@@ -47,7 +67,17 @@ namespace ZoneTool
 		{
 			// Get console input
 			std::string input;
-			std::getline(std::cin, input);
+			if (!std::getline(std::cin, input))
+			{
+				// stdin closed or redirected (e.g. -silent from a batch file); getline would
+				// fail instantly forever and spam "Unknown command" into the log
+				return;
+			}
+
+			if (input.empty())
+			{
+				continue;
+			}
 
 			std::vector<std::string> args;
 
@@ -223,6 +253,20 @@ namespace ZoneTool
 				current_linker->verify_zone(args[1]);
 			}
 		});
+		register_command("iw7_effect_type"s, [](std::vector<std::string> args)
+		{
+			// no argument toggles between fx and vfx
+			if (args.size() == 1)
+			{
+				set_iw7_effect_type(zonetool::iw7_effect_use_vfx ? "fx" : "vfx");
+				return;
+			}
+
+			if (!set_iw7_effect_type(args[1]))
+			{
+				ZONETOOL_ERROR("usage: iw7_effect_type <fx|vfx> (no argument toggles)");
+			}
+		});
 		register_command("dumpzone"s, [](std::vector<std::string> args)
 		{
 			// Check if enough arguments have been passed to the command
@@ -330,6 +374,14 @@ namespace ZoneTool
 					else if (args[i] == "-loadzone")
 					{
 						current_linker->load_zone(args[i + 1]);
+						i++;
+					}
+					else if (args[i] == "-iw7effecttype")
+					{
+						if (!set_iw7_effect_type(args[i + 1]))
+						{
+							ZONETOOL_ERROR("-iw7effecttype expects fx or vfx, got \"%s\"", args[i + 1].data());
+						}
 						i++;
 					}
 					else if (args[i] == "-dumpzone")

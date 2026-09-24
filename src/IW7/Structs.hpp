@@ -2281,8 +2281,8 @@ namespace ZoneTool::IW7
 	enum TechsetdefRenderFlags : std::uint8_t
 	{
 		TECHSETDEF_RENDER_FLAGS_NONE = 0x0,
-		TECHSETDEF_RENDER_FLAGS_2D = 0x1,
-		TECHSETDEF_RENDER_FLAGS_CASTS_SHADOWS = 0x2,
+		TECHSETDEF_RENDER_FLAGS_UNLIT = 0x1,
+		TECHSETDEF_RENDER_FLAGS_UNK_2 = 0x2,
 	};
 
 	struct MaterialInfo

@@ -312,7 +312,7 @@ namespace ZoneTool::IW5
 			return iw7_asset;
 		}
 
-		IW7::FxEffectDef* convert(FxEffectDef* asset, allocator& allocator)
+		IW7::FxEffectDef* convert_to_fx(FxEffectDef* asset, allocator& allocator)
 		{
 			// generate IW7 fx
 			return GenerateIW7FxEffectDef(asset, allocator);

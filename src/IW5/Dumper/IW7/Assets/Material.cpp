@@ -1031,9 +1031,9 @@ namespace ZoneTool
 					flags |= mapped_render_flags_by_techset[IW7_techset];
 				}
 
-				if (IW7_techset.starts_with("eq_") || IW7_techset.starts_with("ev_"))
+				if (IW7_techset.starts_with("el_") || IW7_techset.starts_with("eq_") || IW7_techset.starts_with("ev_"))
 				{
-					flags |= 0x1;
+					flags |= 0x1; // unlit
 				}
 
 				return flags;
